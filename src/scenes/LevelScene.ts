@@ -264,12 +264,20 @@ export class LevelScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
-    // Check if player is currently on any room lift
+    // Determine which lift (if any) the player is standing on right now.
+    // The collider callback sets activeRoomLift, but we verify proximity
+    // and ground contact each frame to avoid stale references.
     let onLift = false;
-    if (onGround && this.activeRoomLift >= 0) {
-      const lift = this.roomLifts[this.activeRoomLift];
-      if (lift && Math.abs(this.player.sprite.x - lift.platform.x) < 50) {
-        onLift = true;
+    if (onGround) {
+      for (let i = 0; i < this.roomLifts.length; i++) {
+        const lift = this.roomLifts[i];
+        const dx = Math.abs(this.player.sprite.x - lift.platform.x);
+        const dy = this.player.sprite.y + (body.halfHeight) - lift.platform.y;
+        if (dx < 50 && dy >= -4 && dy <= 12) {
+          this.activeRoomLift = i;
+          onLift = true;
+          break;
+        }
       }
     }
 

@@ -90,11 +90,11 @@ function generatePlayerSprites(scene: Phaser.Scene): void {
   drawSideChar(5, -1, -1, 1, -1);
 
   /* ---------- front-flip frames 6-9 ----------
-   * We draw the character in four rotated poses:
-   *   6 = tuck (knees up, compact)
-   *   7 = upside-down
-   *   8 = tuck coming back around
-   *   9 = extended (landing ready)                              */
+   * Four rotation poses at 90° increments:
+   *   6 = 0°   (upright, start of flip)
+   *   7 = 90°  (rotated clockwise)
+   *   8 = 180° (upside-down)
+   *   9 = 270° (coming back around)                            */
   const drawFlipFrame = (f: number, rotation: number) => {
     // Save / translate to center of frame, rotate, draw a compact figure
     const cx = f * W + W / 2;

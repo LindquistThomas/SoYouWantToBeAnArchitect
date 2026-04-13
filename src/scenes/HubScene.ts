@@ -126,7 +126,7 @@ export class HubScene extends Phaser.Scene {
       // Floor opening label (right side, next to shaft)
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
-        const label = unlocked ? '→ ENTER' : `🔒 ${this.progression.getAUNeededForFloor(fId)} AU`;
+        const label = unlocked ? '→ ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
         this.add.text(cx + sw / 2 + 20, y - 50, label, {
           fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
         }).setDepth(5);
