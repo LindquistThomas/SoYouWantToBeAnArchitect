@@ -44,6 +44,7 @@ Bootstrap the Phaser + Vite project from scratch. Use this skill when the reposi
      <title>MyFirstPhaserGame</title>
    </head>
    <body>
+     <div id="game-container"></div>
      <script type="module" src="/src/main.js"></script>
    </body>
    </html>

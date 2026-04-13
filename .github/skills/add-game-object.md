@@ -57,6 +57,25 @@ update(time, delta) {
 }
 ```
 
+## Prerequisites
+
+Using `Phaser.Physics.Arcade.Sprite` requires Arcade physics to be enabled in the game config in `src/main.js`:
+
+```js
+const config = {
+  // ...
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 0 },
+      debug: false
+    }
+  }
+};
+```
+
+Adjust `gravity` as needed for your game (e.g., `{ y: 300 }` for a platformer).
+
 ## Conventions
 
 - One class per file, file named after the class.

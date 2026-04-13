@@ -69,3 +69,8 @@ This project is developed through conversational AI assistance. When prompting:
 - Reference existing scenes or objects by name so the AI can locate them.
 - Ask for one change at a time to keep diffs small and reviewable.
 - Test in the browser after each change (`npm run dev`).
+
+Example prompts:
+- "Add a Player object in `src/objects/Player.js` that moves with arrow keys."
+- "Create a GameOver scene that shows the final score and a restart button."
+- "Make the enemies in `Game.js` spawn every 2 seconds from the right side."
