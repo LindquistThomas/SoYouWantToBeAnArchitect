@@ -31,7 +31,7 @@ export class ElevatorPanel {
     this.container = this.scene.add.container(panelX, panelY);
     this.container.setDepth(60);
     this.container.setScrollFactor(0);
-    this.container.setVisible(true);
+    this.container.setVisible(this.isVisible);
 
     // Panel background
     const bg = this.scene.add.graphics();

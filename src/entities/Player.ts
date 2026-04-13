@@ -10,7 +10,6 @@ export class Player {
   private scene: Phaser.Scene;
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
-  private canJump = true;
   private jumpCooldown = 0;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
 
@@ -113,13 +112,8 @@ export class Player {
     // Jump
     if (this.inputManager.isJumpJustPressed() && onGround && this.jumpCooldown <= 0) {
       this.sprite.setVelocityY(PLAYER_JUMP_VELOCITY);
-      this.canJump = false;
       this.jumpCooldown = 200;
       this.emitDust();
-    }
-
-    if (onGround) {
-      this.canJump = true;
     }
 
     // Animations

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 
 export class Token extends Phaser.Physics.Arcade.Sprite {
   private floatTween?: Phaser.Tweens.Tween;
+  private collected = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, textureKey: string = 'token') {
     super(scene, x, y, textureKey);
@@ -33,6 +34,11 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
   }
 
   collect(): void {
+    if (this.collected) return;
+    this.collected = true;
+
+    // Disable physics body immediately to prevent duplicate overlap callbacks
+    this.body?.enable && ((this.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody).enable = false);
     this.floatTween?.stop();
 
     // Collection animation
