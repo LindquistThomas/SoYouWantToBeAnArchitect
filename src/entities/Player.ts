@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
 
-type PlayerAnimState = 'idle' | 'walk' | 'flip';
+type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
 
 /** Flip (jump) parameters */
 const FLIP_DISTANCE = 256;                  // horizontal pixels traveled
@@ -76,6 +76,16 @@ export class Player {
         frames: anims.generateFrameNumbers('player', { start: 6, end: 13 }),
         frameRate: FLIP_FRAME_RATE,
         repeat: 0, // single run, no loop
+      });
+    }
+
+    // Fall: static upright tucked pose (first flip frame) for walking off edges
+    if (!anims.exists('player_fall')) {
+      anims.create({
+        key: 'player_fall',
+        frames: anims.generateFrameNumbers('player', { start: 6, end: 6 }),
+        frameRate: 1,
+        repeat: -1,
       });
     }
   }
@@ -191,8 +201,8 @@ export class Player {
     let newAnim: PlayerAnimState;
 
     if (!onGround) {
-      // While airborne (not during scripted flip — that's handled separately)
-      newAnim = 'flip';
+      // Airborne but not mid-flip — show static tucked pose
+      newAnim = 'fall';
     } else if (vx > 20) {
       newAnim = 'walk';
     } else {
