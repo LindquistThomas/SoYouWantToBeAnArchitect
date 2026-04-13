@@ -1,9 +1,10 @@
 import { FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 
+/** AU = Architecture Utility — the game's single currency / progression points. */
 export interface ProgressionState {
-  totalTokens: number;
-  floorTokens: Record<FloorId, number>;
+  totalAU: number;
+  floorAU: Record<FloorId, number>;
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
 }
@@ -12,9 +13,13 @@ export class ProgressionSystem {
   private state: ProgressionState;
 
   constructor() {
-    this.state = {
-      totalTokens: 0,
-      floorTokens: {
+    this.state = this.defaultState();
+  }
+
+  private defaultState(): ProgressionState {
+    return {
+      totalAU: 0,
+      floorAU: {
         [FLOORS.LOBBY]: 0,
         [FLOORS.PLATFORM_TEAM]: 0,
         [FLOORS.CLOUD_TEAM]: 0,
@@ -24,16 +29,16 @@ export class ProgressionSystem {
     };
   }
 
-  collectToken(floorId: FloorId): void {
-    this.state.totalTokens++;
-    this.state.floorTokens[floorId]++;
+  collectAU(floorId: FloorId): void {
+    this.state.totalAU++;
+    this.state.floorAU[floorId]++;
     this.checkUnlocks();
   }
 
   private checkUnlocks(): void {
     for (const [, floorData] of Object.entries(LEVEL_DATA)) {
       if (!this.state.unlockedFloors.has(floorData.id) &&
-          this.state.totalTokens >= floorData.tokensRequired) {
+          this.state.totalAU >= floorData.auRequired) {
         this.state.unlockedFloors.add(floorData.id);
       }
     }
@@ -43,12 +48,12 @@ export class ProgressionSystem {
     return this.state.unlockedFloors.has(floorId);
   }
 
-  getTotalTokens(): number {
-    return this.state.totalTokens;
+  getTotalAU(): number {
+    return this.state.totalAU;
   }
 
-  getFloorTokens(floorId: FloorId): number {
-    return this.state.floorTokens[floorId];
+  getFloorAU(floorId: FloorId): number {
+    return this.state.floorAU[floorId];
   }
 
   getCurrentFloor(): FloorId {
@@ -63,21 +68,12 @@ export class ProgressionSystem {
     return Array.from(this.state.unlockedFloors);
   }
 
-  getTokensNeededForFloor(floorId: FloorId): number {
-    const required = LEVEL_DATA[floorId].tokensRequired;
-    return Math.max(0, required - this.state.totalTokens);
+  getAUNeededForFloor(floorId: FloorId): number {
+    const required = LEVEL_DATA[floorId].auRequired;
+    return Math.max(0, required - this.state.totalAU);
   }
 
   reset(): void {
-    this.state = {
-      totalTokens: 0,
-      floorTokens: {
-        [FLOORS.LOBBY]: 0,
-        [FLOORS.PLATFORM_TEAM]: 0,
-        [FLOORS.CLOUD_TEAM]: 0,
-      },
-      unlockedFloors: new Set([FLOORS.LOBBY, FLOORS.PLATFORM_TEAM]),
-      currentFloor: FLOORS.LOBBY,
-    };
+    this.state = this.defaultState();
   }
 }

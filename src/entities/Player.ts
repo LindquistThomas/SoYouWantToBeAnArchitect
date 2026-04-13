@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
 
@@ -19,8 +19,8 @@ export class Player {
     this.inputManager = new InputManager(scene);
 
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
-    this.sprite.setSize(20, 36);
-    this.sprite.setOffset(4, 4);
+    this.sprite.setSize(40, 110);
+    this.sprite.setOffset(12, 16);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
 
@@ -147,7 +147,7 @@ export class Player {
 
   private emitDust(): void {
     if (this.dustEmitter) {
-      this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 18);
+      this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 56);
       this.dustEmitter.explode(5);
     }
   }

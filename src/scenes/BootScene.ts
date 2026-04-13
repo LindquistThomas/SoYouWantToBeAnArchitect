@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { generateSprites } from '../systems/SpriteGenerator';
 import { COLORS } from '../config/gameConfig';
 

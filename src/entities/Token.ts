@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
 export class Token extends Phaser.Physics.Arcade.Sprite {
   private floatTween?: Phaser.Tweens.Tween;

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FLOORS, FloorId, COLORS } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 import { ProgressionSystem } from '../systems/ProgressionSystem';

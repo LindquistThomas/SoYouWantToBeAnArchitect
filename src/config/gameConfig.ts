@@ -1,13 +1,14 @@
-export const GAME_WIDTH = 1024;
-export const GAME_HEIGHT = 768;
+export const GAME_WIDTH = 1280;
+export const GAME_HEIGHT = 960;
 
-export const TILE_SIZE = 32;
+/** Base tile size for 128×128 pixel-art style. */
+export const TILE_SIZE = 128;
 
-export const PLAYER_SPEED = 200;
-export const PLAYER_JUMP_VELOCITY = -420;
-export const PLAYER_GRAVITY = 800;
+export const PLAYER_SPEED = 280;
+export const PLAYER_JUMP_VELOCITY = -520;
+export const PLAYER_GRAVITY = 900;
 
-export const ELEVATOR_SPEED = 150;
+export const ELEVATOR_SPEED = 200;
 
 export const COLORS = {
   background: 0x1a1a2e,
@@ -15,6 +16,7 @@ export const COLORS = {
   elevatorPlatform: 0x0f3460,
   floorUnlocked: 0x53a653,
   floorLocked: 0x8b0000,
+  /** AU tokens are gold */
   token: 0xffd700,
   hudBackground: 0x000000,
   hudText: '#e0e0e0',

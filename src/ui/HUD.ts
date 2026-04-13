@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { GAME_WIDTH, COLORS } from '../config/gameConfig';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { LEVEL_DATA } from '../config/levelData';
@@ -6,7 +6,7 @@ import { LEVEL_DATA } from '../config/levelData';
 export class HUD {
   private scene: Phaser.Scene;
   private progression: ProgressionSystem;
-  private tokenText!: Phaser.GameObjects.Text;
+  private auText!: Phaser.GameObjects.Text;
   private floorText!: Phaser.GameObjects.Text;
   private container!: Phaser.GameObjects.Container;
 
@@ -17,58 +17,47 @@ export class HUD {
   }
 
   private create(): void {
-    this.container = this.scene.add.container(0, 0);
-    this.container.setDepth(50);
-    this.container.setScrollFactor(0);
+    this.container = this.scene.add.container(0, 0).setDepth(50).setScrollFactor(0);
 
-    // Background bar
     const bg = this.scene.add.graphics();
     bg.fillStyle(COLORS.hudBackground, 0.7);
-    bg.fillRect(0, 0, GAME_WIDTH, 36);
+    bg.fillRect(0, 0, GAME_WIDTH, 44);
     bg.lineStyle(1, 0x00d4ff, 0.3);
-    bg.lineBetween(0, 36, GAME_WIDTH, 36);
+    bg.lineBetween(0, 44, GAME_WIDTH, 44);
     this.container.add(bg);
 
-    // Token counter
-    const tokenIcon = this.scene.add.graphics();
-    tokenIcon.fillStyle(COLORS.token);
-    tokenIcon.fillCircle(22, 18, 8);
-    tokenIcon.fillStyle(0xffed4a);
-    tokenIcon.fillCircle(21, 17, 5);
-    this.container.add(tokenIcon);
+    // AU icon (gold coin)
+    const icon = this.scene.add.graphics();
+    icon.fillStyle(COLORS.token);
+    icon.fillCircle(26, 22, 12);
+    icon.fillStyle(0xffed4a);
+    icon.fillCircle(25, 21, 8);
+    this.container.add(icon);
 
-    this.tokenText = this.scene.add.text(38, 8, '0', {
-      fontFamily: 'monospace',
-      fontSize: '16px',
-      color: COLORS.hudText,
-      fontStyle: 'bold',
+    // AU label + counter
+    this.auText = this.scene.add.text(46, 8, 'AU: 0', {
+      fontFamily: 'monospace', fontSize: '20px',
+      color: COLORS.hudText, fontStyle: 'bold',
     });
-    this.container.add(this.tokenText);
+    this.container.add(this.auText);
 
-    // Floor indicator
-    this.floorText = this.scene.add.text(GAME_WIDTH - 16, 8, '', {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      color: COLORS.titleText,
+    // Floor indicator (right)
+    this.floorText = this.scene.add.text(GAME_WIDTH - 16, 10, '', {
+      fontFamily: 'monospace', fontSize: '16px', color: COLORS.titleText,
     }).setOrigin(1, 0);
     this.container.add(this.floorText);
 
-    // Game title
-    const title = this.scene.add.text(GAME_WIDTH / 2, 8, 'ARCHITECTURE ELEVATOR', {
-      fontFamily: 'monospace',
-      fontSize: '12px',
-      color: '#556677',
-    }).setOrigin(0.5, 0);
-    this.container.add(title);
+    // Game title (center)
+    this.container.add(
+      this.scene.add.text(GAME_WIDTH / 2, 10, 'ARCHITECTURE ELEVATOR', {
+        fontFamily: 'monospace', fontSize: '14px', color: '#556677',
+      }).setOrigin(0.5, 0),
+    );
   }
 
   update(): void {
-    this.tokenText.setText(`${this.progression.getTotalTokens()}`);
-
-    const currentFloor = this.progression.getCurrentFloor();
-    const floorData = LEVEL_DATA[currentFloor];
-    if (floorData) {
-      this.floorText.setText(`F${currentFloor}: ${floorData.name}`);
-    }
+    this.auText.setText(`AU: ${this.progression.getTotalAU()}`);
+    const fd = LEVEL_DATA[this.progression.getCurrentFloor()];
+    if (fd) this.floorText.setText(`F${fd.id}: ${fd.name}`);
   }
 }

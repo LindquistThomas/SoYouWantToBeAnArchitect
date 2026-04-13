@@ -5,9 +5,11 @@ export interface FloorData {
   name: string;
   description: string;
   sceneKey: string;
-  tokensRequired: number;
-  tokenName: string;
-  totalTokens: number;
+  /** Number of AU required to unlock this floor */
+  auRequired: number;
+  /** Display name for the AU earned on this floor */
+  auLabel: string;
+  totalAU: number;
   theme: {
     platformColor: number;
     backgroundColor: number;
@@ -22,9 +24,9 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Lobby',
     description: 'The ground floor. Your journey begins here.',
     sceneKey: 'HubScene',
-    tokensRequired: 0,
-    tokenName: 'Welcome Badge',
-    totalTokens: 0,
+    auRequired: 0,
+    auLabel: 'Welcome AU',
+    totalAU: 0,
     theme: {
       platformColor: 0x444466,
       backgroundColor: 0x1a1a2e,
@@ -35,11 +37,11 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   [FLOORS.PLATFORM_TEAM]: {
     id: FLOORS.PLATFORM_TEAM,
     name: 'Platform Team',
-    description: 'Infrastructure and platform engineering. Collect Infrastructure Tokens!',
+    description: 'Infrastructure & platform engineering. Collect AU!',
     sceneKey: 'Floor1Scene',
-    tokensRequired: 0,
-    tokenName: 'Infrastructure Token',
-    totalTokens: 8,
+    auRequired: 0,
+    auLabel: 'Infrastructure AU',
+    totalAU: 8,
     theme: {
       platformColor: 0x2d6a4f,
       backgroundColor: 0x1b4332,
@@ -50,11 +52,11 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   [FLOORS.CLOUD_TEAM]: {
     id: FLOORS.CLOUD_TEAM,
     name: 'Cloud Team',
-    description: 'Cloud architecture and services. Gather Cloud Certification tokens!',
+    description: 'Cloud architecture & services. Gather Cloud AU!',
     sceneKey: 'Floor2Scene',
-    tokensRequired: 5,
-    tokenName: 'Cloud Certificate',
-    totalTokens: 10,
+    auRequired: 5,
+    auLabel: 'Cloud AU',
+    totalAU: 10,
     theme: {
       platformColor: 0x023e8a,
       backgroundColor: 0x03045e,
