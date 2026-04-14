@@ -17,11 +17,24 @@ function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
   const blob = new Blob([wav], { type: 'audio/wav' });
   const url = URL.createObjectURL(blob);
 
-  const revoke = (): void => URL.revokeObjectURL(url);
-  scene.load.once(`filecomplete-audio-${key}`, revoke);
-  scene.load.on('loaderror', (file: Phaser.Loader.File) => {
-    if (file.key === key) revoke();
+  let revoked = false;
+  const revokeUrl = (): void => {
+    if (revoked) return;
+    revoked = true;
+    URL.revokeObjectURL(url);
+  };
+
+  const onLoadError = (file: Phaser.Loader.File): void => {
+    if (file.key !== key || file.type !== 'audio') return;
+    scene.load.off('loaderror', onLoadError);
+    revokeUrl();
+  };
+
+  scene.load.once(`filecomplete-audio-${key}`, () => {
+    scene.load.off('loaderror', onLoadError);
+    revokeUrl();
   });
+  scene.load.on('loaderror', onLoadError);
 
   scene.load.audio(key, url);
 }
