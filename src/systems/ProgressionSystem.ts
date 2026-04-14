@@ -36,10 +36,14 @@ export class ProgressionSystem {
     };
   }
 
+  private tokensFor(floorId: FloorId): Set<number> {
+    return this.state.collectedTokens[floorId] ??= new Set();
+  }
+
   collectAU(floorId: FloorId, tokenIndex?: number): void {
     if (tokenIndex !== undefined) {
-      if (this.state.collectedTokens[floorId].has(tokenIndex)) return;
-      this.state.collectedTokens[floorId].add(tokenIndex);
+      if (this.tokensFor(floorId).has(tokenIndex)) return;
+      this.tokensFor(floorId).add(tokenIndex);
     }
     this.state.totalAU++;
     this.state.floorAU[floorId]++;
@@ -48,7 +52,7 @@ export class ProgressionSystem {
   }
 
   isTokenCollected(floorId: FloorId, tokenIndex: number): boolean {
-    return this.state.collectedTokens[floorId].has(tokenIndex);
+    return this.tokensFor(floorId).has(tokenIndex);
   }
 
   private checkUnlocks(): void {

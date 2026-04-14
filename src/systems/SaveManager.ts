@@ -14,8 +14,20 @@ export interface SaveData {
   collectedTokens: Record<number, number[]>;
 }
 
-let storage: KVStorage = localStorage;
+const noopStorage: KVStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
+function getDefaultStorage(): KVStorage {
+  try { return globalThis.localStorage; } catch { return noopStorage; }
+}
+
+let storage: KVStorage | null = null;
 let playerSlot = 'default';
+
+function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorage()); }
 
 export function setStorage(s: KVStorage): void { storage = s; }
 export function setPlayerSlot(slot: string): void { playerSlot = slot; }
@@ -23,20 +35,20 @@ export function setPlayerSlot(slot: string): void { playerSlot = slot; }
 function key(): string { return `architect_${playerSlot}_v1`; }
 
 export function hasSave(): boolean {
-  try { return storage.getItem(key()) !== null; } catch { return false; }
+  try { return getStorage().getItem(key()) !== null; } catch { return false; }
 }
 
 export function save(data: SaveData): void {
-  try { storage.setItem(key(), JSON.stringify(data)); } catch { /* quota */ }
+  try { getStorage().setItem(key(), JSON.stringify(data)); } catch { /* quota */ }
 }
 
 export function load(): SaveData | null {
   try {
-    const raw = storage.getItem(key());
+    const raw = getStorage().getItem(key());
     return raw ? JSON.parse(raw) as SaveData : null;
   } catch { return null; }
 }
 
 export function clear(): void {
-  try { storage.removeItem(key()); } catch { /* noop */ }
+  try { getStorage().removeItem(key()); } catch { /* noop */ }
 }
