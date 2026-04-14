@@ -53,7 +53,6 @@ export class HubScene extends Phaser.Scene {
   /** On-screen elevator buttons (shared component). */
   private elevatorButtons?: ElevatorButtons;
 
-  /** Info dialog state. */
   private showElevatorInfoOnFirstRide = false;
   private dialogOpen = false;
   private activeDialog?: InfoDialog;
@@ -228,7 +227,6 @@ export class HubScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
 
-    // Check for I key even while dialog is open (consumed by edge-detector)
     const inputMgr = this.player.getInputManager();
     const infoPressed = inputMgr.isInfoJustPressed();
 
@@ -243,14 +241,12 @@ export class HubScene extends Phaser.Scene {
 
     this.playerOnElevator = onElevator;
 
-    // First-ride info dialog trigger
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
       this.openElevatorInfoDialog();
       return;
     }
 
-    // I key opens info dialog when icon is visible
     if (infoPressed && this.infoIcon && !this.dialogOpen) {
       this.openElevatorInfoDialog();
       return;
@@ -345,7 +341,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   private createInfoIcon(): void {
-    // Position near the bottom instruction bar, left of center
     this.infoIcon = new InfoIcon(this, GAME_WIDTH / 2 + 310, GAME_HEIGHT - 30, () => {
       this.openElevatorInfoDialog();
     });

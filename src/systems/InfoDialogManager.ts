@@ -1,10 +1,3 @@
-/**
- * Tracks which info dialogs the player has already seen.
- *
- * Uses a separate localStorage key from the game save so dialog
- * state persists even if the player resets their game progress.
- */
-
 import type { KVStorage } from './SaveManager';
 
 const STORAGE_KEY = 'architect_info_seen_v1';
@@ -25,7 +18,7 @@ function loadSeen(): Set<string> {
 }
 
 function persist(seen: Set<string>): void {
-  try { getStorage().setItem(STORAGE_KEY, JSON.stringify([...seen])); } catch { /* quota */ }
+  try { getStorage().setItem(STORAGE_KEY, JSON.stringify([...seen])); } catch { /* */ }
 }
 
 export function hasBeenSeen(id: string): boolean {
@@ -39,5 +32,5 @@ export function markSeen(id: string): void {
 }
 
 export function resetAll(): void {
-  try { getStorage().removeItem(STORAGE_KEY); } catch { /* noop */ }
+  try { getStorage().removeItem(STORAGE_KEY); } catch { /* */ }
 }

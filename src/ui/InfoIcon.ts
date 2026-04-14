@@ -1,9 +1,5 @@
 import * as Phaser from 'phaser';
 
-/**
- * Small clickable "i" icon that pulses gently.
- * Click or press I to trigger the callback.
- */
 export class InfoIcon {
   private container: Phaser.GameObjects.Container;
   private scene: Phaser.Scene;
@@ -15,7 +11,6 @@ export class InfoIcon {
     this.container.setDepth(55);
     this.container.setScrollFactor(0);
 
-    // Circle background
     const circle = scene.add.graphics();
     circle.fillStyle(0x0a0a2a, 0.85);
     circle.fillCircle(0, 0, 14);
@@ -23,14 +18,12 @@ export class InfoIcon {
     circle.strokeCircle(0, 0, 14);
     this.container.add(circle);
 
-    // "i" letter
     const label = scene.add.text(0, 0, 'i', {
       fontFamily: 'monospace', fontSize: '16px',
       color: '#00aaff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.container.add(label);
 
-    // Hit area
     const hitArea = scene.add.rectangle(0, 0, 32, 32)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0.001);
@@ -40,7 +33,6 @@ export class InfoIcon {
     hitArea.on('pointerdown', () => onClick());
     this.container.add(hitArea);
 
-    // Subtle pulse
     this.pulseTween = scene.tweens.add({
       targets: this.container, alpha: { from: 1, to: 0.55 },
       duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
