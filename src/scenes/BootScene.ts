@@ -1,5 +1,7 @@
 import * as Phaser from 'phaser';
 import { generateSprites } from '../systems/SpriteGenerator';
+import { generateSounds } from '../systems/SoundGenerator';
+import { AudioManager } from '../systems/AudioManager';
 import { COLORS } from '../config/gameConfig';
 
 export class BootScene extends Phaser.Scene {
@@ -43,11 +45,18 @@ export class BootScene extends Phaser.Scene {
       loadingText.destroy();
       percentText.destroy();
     });
+
+    // Generate procedural audio and queue for Phaser's loader
+    generateSounds(this);
   }
 
   create(): void {
     // Generate all sprites programmatically
     generateSprites(this);
+
+    // Initialize audio manager (shared across all scenes via registry)
+    this.registry.set('audio', new AudioManager(this.sound));
+
     this.scene.start('MenuScene');
   }
 }

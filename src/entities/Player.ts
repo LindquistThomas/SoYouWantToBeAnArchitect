@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
+import type { AudioManager } from '../systems/AudioManager';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
 
@@ -165,6 +166,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
+    (this.scene.registry.get('audio') as AudioManager)?.playSfx('jump');
   }
 
   private updateFlip(delta: number): void {
