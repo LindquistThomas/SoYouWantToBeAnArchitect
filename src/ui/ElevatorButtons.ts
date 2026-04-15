@@ -107,5 +107,8 @@ export class ElevatorButtons {
     hit.on('pointerdown', () => setPressed(true));
     hit.on('pointerup', () => setPressed(false));
     hit.on('pointerout', () => setPressed(false));
+    hit.on('pointerupoutside', () => setPressed(false));
+    scene.input.on('pointerup', () => setPressed(false));
+    scene.input.on('gameout', () => setPressed(false));
   }
 }

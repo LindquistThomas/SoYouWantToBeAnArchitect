@@ -110,6 +110,31 @@ test.describe('Gameplay screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/02-hub-lobby.png` });
   });
 
+  test('lobby edge opens floor 0 test scene and can return', async ({ page }) => {
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Space');
+    await waitForScene(page, 'HubScene');
+
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const hub = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
+      if (!hub) throw new Error('HubScene not active');
+      const player = hub['player'] as { sprite: { x: number; y: number; setPosition: (x: number, y: number) => void } };
+      player.sprite.setPosition(20, player.sprite.y);
+    });
+
+    await waitForScene(page, 'Floor0Scene');
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/03-floor0-test-scene.png` });
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'HubScene');
+  });
+
   test('elevator info dialog pops on first ride', async ({ page }) => {
     await page.goto('/');
     await waitForGame(page);
@@ -136,7 +161,7 @@ test.describe('Gameplay screenshots', () => {
     );
     await page.keyboard.up('ArrowUp');
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/03-elevator-info-dialog.png` });
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/04-elevator-info-dialog.png` });
   });
 
   test('floor 1 (platform team) renders with platforms and tokens', async ({ page }) => {
@@ -163,7 +188,7 @@ test.describe('Gameplay screenshots', () => {
     });
     await waitForScene(page, 'Floor1Scene');
     await page.waitForTimeout(900);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/04-floor1-platform-team.png` });
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
   });
 
   test('floor 2 (cloud team) renders after progression unlock', async ({ page }) => {
@@ -186,7 +211,7 @@ test.describe('Gameplay screenshots', () => {
     });
     await waitForScene(page, 'Floor2Scene');
     await page.waitForTimeout(900);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor2-cloud-team.png` });
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/06-floor2-cloud-team.png` });
   });
 
   test('HUD shows AU counter after some progress', async ({ page }) => {
@@ -201,7 +226,7 @@ test.describe('Gameplay screenshots', () => {
     // The HUD is a scroll-fixed overlay; a fresh screenshot focused on the
     // top-left captures it clearly.
     await page.screenshot({
-      path: `${SCREENSHOT_DIR}/06-hud-au-counter.png`,
+      path: `${SCREENSHOT_DIR}/07-hud-au-counter.png`,
       clip: { x: 0, y: 0, width: 640, height: 120 },
     });
   });

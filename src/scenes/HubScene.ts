@@ -15,6 +15,7 @@ import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 const ELEVATOR_INFO_ID = 'architecture-elevator';
+const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -45,6 +46,8 @@ export class HubScene extends Phaser.Scene {
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
+  private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
+  private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
 
   constructor() {
     super({ key: 'HubScene' });
@@ -215,8 +218,7 @@ export class HubScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const onElevator = body.blocked.down && this.isOverElevator();
+    const onElevator = this.isStandingOnElevator();
 
     this.playerOnElevator = onElevator;
 
@@ -241,19 +243,40 @@ export class HubScene extends Phaser.Scene {
       const up = input.up || (btnState?.up ?? false);
       const down = input.down || (btnState?.down ?? false);
       this.elevator.ride(up, down);
+      this.constrainPlayerToElevatorCab();
     } else {
       this.elevator.ride(false, false);
     }
 
     this.elevator.updateVisuals();
     this.checkFloorEntry();
+    this.checkFloor0Transition();
   }
 
-  /** Is the player horizontally within the elevator shaft? */
-  private isOverElevator(): boolean {
-    const px = this.player.sprite.x;
-    const ex = this.elevator.platform.x;
-    return Math.abs(px - ex) < 90;
+  /** Is the player standing on the elevator platform this frame? */
+  private isStandingOnElevator(): boolean {
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const onGround = body.blocked.down || body.touching.down;
+    if (!onGround) return false;
+
+    const dx = Math.abs(this.player.sprite.x - this.elevator.platform.x);
+    const dy = this.player.sprite.y + body.halfHeight - this.elevator.platform.y;
+    return dx < 90 && dy >= -4 && dy <= 12;
+  }
+
+  /** Prevent stepping out of the cab while the elevator is between floors. */
+  private constrainPlayerToElevatorCab(): void {
+    if (this.elevator.getFloorAtCurrentPosition() !== null) return;
+
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const left = this.elevator.platform.x - 70 + HubScene.ELEVATOR_STEP_OUT_X_MARGIN;
+    const right = this.elevator.platform.x + 70 - HubScene.ELEVATOR_STEP_OUT_X_MARGIN;
+    const clampedX = Phaser.Math.Clamp(this.player.sprite.x, left, right);
+
+    if (clampedX !== this.player.sprite.x) {
+      this.player.sprite.setX(clampedX);
+      body.setVelocityX(0);
+    }
   }
 
   /** Detect player stepping onto a floor platform (not elevator, not lobby). */
@@ -285,6 +308,24 @@ export class HubScene extends Phaser.Scene {
           return;
         }
       }
+    }
+  }
+
+  /** At lobby level, walking to the far left/right opens the Floor 0 test scene. */
+  private checkFloor0Transition(): void {
+    if (this.playerOnElevator) return;
+
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    if (!(body.blocked.down || body.touching.down)) return;
+
+    const worldHeight = 1600;
+    const positions = this.getFloorYPositions(worldHeight);
+    const lobbyY = positions[FLOORS.LOBBY];
+    if (Math.abs(this.player.sprite.y - (lobbyY - 64)) >= 40) return;
+
+    const px = this.player.sprite.x;
+    if (px <= HubScene.FLOOR0_EDGE_TRIGGER_X || px >= GAME_WIDTH - HubScene.FLOOR0_EDGE_TRIGGER_X) {
+      this.enterFloor0Test();
     }
   }
 
@@ -370,5 +411,12 @@ export class HubScene extends Phaser.Scene {
     const fd = LEVEL_DATA[floorId];
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(fd.sceneKey));
+  }
+
+  private enterFloor0Test(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start(FLOOR0_TEST_SCENE_KEY));
   }
 }
