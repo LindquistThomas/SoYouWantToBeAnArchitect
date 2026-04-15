@@ -11,6 +11,7 @@ import { InfoDialog } from '../ui/InfoDialog';
 import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
 import { ZoneManager } from '../systems/ZoneManager';
+import { eventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
@@ -33,7 +34,7 @@ export interface LevelConfig {
   /**
    * Info zones placed in the level.
    * Each zone shows its icon and allows its dialog to open only when the
-   * player is within zoneRadius pixels (default: 250).
+   * player is within zoneRadius pixels of (x, y). Default radius: 250.
    */
   infoPoints?: Array<{ x: number; y: number; contentId: string; zoneRadius?: number }>;
 }
@@ -70,17 +71,28 @@ export class LevelScene extends Phaser.Scene {
   /** Which room-lift is the player currently riding? (-1 = none) */
   private activeRoomLift = -1;
 
-  /** On-screen elevator buttons (shared component). */
+  /**
+   * On-screen lift buttons for in-room elevators.
+   * These are a gameplay mechanic (not content-zone gated) so visibility
+   * is set directly based on physics state — not via zone events.
+   */
   private liftButtons?: ElevatorButtons;
 
   /** Info / quiz dialog state. */
   private dialogOpen = false;
 
   /**
-   * Zone manager: each info point in the level config becomes a zone whose
-   * icon is only visible when the player is within that zone's radius.
+   * Zone manager: each info point in the level config becomes a proximity
+   * zone. ZoneManager emits zone:enter / zone:exit on the eventBus; the
+   * subscribers wired in createInfoZones() show/hide icons in response.
    */
   private zoneManager = new ZoneManager();
+
+  /**
+   * InfoIcon instances keyed by their zone/content ID.
+   * Kept here for direct badge refresh after quiz completion.
+   */
+  private infoIconsByZone = new Map<string, InfoIcon>();
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -96,12 +108,12 @@ export class LevelScene extends Phaser.Scene {
     this.activeRoomLift = -1;
     this.dialogOpen = false;
     this.zoneManager.clear();
+    this.infoIconsByZone.clear();
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(this.floorData.theme.backgroundColor);
 
-    // Single-screen — no scrolling
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     this.createBackground();
@@ -113,7 +125,6 @@ export class LevelScene extends Phaser.Scene {
     this.createUI();
     this.createInfoZones();
 
-    // Fixed camera (no follow, no scroll)
     this.cameras.main.setScroll(0, 0);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
@@ -143,7 +154,6 @@ export class LevelScene extends Phaser.Scene {
     g.fillStyle(this.floorData.theme.backgroundColor);
     g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Wall texture (subtle grid)
     g.lineStyle(1, this.floorData.theme.wallColor, 0.15);
     for (let x = 0; x < GAME_WIDTH; x += 64) {
       g.lineBetween(x, 0, x, GAME_HEIGHT);
@@ -152,7 +162,6 @@ export class LevelScene extends Phaser.Scene {
       g.lineBetween(0, y, GAME_WIDTH, y);
     }
 
-    // Room border (bright, Impossible-Mission-style)
     g.lineStyle(4, this.floorData.theme.platformColor, 0.8);
     g.strokeRect(2, 2, GAME_WIDTH - 4, GAME_HEIGHT - 4);
   }
@@ -198,8 +207,6 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- tokens ---- */
   protected createTokens(): void {
-    // Token sprites use static bodies (see Token.ts), so a StaticGroup
-    // is the correct container — avoids dynamic-body method calls on add().
     this.tokenGroup = this.physics.add.staticGroup();
     const config = this.getLevelConfig();
     const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
@@ -242,19 +249,36 @@ export class LevelScene extends Phaser.Scene {
   /* ---- info zones ---- */
 
   /**
-   * Convert each info point in the level config into a named zone.
-   * The zone's check is a proximity circle: the icon appears when the player
-   * walks within zoneRadius pixels of the info point position.
+   * Register each info point from the level config as a proximity zone.
    *
-   * To add a new zone with a different activation shape (e.g. a rectangle or
-   * a physics-body trigger), provide a custom check() in the infoPoints array
-   * or extend this method in a subclass.
+   * Zone events from ZoneManager drive icon visibility — the update loop
+   * does not call setVisible() on icons. To use a non-circular zone shape,
+   * override this method in a subclass and provide a custom check() lambda.
+   *
+   * A single pair of eventBus listeners handles all zones in this scene.
+   * They are removed on scene shutdown to prevent listener accumulation.
    */
   protected createInfoZones(): void {
     const config = this.getLevelConfig();
-    if (!config.infoPoints) return;
+    if (!config.infoPoints?.length) return;
 
     const DEFAULT_ZONE_RADIUS = 250;
+
+    // One subscriber pair for all zones in this scene — routes by zoneId.
+    const onEnter = (...args: unknown[]) => {
+      this.infoIconsByZone.get(args[0] as string)?.setVisible(true);
+    };
+    const onExit = (...args: unknown[]) => {
+      this.infoIconsByZone.get(args[0] as string)?.setVisible(false);
+    };
+
+    eventBus.on('zone:enter', onEnter);
+    eventBus.on('zone:exit', onExit);
+
+    this.events.once('shutdown', () => {
+      eventBus.off('zone:enter', onEnter);
+      eventBus.off('zone:exit', onExit);
+    });
 
     for (const ip of config.infoPoints) {
       const radius = ip.zoneRadius ?? DEFAULT_ZONE_RADIUS;
@@ -262,22 +286,19 @@ export class LevelScene extends Phaser.Scene {
       const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
         this.openInfoDialog(ip.contentId);
       });
+      // Direct call: initial badge state is scene-internal, not a cross-system event.
+      if (QUIZ_DATA[ip.contentId]) {
+        icon.setQuizBadge(this, isQuizPassed(ip.contentId));
+      }
 
+      this.infoIconsByZone.set(ip.contentId, icon);
       this.zoneManager.register(
-        {
-          contentId: ip.contentId,
-          check: () =>
-            Phaser.Math.Distance.Between(
-              this.player.sprite.x,
-              this.player.sprite.y,
-              ip.x,
-              ip.y,
-            ) < radius,
-        },
-        icon,
+        ip.contentId,
+        () => Phaser.Math.Distance.Between(
+          this.player.sprite.x, this.player.sprite.y,
+          ip.x, ip.y,
+        ) < radius,
       );
-
-      this.zoneManager.refreshBadge(this, ip.contentId);
     }
   }
 
@@ -295,9 +316,7 @@ export class LevelScene extends Phaser.Scene {
     new InfoDialog(
       this,
       infoDef.content,
-      () => {
-        this.dialogOpen = false;
-      },
+      () => { this.dialogOpen = false; },
       hasQuiz ? {
         onQuizStart: () => this.openQuizDialog(contentId),
         quizStatus: {
@@ -322,7 +341,11 @@ export class LevelScene extends Phaser.Scene {
       progression: this.progression,
       onClose: () => {
         this.dialogOpen = false;
-        this.zoneManager.refreshBadge(this, contentId);
+        // Direct call: badge refresh is parent-to-child, no cross-system event needed.
+        const icon = this.infoIconsByZone.get(contentId);
+        if (icon && QUIZ_DATA[contentId]) {
+          icon.setQuizBadge(this, isQuizPassed(contentId));
+        }
       },
     });
   }
@@ -376,8 +399,11 @@ export class LevelScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
-    // Update zone icon visibility each frame based on player proximity.
+
+    // Emit zone:enter / zone:exit events when player crosses zone boundaries.
+    // Subscribed handlers (wired in createInfoZones) react to show/hide icons.
     this.zoneManager.update();
+
     this.checkExitProximity();
   }
 
@@ -386,9 +412,6 @@ export class LevelScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
-    // Determine which lift (if any) the player is standing on right now.
-    // The collider callback sets activeRoomLift, but we verify proximity
-    // and ground contact each frame to avoid stale references.
     let onLift = false;
     if (onGround) {
       for (let i = 0; i < this.roomLifts.length; i++) {
@@ -403,7 +426,8 @@ export class LevelScene extends Phaser.Scene {
       }
     }
 
-    // Show / hide lift buttons (resets pressed state when hiding)
+    // Lift buttons are a gameplay mechanic (riding in-room lifts), not a
+    // content zone, so visibility is set directly from physics state here.
     this.liftButtons?.setVisible(onLift);
 
     if (!onLift) {
@@ -414,7 +438,6 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    // Ride the active lift with Up/Down keys or on-screen buttons
     const input = this.player.getInputManager().getState();
     const lift = this.roomLifts[this.activeRoomLift];
     const btnState = this.liftButtons?.getState();

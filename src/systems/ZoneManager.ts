@@ -1,77 +1,72 @@
-import * as Phaser from 'phaser';
-import { InfoIcon } from '../ui/InfoIcon';
-import { QUIZ_DATA } from '../config/quizData';
-import { isQuizPassed } from './QuizManager';
-
-export interface ZoneDefinition {
-  contentId: string;
-  /**
-   * Called each frame. Return true when the player is considered inside this zone.
-   * Decoupled from bounds type so callers can use physics state, proximity,
-   * rectangle overlap, or any other condition.
-   */
-  check: () => boolean;
-}
+import { eventBus } from './EventBus';
 
 /**
- * Manages a set of named content zones.
+ * Tracks named content zones and broadcasts transitions via the EventBus.
  *
- * Each zone owns one InfoIcon that is visible only while the player is inside
- * the zone. Call update() every frame; it refreshes all icons and returns the
- * contentId of the first active zone (or null when the player is in none).
+ * Each zone has an ID and a check function. ZoneManager knows nothing about
+ * what responds to zone changes — UI components and scene code subscribe to
+ * the events independently, keeping coupling in one direction.
+ *
+ * Events emitted:
+ *   zone:enter  (zoneId: string) — player just entered this zone
+ *   zone:exit   (zoneId: string) — player just left this zone
+ *
+ * The check() is called every frame but events are only emitted on transitions,
+ * so subscribers are not hammered with per-frame calls.
  *
  * Usage:
- *   const mgr = new ZoneManager();
- *   mgr.register({ contentId: 'my-topic', check: () => playerNearby }, icon);
- *   // in update():
- *   const active = mgr.update();    // null | contentId
+ *   // Register (e.g. in scene create):
+ *   zoneManager.register('my-zone', () => someCondition);
+ *
+ *   // Subscribe (e.g. in scene create, unsubscribe on shutdown):
+ *   eventBus.on('zone:enter', (id) => { if (id === 'my-zone') show(); });
+ *   eventBus.on('zone:exit',  (id) => { if (id === 'my-zone') hide(); });
+ *
+ *   // Drive from update loop:
+ *   zoneManager.update();
+ *
+ *   // Keyboard input — synchronous query, no event needed:
+ *   const active = zoneManager.getActiveZone(); // string | null
  */
 export class ZoneManager {
-  private zones: Array<{ def: ZoneDefinition; icon: InfoIcon }> = [];
+  private zones = new Map<string, { check: () => boolean; active: boolean }>();
 
-  /**
-   * Register a zone. The icon starts hidden; update() controls its visibility.
-   */
-  register(def: ZoneDefinition, icon: InfoIcon): void {
-    icon.setVisible(false);
-    this.zones.push({ def, icon });
+  /** Register a zone. Starts inactive; update() drives transitions. */
+  register(zoneId: string, check: () => boolean): void {
+    this.zones.set(zoneId, { check, active: false });
   }
 
   /**
-   * Refresh visibility of every registered icon.
-   * Returns the contentId of the first zone the player is currently in,
-   * or null if the player is outside all zones.
+   * Check every zone and emit zone:enter / zone:exit on the eventBus
+   * whenever a zone's state changes. Call once per frame from update().
    */
-  update(): string | null {
-    let activeContentId: string | null = null;
-
-    for (const { def, icon } of this.zones) {
-      const inZone = def.check();
-      icon.setVisible(inZone);
-      if (inZone && activeContentId === null) {
-        activeContentId = def.contentId;
+  update(): void {
+    for (const [zoneId, zone] of this.zones) {
+      const inZone = zone.check();
+      if (inZone !== zone.active) {
+        zone.active = inZone;
+        eventBus.emit(inZone ? 'zone:enter' : 'zone:exit', zoneId);
       }
     }
-
-    return activeContentId;
   }
 
   /**
-   * Refresh the quiz badge on the icon for a given contentId.
-   * Safe to call when the contentId is not registered.
+   * Synchronous query: returns the ID of the first currently-active zone,
+   * or null. Use this for keyboard/input handlers in the update loop where
+   * you need the value immediately rather than reactively.
    */
-  refreshBadge(scene: Phaser.Scene, contentId: string): void {
-    const zone = this.zones.find(z => z.def.contentId === contentId);
-    if (zone && QUIZ_DATA[contentId]) {
-      zone.icon.setQuizBadge(scene, isQuizPassed(contentId));
+  getActiveZone(): string | null {
+    for (const [zoneId, zone] of this.zones) {
+      if (zone.active) return zoneId;
     }
+    return null;
   }
 
   /**
-   * Drop all zones. Should be called when the scene shuts down if you want
-   * to explicitly clean up (Phaser will also destroy the game objects itself).
+   * Reset all zones to inactive without emitting events.
+   * Call in scene init() before create() re-registers zones.
    */
   clear(): void {
-    this.zones = [];
+    this.zones.clear();
   }
 }

@@ -12,6 +12,7 @@ import { InfoDialog } from '../ui/InfoDialog';
 import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
 import { ZoneManager } from '../systems/ZoneManager';
+import { eventBus } from '../systems/EventBus';
 import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
@@ -35,18 +36,20 @@ export class HubScene extends Phaser.Scene {
   /** Is the player currently standing on the elevator? */
   private playerOnElevator = false;
 
-  /** On-screen elevator buttons (shared component). */
+  /** On-screen elevator buttons — shown/hidden by zone events. */
   private elevatorButtons?: ElevatorButtons;
+
+  /**
+   * Info icon for the elevator zone — created lazily after the first dialog
+   * is closed, then shown/hidden by the same zone events as elevatorButtons.
+   */
+  private infoIcon?: InfoIcon;
 
   private showElevatorInfoOnFirstRide = false;
   private dialogOpen = false;
   private activeDialog?: InfoDialog;
   private activeQuiz?: QuizDialog;
 
-  /**
-   * Zone manager controls which info icon is visible based on where the
-   * player is. Each zone defines its own check() and contentId.
-   */
   private zoneManager = new ZoneManager();
 
   /** The shaft is wider in the 128-px world. */
@@ -68,6 +71,7 @@ export class HubScene extends Phaser.Scene {
     }
     this.progression = this.registry.get('progression') as ProgressionSystem;
     this.zoneManager.clear();
+    this.infoIcon = undefined;
   }
 
   create(): void {
@@ -89,6 +93,7 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldHeight);
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
+    this.registerZones();
     this.setupElevatorInfo();
   }
 
@@ -101,7 +106,6 @@ export class HubScene extends Phaser.Scene {
       this.add.tileSprite(cx, y, sw, TILE_SIZE, 'elevator_shaft').setDepth(0);
     }
 
-    // Bright rails on each side (Impossible Mission style)
     const rail = this.add.graphics();
     rail.fillStyle(0x00aaff, 0.6);
     rail.fillRect(cx - sw / 2 - 8, 0, 8, worldHeight);
@@ -111,7 +115,6 @@ export class HubScene extends Phaser.Scene {
     rail.lineBetween(cx + sw / 2 - 20, 0, cx + sw / 2 - 20, worldHeight);
     rail.setDepth(1);
 
-    // Horizontal cross-beams every 200px
     const beams = this.add.graphics();
     beams.lineStyle(1, 0x003355, 0.3);
     for (let y = 0; y < worldHeight; y += 200) {
@@ -193,7 +196,6 @@ export class HubScene extends Phaser.Scene {
   private createUI(): void {
     this.hud = new HUD(this, this.progression);
 
-    // Instruction text (scroll-fixed)
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '13px', color: '#556677',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
@@ -210,6 +212,53 @@ export class HubScene extends Phaser.Scene {
     };
   }
 
+  /* ---- zone registration ---- */
+
+  /**
+   * Register all hub zones and wire up zone event subscribers.
+   *
+   * Zones drive UI visibility via the eventBus — neither the scene update
+   * loop nor any UI component calls setVisible() directly for zone-gated
+   * elements. To add a new zone (e.g. a lobby kiosk), add a register()
+   * call here and subscribe its icon / button in the onEnter/onExit handlers.
+   *
+   * Listeners are removed on scene shutdown to prevent accumulation across
+   * scene restarts (EventBus is a singleton, scenes are not destroyed between
+   * start/stop cycles).
+   */
+  private registerZones(): void {
+    // --- Elevator zone ---
+    // Active while the player is physically standing on the elevator cab.
+    // The same zone gates both the ElevatorButtons (always) and the InfoIcon
+    // (once it is created after the first dialog close).
+    this.zoneManager.register(ELEVATOR_INFO_ID, () => this.playerOnElevator);
+
+    const onEnter = (...args: unknown[]) => {
+      const zoneId = args[0] as string;
+      if (zoneId === ELEVATOR_INFO_ID) {
+        this.elevatorButtons?.setVisible(true);
+        this.infoIcon?.setVisible(true);
+      }
+    };
+
+    const onExit = (...args: unknown[]) => {
+      const zoneId = args[0] as string;
+      if (zoneId === ELEVATOR_INFO_ID) {
+        this.elevatorButtons?.setVisible(false);
+        this.infoIcon?.setVisible(false);
+      }
+    };
+
+    eventBus.on('zone:enter', onEnter);
+    eventBus.on('zone:exit', onExit);
+
+    // Unsubscribe when the scene stops so listeners don't pile up on restart.
+    this.events.once('shutdown', () => {
+      eventBus.off('zone:enter', onEnter);
+      eventBus.off('zone:exit', onExit);
+    });
+  }
+
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
@@ -223,9 +272,7 @@ export class HubScene extends Phaser.Scene {
     this.hud.update();
 
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const onElevator = body.blocked.down && this.isOverElevator();
-
-    this.playerOnElevator = onElevator;
+    this.playerOnElevator = body.blocked.down && this.isOverElevator();
 
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
@@ -233,17 +280,17 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
-    // Each zone's icon visibility is updated here. activeZone is the
-    // contentId of whichever zone the player is currently inside, or null.
-    const activeZone = this.zoneManager.update();
+    // Emit zone:enter / zone:exit events when player crosses zone boundaries.
+    // Subscribed handlers (registered in registerZones) react to these events
+    // to show/hide ElevatorButtons and InfoIcon — no setVisible calls here.
+    this.zoneManager.update();
 
+    // Keyboard info shortcut: synchronous zone query avoids needing an event.
+    const activeZone = this.zoneManager.getActiveZone();
     if (infoPressed && activeZone && !this.dialogOpen) {
       this.openInfoDialog(activeZone);
       return;
     }
-
-    // Show / hide elevator buttons (resets pressed state when hiding)
-    this.elevatorButtons?.setVisible(this.playerOnElevator);
 
     // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
@@ -274,13 +321,11 @@ export class HubScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     if (!body.blocked.down) return;
 
-    // Player is on solid ground (platform, not elevator) — check which floor
     const py = this.player.sprite.y;
     const px = this.player.sprite.x;
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
 
-    // Player must be outside the shaft
     if (px > cx - sw / 2 + 20 && px < cx + sw / 2 - 20) return;
 
     const worldHeight = 1600;
@@ -299,41 +344,34 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  /* ---- info zone setup ---- */
+  /* ---- info setup ---- */
 
   private setupElevatorInfo(): void {
     if (hasBeenSeen(ELEVATOR_INFO_ID)) {
       this.showElevatorInfoOnFirstRide = false;
-      this.registerElevatorZone();
+      this.createInfoIcon();
     } else {
-      // Zone icon registered after the first dialog is closed (see openInfoDialog).
+      // InfoIcon is created after the first dialog close (see openInfoDialog).
       this.showElevatorInfoOnFirstRide = true;
     }
   }
 
   /**
-   * Register the elevator as a named zone.
-   * The zone is active whenever the player is standing on the elevator cab.
-   * Extend this pattern to add more hub zones: each gets its own check()
-   * lambda, contentId, and icon position.
+   * Create the InfoIcon for the elevator zone. The icon starts hidden;
+   * zone:enter / zone:exit events (wired in registerZones) control its
+   * visibility from this point on.
    */
-  private registerElevatorZone(): void {
-    const icon = new InfoIcon(
+  private createInfoIcon(): void {
+    this.infoIcon = new InfoIcon(
       this,
       GAME_WIDTH / 2 + 310,
       GAME_HEIGHT - 30,
       () => this.openInfoDialog(ELEVATOR_INFO_ID),
     );
-
-    this.zoneManager.register(
-      {
-        contentId: ELEVATOR_INFO_ID,
-        check: () => this.playerOnElevator,
-      },
-      icon,
-    );
-
-    this.zoneManager.refreshBadge(this, ELEVATOR_INFO_ID);
+    // Direct call: badge is scene-internal state, not a cross-system concern.
+    if (QUIZ_DATA[ELEVATOR_INFO_ID]) {
+      this.infoIcon.setQuizBadge(this, isQuizPassed(ELEVATOR_INFO_ID));
+    }
   }
 
   /* ---- info / quiz dialogs ---- */
@@ -354,11 +392,9 @@ export class HubScene extends Phaser.Scene {
         this.dialogOpen = false;
         this.activeDialog = undefined;
 
-        // First time closing: mark seen and register the zone so the icon
-        // appears on subsequent elevator rides.
-        if (!hasBeenSeen(infoId)) {
+        if (!this.infoIcon) {
           markSeen(infoId);
-          this.registerElevatorZone();
+          this.createInfoIcon();
         }
       },
       hasQuiz ? {
@@ -386,7 +422,10 @@ export class HubScene extends Phaser.Scene {
       onClose: () => {
         this.dialogOpen = false;
         this.activeQuiz = undefined;
-        this.zoneManager.refreshBadge(this, infoId);
+        // Direct call: badge refresh is parent-to-child, no cross-system event needed.
+        if (this.infoIcon && QUIZ_DATA[infoId]) {
+          this.infoIcon.setQuizBadge(this, isQuizPassed(infoId));
+        }
       },
     });
   }
