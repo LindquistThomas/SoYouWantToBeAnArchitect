@@ -226,13 +226,14 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
-    if (infoPressed && this.infoIcon && !this.dialogOpen) {
+    if (infoPressed && this.infoIcon && !this.dialogOpen && this.playerOnElevator) {
       this.openInfoDialog(ELEVATOR_INFO_ID);
       return;
     }
 
-    // Show / hide elevator buttons (resets pressed state when hiding)
+    // Show / hide elevator buttons and info icon only when on the elevator
     this.elevatorButtons?.setVisible(this.playerOnElevator);
+    this.infoIcon?.setVisible(this.playerOnElevator);
 
     // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
