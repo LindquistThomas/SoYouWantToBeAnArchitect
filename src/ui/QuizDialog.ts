@@ -514,7 +514,7 @@ export class QuizDialog {
       emitting: false,
     });
     emitter.setDepth(201);
-
+    emitter.setScrollFactor(0);
     emitter.explode(30);
 
     this.scene.time.delayedCall(1500, () => {

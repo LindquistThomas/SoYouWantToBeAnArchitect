@@ -181,7 +181,7 @@ export class InfoDialog {
 
       toggleText.on('pointerdown', () => {
         this.extendedExpanded = !this.extendedExpanded;
-        const shift = extBodyH + 36;
+        const shift = Math.min(extBodyH + 36, MAX_PANEL_H - panelH);
 
         if (this.extendedExpanded) {
           toggleText.setText('[-]  Deep Dive');
