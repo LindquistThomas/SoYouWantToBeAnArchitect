@@ -45,8 +45,12 @@ export class ProgressionSystem {
       if (this.tokensFor(floorId).has(tokenIndex)) return;
       this.tokensFor(floorId).add(tokenIndex);
     }
-    this.state.totalAU++;
-    this.state.floorAU[floorId]++;
+    this.addAU(floorId, 1);
+  }
+
+  addAU(floorId: FloorId, amount: number): void {
+    this.state.totalAU += amount;
+    this.state.floorAU[floorId] += amount;
     this.checkUnlocks();
     this.persist();
   }

@@ -6,7 +6,7 @@
  */
 
 import type { KVStorage } from './SaveManager';
-import { QUIZ_COOLDOWN_MS } from '../config/quizData';
+import { QUIZ_COOLDOWN_MS, QUIZ_PASS_THRESHOLD } from '../config/quizData';
 
 const STORAGE_KEY = 'architect_quiz_v1';
 
@@ -60,10 +60,10 @@ export function getCooldownRemaining(infoId: string): number {
   return Math.max(0, QUIZ_COOLDOWN_MS - elapsed);
 }
 
-export function saveQuizResult(infoId: string, score: number, total: number): void {
+export function saveQuizResult(infoId: string, score: number): void {
   const store = loadStore();
   const existing = store[infoId];
-  const passed = score >= 2;
+  const passed = score >= QUIZ_PASS_THRESHOLD;
 
   store[infoId] = {
     passed: passed || (existing?.passed ?? false),

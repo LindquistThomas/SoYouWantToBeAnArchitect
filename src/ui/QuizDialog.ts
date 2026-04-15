@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
-import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_REWARDS, QUIZ_QUESTION_COUNT } from '../config/quizData';
+import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_REWARDS, QUIZ_PASS_THRESHOLD } from '../config/quizData';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { saveQuizResult, isQuizPassed } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
@@ -385,18 +385,16 @@ export class QuizDialog {
     this.clearPanel();
 
     const total = this.questions.length;
-    const passed = this.score >= 2;
+    const passed = this.score >= QUIZ_PASS_THRESHOLD;
     const perfect = this.score === total;
 
-    saveQuizResult(this.options.infoId, this.score, total);
+    saveQuizResult(this.options.infoId, this.score);
 
     // AU only awarded on first pass
     let auAwarded = 0;
     if (passed && !this.alreadyPassed) {
       auAwarded = perfect ? QUIZ_REWARDS.perfect : QUIZ_REWARDS.pass;
-      for (let i = 0; i < auAwarded; i++) {
-        this.options.progression.collectAU(this.options.floorId);
-      }
+      this.options.progression.addAU(this.options.floorId, auAwarded);
     }
 
     eventBus.emit(passed ? 'sfx:quiz_success' : 'sfx:quiz_fail');

@@ -11,7 +11,7 @@ import { InfoDialog } from '../ui/InfoDialog';
 import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
+import { markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 export interface RoomElevator {
@@ -237,7 +237,7 @@ export class LevelScene extends Phaser.Scene {
         this.openInfoDialog(ip.contentId);
       });
 
-      // Auto-show if already seen (icon always visible); update badge
+      // Update quiz badge if quiz data exists for this info point
       if (QUIZ_DATA[ip.contentId]) {
         icon.setQuizBadge(this, isQuizPassed(ip.contentId));
       }

@@ -154,7 +154,8 @@ export class InfoDialog {
       const extInfo = content.extendedInfo;
       curY += 4;
 
-      const toggleText = this.scene.add.text(panelX + PADDING, curY, '[+]  Deep Dive', {
+      const toggleY = curY;
+      const toggleText = this.scene.add.text(panelX + PADDING, toggleY, '[+]  Deep Dive', {
         fontFamily: 'monospace', fontSize: '14px', color: '#00aaff', fontStyle: 'bold',
       }).setInteractive({ useHandCursor: true });
       this.container.add(toggleText);
@@ -181,7 +182,7 @@ export class InfoDialog {
         if (this.extendedExpanded) {
           toggleText.setText('[-]  Deep Dive');
 
-          let ey = curY + 28;
+          let ey = toggleY + 28;
 
           const extTitle = this.scene.add.text(panelX + PADDING + 12, ey, extInfo.title, {
             fontFamily: 'monospace', fontSize: '15px', color: '#00d4ff', fontStyle: 'bold',

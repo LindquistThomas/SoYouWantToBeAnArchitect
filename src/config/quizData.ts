@@ -34,6 +34,9 @@ export const QUIZ_COOLDOWN_MS = 30_000;
 /** Number of questions per quiz attempt. */
 export const QUIZ_QUESTION_COUNT = 3;
 
+/** Minimum correct answers required to pass a quiz. */
+export const QUIZ_PASS_THRESHOLD = 2;
+
 export const QUIZ_DATA: Record<string, QuizDefinition> = {
   /* --------------------------------------------------------- */
   /*  Architecture Elevator                                     */
