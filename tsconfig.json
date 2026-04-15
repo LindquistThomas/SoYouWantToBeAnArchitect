@@ -12,7 +12,8 @@
     "noEmit": true,
     "jsx": "preserve",
     "sourceMap": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
