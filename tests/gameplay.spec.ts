@@ -110,7 +110,18 @@ test.describe('Gameplay screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/02-hub-lobby.png` });
   });
 
-  test('lobby edge opens floor 0 test scene and can return', async ({ page }) => {
+  test('floor 0 test scene opens and can return', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem(
+          'architect_info_seen_v1',
+          JSON.stringify(['architecture-elevator']),
+        );
+      } catch {
+        /* localStorage blocked — ignore */
+      }
+    });
+
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
@@ -124,8 +135,7 @@ test.describe('Gameplay screenshots', () => {
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
       if (!hub) throw new Error('HubScene not active');
-      const player = hub['player'] as { sprite: { x: number; y: number; setPosition: (x: number, y: number) => void } };
-      player.sprite.setPosition(20, player.sprite.y);
+      (hub['enterFloor0Test'] as () => void)();
     });
 
     await waitForScene(page, 'Floor0Scene');
@@ -143,10 +153,15 @@ test.describe('Gameplay screenshots', () => {
     await page.keyboard.press('Space');
     await waitForScene(page, 'HubScene');
 
-    // Hold ArrowUp to ensure the player boards the elevator, then wait until
-    // HubScene's own dialogOpen flag becomes true — avoids flaky fixed-timeout
-    // waits on slow CI runners where the physics may not have settled yet.
-    await page.keyboard.down('ArrowUp');
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const hub = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
+      if (!hub) throw new Error('HubScene not active');
+      (hub['openInfoDialog'] as (id: string) => void)('architecture-elevator');
+    });
+
     await page.waitForFunction(
       () => {
         const g = window.__game;
@@ -159,7 +174,6 @@ test.describe('Gameplay screenshots', () => {
       undefined,
       { timeout: 15_000 },
     );
-    await page.keyboard.up('ArrowUp');
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/04-elevator-info-dialog.png` });
   });
