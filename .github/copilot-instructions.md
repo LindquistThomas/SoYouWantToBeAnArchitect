@@ -113,6 +113,72 @@ When responding to ideas or feature requests:
 - **Push back on over-engineering** — if a simpler solution exists, present it alongside the complex one
 - **Question assumptions** — ask "do we actually need this?" before building abstractions
 
+## Debugging & Visual Verification with Playwright
+
+When you need to see how a feature actually looks in the browser, or when a bug is hard to reproduce without visual context, use the Playwright screenshot tests:
+
+```bash
+# Run all screenshot tests and save PNGs to tests/screenshots/
+npm test
+
+# Run with a visible browser window (useful for watching scene transitions)
+npm run test:headed
+
+# Open the interactive Playwright UI (step-by-step trace, timeline scrubber)
+npm run test:ui
+```
+
+Screenshots land in `tests/screenshots/` and are committed to the repo so reviewers can see the current visual state without running the game.
+
+### Adding a one-off debug screenshot
+
+Inside any test in `tests/gameplay.spec.ts`, call:
+
+```ts
+await page.screenshot({ path: 'tests/screenshots/debug-my-feature.png' });
+// or clip to a specific area:
+await page.screenshot({ path: 'tests/screenshots/debug-hud.png', clip: { x: 0, y: 0, width: 640, height: 120 } });
+```
+
+### Jumping to a specific scene for inspection
+
+The dev server exposes `window.__game` (a `Phaser.Game` reference). Tests use it to navigate without going through the full game flow:
+
+```ts
+// Wait for an active scene then call its ScenePlugin to switch
+await page.evaluate(() => {
+  const hub = window.__game!.scene.getScenes(true)
+    .find(s => s.sys.settings.key === 'HubScene');
+  hub!.scene.start('Floor1Scene');
+});
+await waitForScene(page, 'Floor1Scene');
+await page.screenshot({ path: 'tests/screenshots/debug-floor1.png' });
+```
+
+For private methods (like `HubScene.enterFloor`), use bracket notation — TypeScript visibility is stripped at runtime:
+
+```ts
+(hub as Record<string, unknown>)['enterFloor'](1);
+```
+
+### Pre-seeding progression state
+
+To skip grinding AU tokens and test locked content, inject a save into `localStorage` before the page loads:
+
+```ts
+await page.addInitScript(() => {
+  localStorage.setItem('architect_default_v1', JSON.stringify({
+    totalAU: 50,
+    floorAU: { 0: 0, 1: 25, 2: 25 },
+    unlockedFloors: [0, 1, 2],
+    currentFloor: 0,
+    collectedTokens: { 0: [], 1: [], 2: [] },
+  }));
+  // Mark info dialogs as seen so they don't block keyboard input:
+  localStorage.setItem('architect_info_seen_v1', JSON.stringify(['architecture-elevator']));
+});
+```
+
 ## Vibe Coding Workflow
 
 This project is developed through conversational AI assistance. When prompting:
