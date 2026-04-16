@@ -57,7 +57,7 @@ export class HubScene extends Phaser.Scene {
   private static readonly SHAFT_WIDTH = 220;
   private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
   private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
-  private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 92;
+  private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 80;
   private static readonly ELEVATOR_STAND_X_TOLERANCE = 96;
   private static readonly ELEVATOR_STAND_Y_MIN = -16;
   private static readonly ELEVATOR_STAND_Y_MAX = 24;
@@ -150,7 +150,7 @@ export class HubScene extends Phaser.Scene {
       for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
         const t = this.platforms.create(
           tileLeft + TILE_SIZE / 2,
-          y,
+          y + TILE_SIZE / 2,
           'platform_tile',
         ) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
@@ -158,7 +158,7 @@ export class HubScene extends Phaser.Scene {
       for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
         const t = this.platforms.create(
           tileLeft + TILE_SIZE / 2,
-          y,
+          y + TILE_SIZE / 2,
           'platform_tile',
         ) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
@@ -190,12 +190,14 @@ export class HubScene extends Phaser.Scene {
   private createElevator(worldHeight: number): void {
     const positions = this.getFloorYPositions(worldHeight);
     const cx = GAME_WIDTH / 2;
-    const startY = positions[this.progression.getCurrentFloor()] - 8;
+    // Elevator platform top aligns with the floor walking surface.
+    // The platform texture is 16 px tall, so center = surface + 8.
+    const startY = positions[this.progression.getCurrentFloor()] + 8;
 
     this.elevator = new Elevator(this, cx, startY);
 
     for (const [id, y] of Object.entries(positions)) {
-      this.elevator.addFloor(Number(id), y - 8);
+      this.elevator.addFloor(Number(id), y + 8);
     }
 
     this.physics.add.collider(this.player.sprite, this.elevator.platform, () => {
@@ -386,7 +388,7 @@ export class HubScene extends Phaser.Scene {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
 
-      const floorTop = floorY - TILE_SIZE / 2;
+      const floorTop = floorY;
       if (Math.abs(bodyBottom - floorTop) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
           this.enterFloor(fId);
@@ -406,7 +408,7 @@ export class HubScene extends Phaser.Scene {
     const worldHeight = 1600;
     const positions = this.getFloorYPositions(worldHeight);
     const lobbyY = positions[FLOORS.LOBBY];
-    const lobbyTop = lobbyY - TILE_SIZE / 2;
+    const lobbyTop = lobbyY;
     if (Math.abs(body.bottom - lobbyTop) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
 
     const px = this.player.sprite.x;

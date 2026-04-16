@@ -176,8 +176,9 @@ export class LevelScene extends Phaser.Scene {
     const tileKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'platform_floor1' : 'platform_floor2';
     for (const plat of config.platforms) {
       for (let i = 0; i < plat.width; i++) {
+        // plat.y is the walking surface; shift tile center down so tile top = plat.y
         const t = this.platformGroup.create(
-          plat.x + i * TILE_SIZE + TILE_SIZE / 2, plat.y, tileKey,
+          plat.x + i * TILE_SIZE + TILE_SIZE / 2, plat.y + TILE_SIZE / 2, tileKey,
         ) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
       }

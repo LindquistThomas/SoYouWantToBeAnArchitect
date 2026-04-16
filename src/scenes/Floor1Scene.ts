@@ -43,9 +43,10 @@ export class Floor1Scene extends LevelScene {
 
       roomElevators: [
         // Left elevator: connects ground to tier 3
-        { x: 460, minY: T3, maxY: G - 8, startY: G - 8 },
+        // Room elevator is 12 px tall; center = surface + 6 aligns top with surface
+        { x: 460, minY: T3 + 6, maxY: G + 6, startY: G + 6 },
         // Right elevator: connects tier 1 to tier 3
-        { x: 1100, minY: T3, maxY: T1 - 8, startY: T1 - 8 },
+        { x: 1100, minY: T3 + 6, maxY: T1 + 6, startY: T1 + 6 },
       ],
 
       tokens: [

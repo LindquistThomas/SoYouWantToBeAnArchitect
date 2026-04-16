@@ -50,11 +50,12 @@ export class Floor2Scene extends LevelScene {
 
       roomElevators: [
         // Left elevator: ground to tier 4
-        { x: 200, minY: T4, maxY: G - 8, startY: G - 8 },
+        // Room elevator is 12 px tall; center = surface + 6 aligns top with surface
+        { x: 200, minY: T4 + 6, maxY: G + 6, startY: G + 6 },
         // Centre elevator: tier 1 to tier 4
-        { x: 680, minY: T4, maxY: T1 - 8, startY: T1 - 8 },
+        { x: 680, minY: T4 + 6, maxY: T1 + 6, startY: T1 + 6 },
         // Right elevator: ground to tier 2
-        { x: 1150, minY: T2, maxY: G - 8, startY: G - 8 },
+        { x: 1150, minY: T2 + 6, maxY: G + 6, startY: G + 6 },
       ],
 
       tokens: [
