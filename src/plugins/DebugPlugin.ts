@@ -1,11 +1,17 @@
 import * as Phaser from 'phaser';
+import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+
+/** Height of the top HUD bar (AU counter, title). */
+const HUD_TOP_H = 44;
+/** Approximate top of the bottom instruction text zone. */
+const HUD_BOTTOM_TOP = 915;
 
 /**
  * ScenePlugin that adds a toggleable debug overlay (press D).
  *
  * When active:
  *  - Draws bounding boxes for all physics bodies (red = dynamic, green = static)
- *  - Labels the player and elevator bodies with position/size info
+ *  - Shows cyan HUD safe-zone borders (top bar + bottom instruction text)
  *  - Shows FPS counter in the top-left corner
  */
 export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
@@ -13,6 +19,8 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private debugKey?: Phaser.Input.Keyboard.Key;
   private active = false;
   private gfx?: Phaser.GameObjects.Graphics;
+  /** Screen-space graphics for HUD zone borders. */
+  private hudGfx?: Phaser.GameObjects.Graphics;
 
   boot(): void {
     const events = this.systems!.events;
@@ -39,6 +47,11 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private createOverlay(): void {
     if (!this.scene) return;
     this.gfx = this.scene.add.graphics().setDepth(998);
+
+    // Screen-space HUD zone indicators
+    this.hudGfx = this.scene.add.graphics().setDepth(998).setScrollFactor(0);
+    this.drawHudZones();
+
     this.fpsText = this.scene.add.text(8, 8, '', {
       fontFamily: 'monospace',
       fontSize: '14px',
@@ -51,9 +64,22 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
       .setVisible(this.active);
   }
 
+  /** Draw cyan borders around the top HUD bar and bottom instruction text. */
+  private drawHudZones(): void {
+    const g = this.hudGfx;
+    if (!g) return;
+    g.clear();
+    g.lineStyle(2, 0x00ffff, 0.8);
+    // Top HUD zone
+    g.strokeRect(0, 0, GAME_WIDTH, HUD_TOP_H);
+    // Bottom instruction zone
+    g.strokeRect(0, HUD_BOTTOM_TOP, GAME_WIDTH, GAME_HEIGHT - HUD_BOTTOM_TOP);
+  }
+
   private applyDebugState(): void {
     this.fpsText?.setVisible(this.active);
     this.gfx?.setVisible(this.active);
+    this.hudGfx?.setVisible(this.active);
     if (!this.active) this.gfx?.clear();
   }
 
@@ -114,6 +140,8 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     this.fpsText = undefined;
     this.gfx?.destroy();
     this.gfx = undefined;
+    this.hudGfx?.destroy();
+    this.hudGfx = undefined;
     this.debugKey = undefined;
   }
 
