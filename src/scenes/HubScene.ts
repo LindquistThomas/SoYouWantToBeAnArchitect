@@ -54,7 +54,7 @@ export class HubScene extends Phaser.Scene {
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the hub shaft. */
-  private static readonly WORLD_HEIGHT = 1800;
+  private static readonly WORLD_HEIGHT = 2100;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
@@ -239,9 +239,9 @@ export class HubScene extends Phaser.Scene {
   /* ---- helpers ---- */
   private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 350,
-      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 700,
-      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1050,
+      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 400,
+      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 800,
+      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1200,
     };
   }
 
