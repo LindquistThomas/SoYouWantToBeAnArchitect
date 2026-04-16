@@ -49,9 +49,11 @@ export class BootScene extends Phaser.Scene {
     // Generate procedural SFX and queue for Phaser's loader
     generateSounds(this);
 
-    // Background music loads from MP3 files in public/music/
-    this.load.audio('music_retro_synth', 'music/retro-synth/retro_synth.mp3');
+    // Load background music from MP3 files (distinct per scene)
+    this.load.audio('music_menu', 'music/8bit-chiptune/bgm_menu.mp3');
     this.load.audio('music_elevator_jazz', 'music/elevator-jazz/elevator_jazz.mp3');
+    this.load.audio('music_floor1', 'music/8bit-chiptune/bgm_action_1.mp3');
+    this.load.audio('music_floor2', 'music/8bit-chiptune/bgm_action_2.mp3');
   }
 
   create(): void {
