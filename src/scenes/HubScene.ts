@@ -295,6 +295,9 @@ export class HubScene extends Phaser.Scene {
     const onElevator = this.isStandingOnElevator();
     this.playerOnElevator = onElevator;
 
+    // Disable flips while riding the elevator to prevent escaping the cab
+    this.player.setFlipEnabled(!onElevator);
+
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
       this.openInfoDialog(ELEVATOR_INFO_ID);

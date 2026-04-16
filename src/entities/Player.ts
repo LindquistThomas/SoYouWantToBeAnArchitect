@@ -31,6 +31,8 @@ export class Player {
 
   /** True while the player is mid-flip (scripted arc). */
   private isFlipping = false;
+  /** When false, Space/jump input is ignored (e.g. while riding the elevator). */
+  private flipEnabled = true;
   private flipElapsed = 0;
   private flipStartX = 0;
   private flipStartY = 0;
@@ -140,7 +142,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     // Jump → initiate forward flip
-    if (this.inputManager.isJumpJustPressed() && onGround) {
+    if (this.inputManager.isJumpJustPressed() && onGround && this.flipEnabled) {
       this.startFlip();
       return;
     }
@@ -239,6 +241,10 @@ export class Player {
 
   getInputManager(): InputManager {
     return this.inputManager;
+  }
+
+  setFlipEnabled(enabled: boolean): void {
+    this.flipEnabled = enabled;
   }
 
   setPosition(x: number, y: number): void {
