@@ -18,7 +18,7 @@ const SPRITE_HEIGHT = 160;
 const HITBOX_MARGIN_X = 12;
 const HITBOX_MARGIN_Y = 16;
 const HITBOX_WIDTH = 40;
-const HITBOX_HEIGHT = SPRITE_HEIGHT - HITBOX_MARGIN_Y - 4; // 140
+const HITBOX_HEIGHT = SPRITE_HEIGHT - HITBOX_MARGIN_Y - 28; // 116 — bottom aligned with character feet
 
 export class Player {
   public sprite: Phaser.Physics.Arcade.Sprite;

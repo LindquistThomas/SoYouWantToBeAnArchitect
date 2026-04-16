@@ -59,7 +59,7 @@ export class HubScene extends Phaser.Scene {
   private static readonly SHAFT_WIDTH = 220;
   private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
   private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
-  private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 80;
+  private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 56;
   private static readonly ELEVATOR_STAND_X_TOLERANCE = 96;
   private static readonly ELEVATOR_STAND_Y_MIN = -16;
   private static readonly ELEVATOR_STAND_Y_MAX = 24;

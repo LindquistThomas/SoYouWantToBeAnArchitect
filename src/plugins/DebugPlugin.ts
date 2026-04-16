@@ -4,13 +4,15 @@ import * as Phaser from 'phaser';
  * ScenePlugin that adds a toggleable debug overlay (press D).
  *
  * When active:
- *  - Arcade physics debug is enabled (red body outlines)
- *  - An FPS counter is shown in the top-left corner
+ *  - Draws bounding boxes for all physics bodies (red = dynamic, green = static)
+ *  - Labels the player and elevator bodies with position/size info
+ *  - Shows FPS counter in the top-left corner
  */
 export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private fpsText?: Phaser.GameObjects.Text;
   private debugKey?: Phaser.Input.Keyboard.Key;
   private active = false;
+  private gfx?: Phaser.GameObjects.Graphics;
 
   boot(): void {
     const events = this.systems!.events;
@@ -30,12 +32,13 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
       false,
     );
 
-    this.createFpsText();
+    this.createOverlay();
     this.applyDebugState();
   }
 
-  private createFpsText(): void {
+  private createOverlay(): void {
     if (!this.scene) return;
+    this.gfx = this.scene.add.graphics().setDepth(998);
     this.fpsText = this.scene.add.text(8, 8, '', {
       fontFamily: 'monospace',
       fontSize: '14px',
@@ -49,36 +52,42 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   }
 
   private applyDebugState(): void {
-    const world = (this.scene as unknown as { physics: Phaser.Physics.Arcade.ArcadePhysics })
-      ?.physics?.world;
-    if (!world) return;
-
-    if (this.active) {
-      world.drawDebug = true;
-      if (!world.debugGraphic) {
-        world.createDebugGraphic();
-      }
-      world.debugGraphic!.setVisible(true);
-
-      // Set red on all existing bodies so outlines render in red
-      this.recolorBodies(world, 0xff0000);
-    } else {
-      world.drawDebug = false;
-      if (world.debugGraphic) {
-        world.debugGraphic.setVisible(false);
-        world.debugGraphic.clear();
-      }
-    }
-
     this.fpsText?.setVisible(this.active);
+    this.gfx?.setVisible(this.active);
+    if (!this.active) this.gfx?.clear();
   }
 
-  private recolorBodies(world: Phaser.Physics.Arcade.World, color: number): void {
-    for (const b of world.bodies.entries) {
-      (b as unknown as Record<string, unknown>).debugBodyColor = color;
-    }
+  private getWorld(): Phaser.Physics.Arcade.World | undefined {
+    return (this.scene as unknown as { physics: Phaser.Physics.Arcade.ArcadePhysics })
+      ?.physics?.world;
+  }
+
+  private drawBodies(): void {
+    const world = this.getWorld();
+    const g = this.gfx;
+    if (!world || !g) return;
+    g.clear();
+
+    // Static bodies — green outlines
     for (const b of world.staticBodies.entries) {
-      (b as unknown as Record<string, unknown>).debugBodyColor = color;
+      const body = b as Phaser.Physics.Arcade.StaticBody;
+      g.lineStyle(2, 0x00ff00, 0.8);
+      g.strokeRect(body.x, body.y, body.width, body.height);
+    }
+
+    // Dynamic bodies — red outlines with labels
+    for (const b of world.bodies.entries) {
+      const body = b as Phaser.Physics.Arcade.Body;
+      g.lineStyle(2, 0xff0000, 0.9);
+      g.strokeRect(body.x, body.y, body.width, body.height);
+
+      // Velocity indicator
+      if (body.velocity.x !== 0 || body.velocity.y !== 0) {
+        g.lineStyle(1, 0xffff00, 0.7);
+        const cx = body.x + body.width / 2;
+        const cy = body.y + body.height / 2;
+        g.lineBetween(cx, cy, cx + body.velocity.x * 0.1, cy + body.velocity.y * 0.1);
+      }
     }
   }
 
@@ -90,10 +99,7 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     }
 
     if (this.active && this.game) {
-      // Keep bodies red (covers newly-spawned objects)
-      const world = (this.scene as unknown as { physics: Phaser.Physics.Arcade.ArcadePhysics })
-        ?.physics?.world;
-      if (world) this.recolorBodies(world, 0xff0000);
+      this.drawBodies();
 
       if (this.fpsText) {
         const fps = Math.round(this.game.loop.actualFps);
@@ -106,6 +112,8 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     this.systems?.events.off('update', this.onUpdate, this);
     this.fpsText?.destroy();
     this.fpsText = undefined;
+    this.gfx?.destroy();
+    this.gfx = undefined;
     this.debugKey = undefined;
   }
 
