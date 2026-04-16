@@ -26,7 +26,9 @@ export class Elevator {
 
   /** Width / height of the visible cab frame. */
   private static readonly CAB_W = 160;
-  private static readonly CAB_H = 148;
+  private static readonly CAB_H = 172;
+  /** Small extension below the platform (machinery base). */
+  private static readonly CAB_BASE = 12;
 
   constructor(scene: Phaser.Scene, x: number, startY: number) {
     this.scene = scene;
@@ -153,24 +155,30 @@ export class Elevator {
     const py = this.platform.y;
     const hw = Elevator.CAB_W / 2;
     const ch = Elevator.CAB_H;
+    const base = Elevator.CAB_BASE;
+    const totalH = ch + base;
 
-    // Cab background (dark interior)
+    // Cab background (dark interior) — extends above and below platform
     g.fillStyle(0x0a0a1e, 0.85);
-    g.fillRect(px - hw, py - ch, Elevator.CAB_W, ch);
+    g.fillRect(px - hw, py - ch, Elevator.CAB_W, totalH);
 
-    // Side rails (bright cyan, Impossible-Mission-style)
+    // Side rails (bright cyan, Impossible-Mission-style) — full height
     g.fillStyle(0x00aaff, 0.9);
-    g.fillRect(px - hw, py - ch, 6, ch);
-    g.fillRect(px + hw - 6, py - ch, 6, ch);
+    g.fillRect(px - hw, py - ch, 6, totalH);
+    g.fillRect(px + hw - 6, py - ch, 6, totalH);
 
     // Top bar
     g.fillStyle(0x00aaff, 0.9);
     g.fillRect(px - hw, py - ch, Elevator.CAB_W, 6);
 
-    // Inner highlight lines
+    // Bottom bar (machinery base)
+    g.fillStyle(0x006699, 0.8);
+    g.fillRect(px - hw, py + base - 4, Elevator.CAB_W, 4);
+
+    // Inner highlight lines — full height
     g.lineStyle(1, 0x005588, 0.5);
-    g.lineBetween(px - hw + 10, py - ch + 10, px - hw + 10, py);
-    g.lineBetween(px + hw - 10, py - ch + 10, px + hw - 10, py);
+    g.lineBetween(px - hw + 10, py - ch + 10, px - hw + 10, py + base);
+    g.lineBetween(px + hw - 10, py - ch + 10, px + hw - 10, py + base);
   }
 
   /* ---- getters ---- */

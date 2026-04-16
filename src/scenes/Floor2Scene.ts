@@ -1,11 +1,11 @@
-import { GAME_HEIGHT, FLOORS } from '../config/gameConfig';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../config/gameConfig';
 import { LevelScene, LevelConfig } from './LevelScene';
 
 /**
  * Floor 2 — Cloud Team.
  *
  * Single-screen room (Impossible Mission style) with platforms
- * at multiple heights and two in-room elevators.
+ * at multiple heights and three in-room elevators.
  */
 export class Floor2Scene extends LevelScene {
   constructor() {
@@ -13,11 +13,10 @@ export class Floor2Scene extends LevelScene {
   }
 
   protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - 64;  // ground
-    const T1 = G - 200;          // tier 1
-    const T2 = G - 400;          // tier 2
-    const T3 = G - 600;          // tier 3
-    const T4 = G - 780;          // tier 4 (top)
+    const G = GAME_HEIGHT - TILE_SIZE;  // ground (full tile visible)
+    const T1 = G - 220;                 // tier 1
+    const T2 = G - 440;                 // tier 2
+    const T3 = G - 660;                 // tier 3 (top)
 
     return {
       floorId: FLOORS.CLOUD_TEAM,
@@ -38,22 +37,17 @@ export class Floor2Scene extends LevelScene {
         { x: 512, y: T2, width: 3 },
         { x: 896, y: T2, width: 2 },
 
-        // Tier 3
-        { x: 128, y: T3, width: 3 },
-        { x: 640, y: T3, width: 4 },
-
-        // Tier 4 — top
-        { x: 0, y: T4, width: 2 },
-        { x: 384, y: T4, width: 3 },
-        { x: 768, y: T4, width: 3 },
+        // Tier 3 — top
+        { x: 0, y: T3, width: 2 },
+        { x: 384, y: T3, width: 3 },
+        { x: 768, y: T3, width: 3 },
       ],
 
       roomElevators: [
-        // Left elevator: ground to tier 4
-        // Room elevator is 12 px tall; center = surface + 6 aligns top with surface
-        { x: 200, minY: T4 + 6, maxY: G + 6, startY: G + 6 },
-        // Centre elevator: tier 1 to tier 4
-        { x: 680, minY: T4 + 6, maxY: T1 + 6, startY: T1 + 6 },
+        // Left elevator: ground to tier 3
+        { x: 200, minY: T3 + 6, maxY: G + 6, startY: G + 6 },
+        // Centre elevator: tier 1 to tier 3
+        { x: 680, minY: T3 + 6, maxY: T1 + 6, startY: T1 + 6 },
         // Right elevator: ground to tier 2
         { x: 1150, minY: T2 + 6, maxY: G + 6, startY: G + 6 },
       ],
@@ -69,11 +63,10 @@ export class Floor2Scene extends LevelScene {
         { x: 640, y: T2 - 40 },
         { x: 960, y: T2 - 40 },
         // Tier 3
-        { x: 260, y: T3 - 40 },
+        { x: 100, y: T3 - 40 },
+        { x: 450, y: T3 - 40 },
         { x: 800, y: T3 - 40 },
-        // Tier 4
-        { x: 450, y: T4 - 40 },
-        { x: 900, y: T4 - 40 },
+        { x: 1000, y: T3 - 40 },
       ],
 
       infoPoints: [

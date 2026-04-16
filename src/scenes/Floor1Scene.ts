@@ -1,4 +1,4 @@
-import { GAME_HEIGHT, FLOORS } from '../config/gameConfig';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../config/gameConfig';
 import { LevelScene, LevelConfig } from './LevelScene';
 
 /**
@@ -13,10 +13,10 @@ export class Floor1Scene extends LevelScene {
   }
 
   protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - 64;  // ground
-    const T1 = G - 220;          // tier 1
-    const T2 = G - 440;          // tier 2
-    const T3 = G - 660;          // tier 3 (top)
+    const G = GAME_HEIGHT - TILE_SIZE;  // ground (full tile visible)
+    const T1 = G - 220;                 // tier 1
+    const T2 = G - 440;                 // tier 2
+    const T3 = G - 660;                 // tier 3 (top)
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,

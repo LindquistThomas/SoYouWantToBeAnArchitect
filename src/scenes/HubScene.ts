@@ -229,9 +229,9 @@ export class HubScene extends Phaser.Scene {
   /* ---- helpers ---- */
   private getFloorYPositions(worldHeight: number): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: worldHeight - 128,
-      [FLOORS.PLATFORM_TEAM]: worldHeight - 600,
-      [FLOORS.CLOUD_TEAM]: worldHeight - 1072,
+      [FLOORS.LOBBY]: worldHeight - 200,
+      [FLOORS.PLATFORM_TEAM]: worldHeight - 550,
+      [FLOORS.CLOUD_TEAM]: worldHeight - 900,
     };
   }
 
