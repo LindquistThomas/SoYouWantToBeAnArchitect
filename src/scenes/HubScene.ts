@@ -72,6 +72,8 @@ export class HubScene extends Phaser.Scene {
   private static readonly ELEVATOR_STAND_Y_MAX = 24;
   private static readonly FLOOR_DETECTION_TOLERANCE = 18;
   private static readonly ELEVATOR_CAB_HALF_WIDTH = 70;
+  /** Half-width of the elevator platform physics body. */
+  private static readonly ELEVATOR_PLAT_HW = 80;
 
   constructor() {
     super({ key: 'HubScene' });
@@ -150,6 +152,11 @@ export class HubScene extends Phaser.Scene {
     const sw = HubScene.SHAFT_WIDTH;
     const WALK_H = 8;
     const floorH = HubScene.FLOOR_H;
+    const elevHW = HubScene.ELEVATOR_PLAT_HW;
+    // Walking surfaces extend to the elevator platform edges so there are
+    // no cracks between the floor and the elevator.
+    const elevLeft = cx - elevHW;  // 560
+    const elevRight = cx + elevHW; // 720
 
     for (const [floorId, y] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
@@ -170,7 +177,20 @@ export class HubScene extends Phaser.Scene {
         }
       }
 
-      // Thin walking surface at slab bottom
+      // Visual ledge fills bridging the shaft edges to the elevator
+      const ledgeColor = 0x3a3a55;
+      const ledgeGapL = elevLeft - leftEdge;  // 30
+      const ledgeGapR = rightEdge - elevRight; // 30
+      if (ledgeGapL > 0) {
+        this.add.rectangle(leftEdge + ledgeGapL / 2, y + floorH + WALK_H / 2,
+          ledgeGapL, WALK_H, ledgeColor, 1).setDepth(2);
+      }
+      if (ledgeGapR > 0) {
+        this.add.rectangle(elevRight + ledgeGapR / 2, y + floorH + WALK_H / 2,
+          ledgeGapR, WALK_H, ledgeColor, 1).setDepth(2);
+      }
+
+      // Walking surface — extends from screen edge to elevator platform edge
       const walkY = y + floorH;
       const addWalkSurface = (rx: number, rw: number) => {
         const rect = this.add.rectangle(
@@ -179,8 +199,8 @@ export class HubScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
         this.platforms.add(rect);
       };
-      addWalkSurface(leftEdge / 2, leftEdge);
-      addWalkSurface((rightEdge + GAME_WIDTH) / 2, GAME_WIDTH - rightEdge);
+      addWalkSurface(elevLeft / 2, elevLeft);
+      addWalkSurface((elevRight + GAME_WIDTH) / 2, GAME_WIDTH - elevRight);
 
       // Floor label — inside the tile slab
       this.add.text(20, y + 10, `F${fId}`, {
@@ -203,6 +223,13 @@ export class HubScene extends Phaser.Scene {
         }).setDepth(5);
       }
     }
+
+    // Shaft safety net — collision floor at the very bottom of the shaft.
+    // If the player somehow falls off the elevator, they land here.
+    const netY = HubScene.WORLD_HEIGHT - 4;
+    const shaftNet = this.add.rectangle(cx, netY, sw, 8, 0x000000, 0).setDepth(0);
+    this.physics.add.existing(shaftNet, true);
+    this.platforms.add(shaftNet);
   }
 
   /* ---- elevator ---- */

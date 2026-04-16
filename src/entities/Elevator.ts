@@ -30,6 +30,8 @@ export class Elevator {
   private static readonly CAB_H = 172;
   /** Small extension below the platform (machinery base). */
   private static readonly CAB_BASE = 12;
+  /** Distance (px) from a floor stop where speed reduces for docking feel. */
+  private static readonly DOCK_THRESHOLD = 20;
 
   constructor(scene: Phaser.Scene, x: number, startY: number) {
     this.scene = scene;
@@ -79,6 +81,21 @@ export class Elevator {
       this.stopAndSnap();
     }
 
+    // Auto-dock: when moving through a floor stop, slow down near it
+    // so the player can feel the "detent" and stop precisely.
+    if (this.direction !== 0) {
+      for (const [, stopY] of this.floorStops) {
+        const dist = Math.abs(this.platform.y - stopY);
+        if (dist < Elevator.DOCK_THRESHOLD && dist > 2) {
+          // Reduce speed near a stop for a magnetic docking feel
+          const currentVel = (this.platform.body as Phaser.Physics.Arcade.Body).velocity.y;
+          const reduced = currentVel * 0.6;
+          this.platform.setVelocityY(reduced);
+          break;
+        }
+      }
+    }
+
     // Clamp to shaft bounds — only block movement in the out-of-bounds direction
     if (this.platform.y <= this.minY && this.platform.body!.velocity.y < 0) {
       this.platform.y = this.minY;
@@ -108,14 +125,15 @@ export class Elevator {
       }
     }
 
-    // If close enough to a stop, tween-snap to it
+    // Snap to nearest floor — generous threshold so release always docks
     const snapY = this.floorStops.get(bestId)!;
-    if (bestDist < 60 && bestDist > 1) {
+    if (bestDist > 1) {
       this.snapping = true;
+      const duration = Math.min((bestDist / ELEVATOR_SPEED) * 1000, 400);
       this.scene.tweens.add({
         targets: this.platform,
         y: snapY,
-        duration: (bestDist / ELEVATOR_SPEED) * 1000,
+        duration,
         ease: 'Sine.easeOut',
         onComplete: () => {
           this.snapping = false;
