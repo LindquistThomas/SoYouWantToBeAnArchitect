@@ -340,11 +340,25 @@ export class HubScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    const onElevator = this.isStandingOnElevator();
-    this.playerOnElevator = onElevator;
+    // Sticky elevator state: once on, only release when the player walks
+    // off at a docked floor or is clearly no longer above the platform.
+    if (!this.playerOnElevator) {
+      // Check if the player just stepped onto the elevator
+      this.playerOnElevator = this.isStandingOnElevator();
+    } else {
+      // Check if the player should dismount — only at a docked floor
+      // when they walk outside the cab bounds.
+      const atFloor = this.elevator.getFloorAtCurrentPosition() !== null;
+      if (atFloor) {
+        const dx = Math.abs(this.player.sprite.x - this.elevator.platform.x);
+        if (dx > HubScene.ELEVATOR_PLAT_HW + 10) {
+          this.playerOnElevator = false;
+        }
+      }
+    }
 
     // Disable flips while riding the elevator to prevent escaping the cab
-    this.player.setFlipEnabled(!onElevator);
+    this.player.setFlipEnabled(!this.playerOnElevator);
 
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
@@ -373,11 +387,13 @@ export class HubScene extends Phaser.Scene {
       this.elevator.ride(up, down);
       this.constrainPlayerToElevatorCab();
 
-      // Sync player Y velocity with the elevator for smooth riding
+      // Pin player to elevator platform — works for both velocity and tween
+      // movement (snap). body.bottom should sit on the platform body top.
       const platBody = this.elevator.platform.body as Phaser.Physics.Arcade.Body;
-      if (platBody.velocity.y !== 0) {
-        (this.player.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(platBody.velocity.y);
-      }
+      const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+      const targetSpriteY = platBody.y - playerBody.offset.y - playerBody.height + this.player.sprite.displayOriginY;
+      this.player.sprite.setY(targetSpriteY);
+      playerBody.setVelocityY(platBody.velocity.y);
     } else {
       this.elevator.ride(false, false);
     }
