@@ -53,6 +53,8 @@ export class HubScene extends Phaser.Scene {
 
   private zoneManager = new ZoneManager();
 
+  /** Total scrollable world height for the hub shaft. */
+  private static readonly WORLD_HEIGHT = 1800;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
@@ -89,17 +91,17 @@ export class HubScene extends Phaser.Scene {
     this.dialogOpen = false;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
-    const worldHeight = 1600;
-    this.physics.world.setBounds(0, 0, GAME_WIDTH, worldHeight);
+    const wh = HubScene.WORLD_HEIGHT;
+    this.physics.world.setBounds(0, 0, GAME_WIDTH, wh);
 
-    this.createShaftBackground(worldHeight);
-    this.createPlatforms(worldHeight);
-    this.createPlayer(worldHeight);
-    this.createElevator(worldHeight);
+    this.createShaftBackground(wh);
+    this.createPlatforms();
+    this.createPlayer();
+    this.createElevator();
     this.createUI();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
-    this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldHeight);
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, wh);
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     this.registerZones();
@@ -133,11 +135,12 @@ export class HubScene extends Phaser.Scene {
   }
 
   /* ---- platforms ---- */
-  private createPlatforms(worldHeight: number): void {
+  private createPlatforms(): void {
     this.platforms = this.physics.add.staticGroup();
-    const positions = this.getFloorYPositions(worldHeight);
+    const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
+    const WALK_H = 8;
 
     for (const [floorId, y] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
@@ -147,31 +150,39 @@ export class HubScene extends Phaser.Scene {
       const leftEdge = cx - sw / 2;
       const rightEdge = cx + sw / 2;
 
+      // Visual header tiles (no physics) — ceiling / identity for this floor
       for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
-        const t = this.platforms.create(
-          tileLeft + TILE_SIZE / 2,
-          y + TILE_SIZE / 2,
-          'platform_tile',
-        ) as Phaser.Physics.Arcade.Image;
-        t.setDepth(2).refreshBody();
+        this.add.image(
+          tileLeft + TILE_SIZE / 2, y + TILE_SIZE / 2, 'platform_tile',
+        ).setDepth(2);
       }
       for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
-        const t = this.platforms.create(
-          tileLeft + TILE_SIZE / 2,
-          y + TILE_SIZE / 2,
-          'platform_tile',
-        ) as Phaser.Physics.Arcade.Image;
-        t.setDepth(2).refreshBody();
+        this.add.image(
+          tileLeft + TILE_SIZE / 2, y + TILE_SIZE / 2, 'platform_tile',
+        ).setDepth(2);
       }
 
-      this.add.text(20, y - 60, `F${fId}`, {
+      // Thin walking surface at tile bottom (the actual floor the player walks on)
+      const walkY = y + TILE_SIZE;
+      const addWalkSurface = (rx: number, rw: number) => {
+        const rect = this.add.rectangle(
+          rx, walkY + WALK_H / 2, rw, WALK_H, 0x444466, 1,
+        ).setDepth(2);
+        this.physics.add.existing(rect, true);
+        this.platforms.add(rect);
+      };
+      addWalkSurface(leftEdge / 2, leftEdge);
+      addWalkSurface((rightEdge + GAME_WIDTH) / 2, GAME_WIDTH - rightEdge);
+
+      // Floor label — inside the tile row
+      this.add.text(20, y + 10, `F${fId}`, {
         fontFamily: 'monospace', fontSize: '28px',
         color: COLORS.hudText, fontStyle: 'bold',
       }).setDepth(5);
 
       if (fd) {
         const nameColor = unlocked ? '#8899bb' : '#664444';
-        this.add.text(80, y - 56, fd.name, {
+        this.add.text(80, y + 14, fd.name, {
           fontFamily: 'monospace', fontSize: '18px', color: nameColor,
         }).setDepth(5);
       }
@@ -179,7 +190,7 @@ export class HubScene extends Phaser.Scene {
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
         const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
-        this.add.text(rightEdge + 20, y - 50, label, {
+        this.add.text(rightEdge + 20, walkY + 20, label, {
           fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
         }).setDepth(5);
       }
@@ -187,17 +198,16 @@ export class HubScene extends Phaser.Scene {
   }
 
   /* ---- elevator ---- */
-  private createElevator(worldHeight: number): void {
-    const positions = this.getFloorYPositions(worldHeight);
+  private createElevator(): void {
+    const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    // Elevator platform top aligns with the floor walking surface.
-    // The platform texture is 16 px tall, so center = surface + 8.
-    const startY = positions[this.progression.getCurrentFloor()] + 8;
+    // Elevator platform top aligns with the walking surface (tile bottom).
+    const startY = positions[this.progression.getCurrentFloor()] + TILE_SIZE + 8;
 
     this.elevator = new Elevator(this, cx, startY);
 
     for (const [id, y] of Object.entries(positions)) {
-      this.elevator.addFloor(Number(id), y + 8);
+      this.elevator.addFloor(Number(id), y + TILE_SIZE + 8);
     }
 
     this.physics.add.collider(this.player.sprite, this.elevator.platform, () => {
@@ -206,10 +216,10 @@ export class HubScene extends Phaser.Scene {
   }
 
   /* ---- player ---- */
-  private createPlayer(worldHeight: number): void {
-    const positions = this.getFloorYPositions(worldHeight);
-    // Spawn with body-bottom aligned to elevator platform top (16px platform).
-    const y = positions[this.progression.getCurrentFloor()] - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+  private createPlayer(): void {
+    const positions = this.getFloorYPositions();
+    // Spawn with body-bottom near the walking surface (tile bottom).
+    const y = positions[this.progression.getCurrentFloor()] + TILE_SIZE - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
 
     this.player = new Player(this, GAME_WIDTH / 2, y);
     this.physics.add.collider(this.player.sprite, this.platforms);
@@ -227,11 +237,11 @@ export class HubScene extends Phaser.Scene {
   }
 
   /* ---- helpers ---- */
-  private getFloorYPositions(worldHeight: number): Record<number, number> {
+  private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: worldHeight - 200,
-      [FLOORS.PLATFORM_TEAM]: worldHeight - 550,
-      [FLOORS.CLOUD_TEAM]: worldHeight - 900,
+      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 350,
+      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 700,
+      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1050,
     };
   }
 
@@ -380,16 +390,15 @@ export class HubScene extends Phaser.Scene {
 
     if (px > cx - sw / 2 + 20 && px < cx + sw / 2 - 20) return;
 
-    const worldHeight = 1600;
-    const positions = this.getFloorYPositions(worldHeight);
+    const positions = this.getFloorYPositions();
     const bodyBottom = body.bottom;
 
     for (const [floorId, floorY] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
 
-      const floorTop = floorY;
-      if (Math.abs(bodyBottom - floorTop) < HubScene.FLOOR_DETECTION_TOLERANCE) {
+      const walkingSurface = floorY + TILE_SIZE;
+      if (Math.abs(bodyBottom - walkingSurface) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
           this.enterFloor(fId);
           return;
@@ -405,11 +414,10 @@ export class HubScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     if (!(body.blocked.down || body.touching.down)) return;
 
-    const worldHeight = 1600;
-    const positions = this.getFloorYPositions(worldHeight);
+    const positions = this.getFloorYPositions();
     const lobbyY = positions[FLOORS.LOBBY];
-    const lobbyTop = lobbyY;
-    if (Math.abs(body.bottom - lobbyTop) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
+    const lobbySurface = lobbyY + TILE_SIZE;
+    if (Math.abs(body.bottom - lobbySurface) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
 
     const px = this.player.sprite.x;
     if (px <= HubScene.FLOOR0_EDGE_TRIGGER_X || px >= GAME_WIDTH - HubScene.FLOOR0_EDGE_TRIGGER_X) {
