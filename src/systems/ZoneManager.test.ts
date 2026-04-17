@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ZoneManager } from './ZoneManager';
 import { eventBus } from './EventBus';
 
@@ -15,6 +15,13 @@ describe('ZoneManager', () => {
     eventBus.on('zone:exit', onExit);
   });
 
+  afterEach(() => {
+    // Unsubscribe here (not at the end of each test) so a failing test
+    // doesn't leak listeners into the next one.
+    eventBus.off('zone:enter', onEnter);
+    eventBus.off('zone:exit', onExit);
+  });
+
   it('emits zone:enter on the first frame a zone becomes active', () => {
     let active = false;
     zm.register('z', () => active);
@@ -26,9 +33,6 @@ describe('ZoneManager', () => {
     zm.update();
     expect(onEnter).toHaveBeenCalledWith('z');
     expect(onEnter).toHaveBeenCalledTimes(1);
-
-    eventBus.off('zone:enter', onEnter);
-    eventBus.off('zone:exit', onExit);
   });
 
   it('only emits on state transitions, not every frame', () => {
@@ -45,9 +49,6 @@ describe('ZoneManager', () => {
     zm.update();
     zm.update();
     expect(onExit).toHaveBeenCalledTimes(1);
-
-    eventBus.off('zone:enter', onEnter);
-    eventBus.off('zone:exit', onExit);
   });
 
   it('getActiveZone reports the current zone after update', () => {
@@ -61,9 +62,6 @@ describe('ZoneManager', () => {
     active = false;
     zm.update();
     expect(zm.getActiveZone()).toBeNull();
-
-    eventBus.off('zone:enter', onEnter);
-    eventBus.off('zone:exit', onExit);
   });
 
   it('tracks multiple zones independently', () => {
@@ -81,9 +79,6 @@ describe('ZoneManager', () => {
     zm.update();
     expect(onEnter).toHaveBeenCalledWith('b');
     expect(onEnter).toHaveBeenCalledTimes(2);
-
-    eventBus.off('zone:enter', onEnter);
-    eventBus.off('zone:exit', onExit);
   });
 
   it('clear() removes registrations without firing events', () => {
@@ -98,8 +93,5 @@ describe('ZoneManager', () => {
     expect(onEnter).not.toHaveBeenCalled();
     expect(onExit).not.toHaveBeenCalled();
     expect(zm.getActiveZone()).toBeNull();
-
-    eventBus.off('zone:enter', onEnter);
-    eventBus.off('zone:exit', onExit);
   });
 });

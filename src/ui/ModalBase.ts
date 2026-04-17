@@ -16,6 +16,7 @@ export abstract class ModalBase {
 
   private escKey: Phaser.Input.Keyboard.Key | null = null;
   private escHandler: (() => void) | null = null;
+  private shutdownHandler: (() => void) | null = null;
   private destroyed = false;
 
   constructor(scene: Phaser.Scene) {
@@ -28,6 +29,12 @@ export abstract class ModalBase {
 
     this.buildOverlay();
     this.registerEscKey();
+
+    // If the scene shuts down while the modal is still open, tear everything
+    // down immediately so the update listener and key don't leak across restarts.
+    this.shutdownHandler = () => this.destroyImmediate();
+    this.scene.events.once('shutdown', this.shutdownHandler);
+    this.scene.events.once('destroy', this.shutdownHandler);
   }
 
   /** Dimmed fullscreen rect; added as the first child so subclasses can rely on index 0. */
@@ -70,13 +77,7 @@ export abstract class ModalBase {
     this.destroyed = true;
 
     this.onBeforeClose();
-
-    if (this.escHandler) {
-      this.scene.events.off('update', this.escHandler);
-    }
-    if (this.escKey) {
-      this.escKey.destroy();
-    }
+    this.releaseInputAndShutdown();
 
     this.scene.tweens.add({
       targets: this.container, alpha: 0, duration: 150,
@@ -85,5 +86,32 @@ export abstract class ModalBase {
         this.onAfterClose();
       },
     });
+  }
+
+  /** Synchronous teardown used when the scene shuts down mid-modal. */
+  private destroyImmediate(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    this.onBeforeClose();
+    this.releaseInputAndShutdown();
+    this.container.destroy();
+    this.onAfterClose();
+  }
+
+  private releaseInputAndShutdown(): void {
+    if (this.escHandler) {
+      this.scene.events.off('update', this.escHandler);
+      this.escHandler = null;
+    }
+    if (this.escKey) {
+      this.escKey.destroy();
+      this.escKey = null;
+    }
+    if (this.shutdownHandler) {
+      this.scene.events.off('shutdown', this.shutdownHandler);
+      this.scene.events.off('destroy', this.shutdownHandler);
+      this.shutdownHandler = null;
+    }
   }
 }
