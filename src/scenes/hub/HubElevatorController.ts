@@ -55,6 +55,7 @@ export class HubElevatorController {
   update(
     input: { up: boolean; down: boolean },
     buttonState: { up: boolean; down: boolean } | undefined,
+    delta: number = 16.67,
   ): void {
     // Sticky state: latch on when the player steps onto the cab; release only
     // at a docked floor when they walk outside the cab bounds.
@@ -76,11 +77,11 @@ export class HubElevatorController {
     if (this.playerOnElevator) {
       const up = input.up || (buttonState?.up ?? false);
       const down = input.down || (buttonState?.down ?? false);
-      this.elevator.ride(up, down);
+      this.elevator.ride(up, down, delta);
       this.constrainPlayerToCab();
       this.pinPlayerToPlatform();
     } else {
-      this.elevator.ride(false, false);
+      this.elevator.ride(false, false, delta);
     }
 
     const moving = this.elevator.getIsMoving();

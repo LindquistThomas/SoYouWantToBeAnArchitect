@@ -362,6 +362,7 @@ export class HubScene extends Phaser.Scene {
     this.elevatorCtrl.update(
       { up: input.up, down: input.down },
       btnState ? { up: btnState.up, down: btnState.down } : undefined,
+      delta,
     );
 
     this.checkFloorEntry();
