@@ -5,6 +5,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { HubScene } from './scenes/HubScene';
 import { Floor0Scene } from './scenes/Floor0Scene';
 import { Floor1Scene } from './scenes/Floor1Scene';
+import { Floor1ArchScene } from './scenes/Floor1ArchScene';
 import { Floor2Scene } from './scenes/Floor2Scene';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
@@ -52,7 +53,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor2Scene],
+  scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor1ArchScene, Floor2Scene],
   plugins: {
     scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
             { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],

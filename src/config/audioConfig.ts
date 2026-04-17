@@ -18,6 +18,7 @@ export const SCENE_MUSIC: Record<string, string> = {
   HubScene:     'music_elevator_jazz',
   Floor0Scene:  'music_floor1',
   Floor1Scene:  'music_floor1',
+  Floor1ArchScene: 'music_floor1',
   Floor2Scene:  'music_floor2',
 };
 

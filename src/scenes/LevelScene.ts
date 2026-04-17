@@ -24,7 +24,13 @@ export interface RoomElevator {
 export interface LevelConfig {
   floorId: FloorId;
   platforms: Array<{ x: number; y: number; width: number }>;
-  tokens: Array<{ x: number; y: number }>;
+  /**
+   * Tokens in the room. `index` overrides the default array-position
+   * index used to key into the ProgressionSystem's collected-tokens
+   * state. Useful when two scenes share the same floorId and need
+   * disjoint token-index ranges.
+   */
+  tokens: Array<{ x: number; y: number; index?: number }>;
   exitPosition: { x: number; y: number };
   playerStart: { x: number; y: number };
   /** Small in-room elevators connecting platform tiers. */
@@ -234,9 +240,10 @@ export class LevelScene extends Phaser.Scene {
     const config = this.getLevelConfig();
     const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
     for (let i = 0; i < config.tokens.length; i++) {
-      if (this.progression.isTokenCollected(this.floorId, i)) continue;
+      const idx = config.tokens[i].index ?? i;
+      if (this.progression.isTokenCollected(this.floorId, idx)) continue;
       const token = new Token(this, config.tokens[i].x, config.tokens[i].y, tokenKey);
-      token.setData('tokenIndex', i);
+      token.setData('tokenIndex', idx);
       this.tokenGroup.add(token);
     }
   }

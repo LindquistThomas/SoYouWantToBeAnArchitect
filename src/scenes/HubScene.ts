@@ -13,6 +13,7 @@ import { HubZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './hub/HubZones';
 import { HubElevatorController } from './hub/HubElevatorController';
 
 const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
+const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -219,10 +220,20 @@ export class HubScene extends Phaser.Scene {
 
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
-        const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
-        this.add.text(rightEdge + 20, walkY + 20, label, {
-          fontFamily: 'monospace', fontSize: '15px', color: arrowColor,
-        }).setDepth(5);
+        if (unlocked && fId === FLOORS.PLATFORM_TEAM) {
+          // Floor 1 splits: left → Platform room, right → Architecture room.
+          this.add.text(leftEdge - 20, walkY + 20, 'PLATFORM \u2190', {
+            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          }).setOrigin(1, 0).setDepth(5);
+          this.add.text(rightEdge + 20, walkY + 20, '\u2192 ARCHITECTURE', {
+            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          }).setDepth(5);
+        } else {
+          const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
+          this.add.text(rightEdge + 20, walkY + 20, label, {
+            fontFamily: 'monospace', fontSize: '15px', color: arrowColor,
+          }).setDepth(5);
+        }
       }
     }
 
@@ -392,7 +403,10 @@ export class HubScene extends Phaser.Scene {
       const walkingSurface = floorY + HubScene.FLOOR_H;
       if (Math.abs(bodyBottom - walkingSurface) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
-          this.enterFloor(fId);
+          // Floor 1 splits into two rooms — left of shaft = Platform,
+          // right of shaft = Architecture (ADRs).
+          const direction: 'left' | 'right' = px < GAME_WIDTH / 2 ? 'left' : 'right';
+          this.enterFloor(fId, direction);
           return;
         }
       }
@@ -417,13 +431,17 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  private enterFloor(floorId: FloorId): void {
+  private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.progression.setCurrentFloor(floorId);
     const fd = LEVEL_DATA[floorId];
+    // Floor 1 routes left→Platform room, right→Architecture room.
+    const sceneKey = (floorId === FLOORS.PLATFORM_TEAM && direction === 'right')
+      ? FLOOR1_ARCH_SCENE_KEY
+      : fd.sceneKey;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start(fd.sceneKey));
+    this.time.delayedCall(500, () => this.scene.start(sceneKey));
   }
 
   private enterFloor0Test(): void {
