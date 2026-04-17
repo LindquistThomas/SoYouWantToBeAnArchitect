@@ -36,6 +36,16 @@ export class HubElevatorController {
     scene.physics.add.collider(player.sprite, elevator.platform, () => {
       this.playerOnElevator = true;
     });
+
+    // Pin the player to the platform AFTER Phaser has stepped the physics
+    // bodies for this frame. Pinning in the scene's update() (which runs
+    // BEFORE the physics step) leaves the player trailing the cab by one
+    // frame of velocity*dt and shows as visible jitter while riding.
+    const postUpdate = () => this.postUpdatePin();
+    scene.events.on(Phaser.Scenes.Events.POST_UPDATE, postUpdate);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.events.off(Phaser.Scenes.Events.POST_UPDATE, postUpdate);
+    });
   }
 
   /** Is the player currently locked to the elevator cab? */
@@ -79,7 +89,11 @@ export class HubElevatorController {
       const down = input.down || (buttonState?.down ?? false);
       this.elevator.ride(up, down, delta);
       this.constrainPlayerToCab();
-      this.pinPlayerToPlatform();
+      // Match velocity so the physics integration step keeps the player
+      // and platform in sync within this frame; precise Y alignment is
+      // then enforced by postUpdatePin() after the step.
+      (this.player.sprite.body as Phaser.Physics.Arcade.Body)
+        .setVelocityY((this.elevator.platform.body as Phaser.Physics.Arcade.Body).velocity.y);
     } else {
       this.elevator.ride(false, false, delta);
     }
@@ -128,11 +142,18 @@ export class HubElevatorController {
     }
   }
 
-  private pinPlayerToPlatform(): void {
+  /**
+   * Post-physics-step pin. Runs after Phaser has moved both the elevator
+   * platform and the player body for this frame, so we can align the
+   * player to the cab's actual (post-step) position with zero lag.
+   */
+  private postUpdatePin(): void {
+    if (!this.playerOnElevator) return;
     const platBody = this.elevator.platform.body as Phaser.Physics.Arcade.Body;
     const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    // Place the player's feet exactly on top of the platform body.
     const targetY = platBody.y - playerBody.offset.y - playerBody.height + this.player.sprite.displayOriginY;
     this.player.sprite.setY(targetY);
-    playerBody.setVelocityY(platBody.velocity.y);
+    playerBody.updateFromGameObject();
   }
 }
