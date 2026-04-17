@@ -421,6 +421,365 @@ export const QUIZ_DATA: Record<string, QuizDefinition> = {
   },
 
   /* --------------------------------------------------------- */
+  /*  Architecture Team                                         */
+  /* --------------------------------------------------------- */
+  'architecture-team': {
+    infoId: 'architecture-team',
+    questions: [
+      {
+        id: 'at-e1',
+        difficulty: 'easy',
+        question: 'Which of these best describes what an architecture team primarily does?',
+        choices: [
+          'Writes the majority of the production code',
+          'Helps other teams make better decisions',
+          'Approves every pull request in the company',
+          'Picks the programming language for every project',
+        ],
+        correctIndex: 1,
+        explanation: 'A healthy architecture team amplifies other teams — guiding, connecting, and translating — rather than shipping the product themselves.',
+      },
+      {
+        id: 'at-e2',
+        difficulty: 'easy',
+        question: 'According to Gregor Hohpe, architects should sell ___ instead of issuing mandates.',
+        choices: ['orders', 'options', 'diagrams', 'roadmaps'],
+        correctIndex: 1,
+        explanation: 'Hohpe\'s phrase "sell options, don\'t issue mandates" captures the idea that architects preserve flexibility by deferring commitments until they\'re necessary.',
+      },
+      {
+        id: 'at-e3',
+        difficulty: 'easy',
+        question: 'Which is NOT a typical role of the architecture team?',
+        choices: [
+          'Connector between teams working on overlapping problems',
+          'Steward of cross-cutting concerns like security and reliability',
+          'Single approver of every tech choice in the company',
+          'Translator between business strategy and engineering',
+        ],
+        correctIndex: 2,
+        explanation: 'Architects guide and connect; they do not centralise all decisions. Empowering teams to decide is the point.',
+      },
+
+      {
+        id: 'at-m1',
+        difficulty: 'medium',
+        question: 'In Hohpe\'s framing, what is the "strike price" of an architectural option?',
+        choices: [
+          'The cost to start a new project',
+          'The rework cost to change course later',
+          'The licence fee of the chosen technology',
+          'The time spent in design meetings',
+        ],
+        correctIndex: 1,
+        explanation: 'The "strike price" is the cost of exercising the option — i.e. how expensive it is to switch later. Good architects keep it bounded.',
+      },
+      {
+        id: 'at-m2',
+        difficulty: 'medium',
+        question: 'Why do mandates from an architecture team often fail in practice?',
+        choices: [
+          'Teams secretly dislike the architects',
+          'Mandates commit the organisation before the commitment is needed, and are often ignored or worked around',
+          'Mandates are always technically wrong',
+          'Mandates violate open-source licences',
+        ],
+        correctIndex: 1,
+        explanation: 'Premature commitment removes flexibility; teams routing around mandates is a symptom, not the cause.',
+      },
+      {
+        id: 'at-m3',
+        difficulty: 'medium',
+        question: 'An architect notices two teams are independently building almost the same service. The best first action is to:',
+        choices: [
+          'Order one of the teams to stop immediately',
+          'Connect the two teams and surface the overlap so they can decide together',
+          'Build a third version themselves',
+          'Ignore it — team autonomy is sacred',
+        ],
+        correctIndex: 1,
+        explanation: 'Connecting teams is a core architecture-team function. Mandates would override autonomy; ignoring it wastes organisational effort.',
+      },
+
+      {
+        id: 'at-h1',
+        difficulty: 'hard',
+        question: 'Which book by Gregor Hohpe popularised the "Architecture Elevator" metaphor?',
+        choices: [
+          '"Release It!"',
+          '"The Software Architect Elevator"',
+          '"Domain-Driven Design"',
+          '"Accelerate"',
+        ],
+        correctIndex: 1,
+        explanation: 'Hohpe\'s "The Software Architect Elevator" frames the architect\'s job as riding between penthouse (strategy) and engine room (technology).',
+      },
+      {
+        id: 'at-h2',
+        difficulty: 'hard',
+        question: 'What does it mean for an architectural option to "expire"?',
+        choices: [
+          'The licence of a chosen technology runs out',
+          'The moment the decision stops being cheap to defer — external pressure forces a commitment',
+          'A new architect takes over and cancels it',
+          'The option moves to a different team',
+        ],
+        correctIndex: 1,
+        explanation: 'Options have an implicit expiry — scale, integration, or deadlines eventually force the decision to be taken. Good architects flag the expiry explicitly.',
+      },
+      {
+        id: 'at-h3',
+        difficulty: 'hard',
+        question: 'Which statement best captures the architect\'s output in Hohpe\'s model?',
+        choices: [
+          'The number of architecture diagrams produced',
+          'The quality of decisions made by the teams they support',
+          'The count of mandates published per quarter',
+          'Uptime of production systems',
+        ],
+        correctIndex: 1,
+        explanation: 'Architects are leverage: their value shows up indirectly, in the decisions made by the teams around them.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
+  /*  C4 Model                                                  */
+  /* --------------------------------------------------------- */
+  'c4-diagrams': {
+    infoId: 'c4-diagrams',
+    questions: [
+      {
+        id: 'c4-e1',
+        difficulty: 'easy',
+        question: 'Who created the C4 model?',
+        choices: ['Martin Fowler', 'Simon Brown', 'Eric Evans', 'Gregor Hohpe'],
+        correctIndex: 1,
+        explanation: 'Simon Brown created C4 as a lightweight way to describe software architecture at different levels of abstraction.',
+      },
+      {
+        id: 'c4-e2',
+        difficulty: 'easy',
+        question: 'What are the four levels of the C4 model, from highest to lowest?',
+        choices: [
+          'Class, Container, Component, Context',
+          'Context, Container, Component, Code',
+          'Code, Component, Container, Context',
+          'System, Service, Module, Method',
+        ],
+        correctIndex: 1,
+        explanation: 'Context → Containers → Components → Code. Each step zooms in one level.',
+      },
+      {
+        id: 'c4-e3',
+        difficulty: 'easy',
+        question: 'In C4, a "container" is best described as:',
+        choices: [
+          'A Docker container, specifically',
+          'A deployable or executable unit (app, service, database)',
+          'A UML package',
+          'A folder on disk',
+        ],
+        correctIndex: 1,
+        explanation: 'A C4 container is simply "a thing that runs" — a web app, a SPA, a job, or a database are all containers. Not specifically Docker.',
+      },
+
+      {
+        id: 'c4-m1',
+        difficulty: 'medium',
+        question: 'Most teams using C4 day-to-day rely on which diagrams most often?',
+        choices: [
+          'Only the Code level',
+          'The Context and Container diagrams',
+          'All four levels equally',
+          'Component and Code only',
+        ],
+        correctIndex: 1,
+        explanation: 'Context and Container diagrams answer most conversations. Component is occasional; Code is usually skipped.',
+      },
+      {
+        id: 'c4-m2',
+        difficulty: 'medium',
+        question: 'Which statement is TRUE about C4 notation?',
+        choices: [
+          'C4 is a strict UML profile',
+          'C4 favours plain readability over formal notation; a legend explains colours and shapes',
+          'C4 requires at least ten shape types per diagram',
+          'C4 diagrams must be drawn in Visio',
+        ],
+        correctIndex: 1,
+        explanation: 'C4 is deliberately NOT UML — it trades formality for readability. A simple legend is enough.',
+      },
+      {
+        id: 'c4-m3',
+        difficulty: 'medium',
+        question: 'What problem do "diagrams as code" tools like Structurizr solve for C4 adoption?',
+        choices: [
+          'They replace the need for any diagrams at all',
+          'They keep diagrams version-controlled and regenerable from a single source, so they don\'t silently rot',
+          'They make diagrams harder to share',
+          'They remove the need for a legend',
+        ],
+        correctIndex: 1,
+        explanation: 'Diagrams-as-code puts the diagram in the repo, tied to the code, so it stays current instead of going stale in a wiki.',
+      },
+
+      {
+        id: 'c4-h1',
+        difficulty: 'hard',
+        question: 'A common C4 mistake is to assume a container is:',
+        choices: [
+          'Always a microservice',
+          'The same as a UML class',
+          'A single source file',
+          'An AWS EC2 instance',
+        ],
+        correctIndex: 0,
+        explanation: 'Beginners often equate "container" with "microservice". A container is any deployable unit — mobile apps, SPAs, databases, and batch jobs all qualify.',
+      },
+      {
+        id: 'c4-h2',
+        difficulty: 'hard',
+        question: 'Which C4 level is most useful for explaining the system to a NON-technical stakeholder?',
+        choices: ['Code', 'Component', 'Container', 'Context'],
+        correctIndex: 3,
+        explanation: 'Context treats the system as a black box surrounded by people and external systems — the clearest view for business stakeholders.',
+      },
+      {
+        id: 'c4-h3',
+        difficulty: 'hard',
+        question: 'What is the main purpose of the "Code" level in C4, and why is it often skipped?',
+        choices: [
+          'To replace unit tests; it\'s skipped because tests suffice',
+          'To show classes/interfaces inside a component; it\'s skipped because IDEs already generate this on demand',
+          'To produce deployment diagrams; it\'s skipped because operations owns those',
+          'To act as a legal record of the architecture',
+        ],
+        correctIndex: 1,
+        explanation: 'Code-level diagrams duplicate what modern IDEs show at a click. C4 recommends skipping them unless genuinely helpful.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
+  /*  Vertical Slice Architecture                               */
+  /* --------------------------------------------------------- */
+  'vertical-slice-architecture': {
+    infoId: 'vertical-slice-architecture',
+    questions: [
+      {
+        id: 'vsa-e1',
+        difficulty: 'easy',
+        question: 'Vertical Slice Architecture organises code primarily by:',
+        choices: ['Technical layer', 'Feature', 'Team', 'Programming language'],
+        correctIndex: 1,
+        explanation: 'Each slice contains everything one feature needs — HTTP, validation, business logic, persistence — in one place.',
+      },
+      {
+        id: 'vsa-e2',
+        difficulty: 'easy',
+        question: 'Who popularised Vertical Slice Architecture?',
+        choices: ['Eric Evans', 'Jimmy Bogard', 'Kent Beck', 'Uncle Bob'],
+        correctIndex: 1,
+        explanation: 'Jimmy Bogard (author of MediatR and AutoMapper) wrote the seminal posts on vertical slices.',
+      },
+      {
+        id: 'vsa-e3',
+        difficulty: 'easy',
+        question: 'In a traditional n-layer architecture, changing one feature typically means editing:',
+        choices: [
+          'A single file',
+          'One folder',
+          'Multiple files across multiple layer folders (Controllers, Services, Repositories, etc.)',
+          'Only the database',
+        ],
+        correctIndex: 2,
+        explanation: 'Horizontal layering spreads one feature across every layer — vertical slices collapse that into a single folder.',
+      },
+
+      {
+        id: 'vsa-m1',
+        difficulty: 'medium',
+        question: 'Which of these is a real trade-off of Vertical Slice Architecture?',
+        choices: [
+          'It cannot be tested',
+          'Some code that would be shared in an n-layer design ends up duplicated across slices',
+          'It only works in Java',
+          'It removes the need for a database',
+        ],
+        correctIndex: 1,
+        explanation: 'Vertical slices intentionally accept some duplication to avoid the wrong shared abstraction. "A little duplication is cheaper than the wrong coupling."',
+      },
+      {
+        id: 'vsa-m2',
+        difficulty: 'medium',
+        question: 'Vertical slices pair naturally with which pattern?',
+        choices: [
+          'Singleton everywhere',
+          'CQRS — separate Command and Query handlers',
+          'Global mutable state',
+          'Inheritance over composition',
+        ],
+        correctIndex: 1,
+        explanation: 'Each slice is typically one command or one query handler — a CQRS-shaped unit of behaviour.',
+      },
+      {
+        id: 'vsa-m3',
+        difficulty: 'medium',
+        question: 'In vertical-slice parlance, what is meant by "tailored design per slice"?',
+        choices: [
+          'Each slice must use a different framework',
+          'Simple features stay simple; complex ones can add layers only where those layers genuinely help',
+          'Each slice needs its own database',
+          'Only senior developers can design a slice',
+        ],
+        correctIndex: 1,
+        explanation: 'Vertical slices free you from forcing every feature through the same layered template. Design complexity goes where it earns its keep.',
+      },
+
+      {
+        id: 'vsa-h1',
+        difficulty: 'hard',
+        question: 'Why is CreateInvoice able to use a totally different design (e.g. event-sourced) from VoidInvoice in a vertical-slice codebase?',
+        choices: [
+          'Because the compiler enforces it',
+          'Because the two slices are independent — they do not share a central Service<Invoice> that couples them',
+          'Because Jimmy Bogard requires it',
+          'Because they use different programming languages',
+        ],
+        correctIndex: 1,
+        explanation: 'Independence is the point: each slice is free to pick the design best suited to its feature, since slices don\'t funnel through a shared service layer.',
+      },
+      {
+        id: 'vsa-h2',
+        difficulty: 'hard',
+        question: 'Vertical Slice Architecture echoes which idea from Uncle Bob?',
+        choices: [
+          'The Repository Pattern',
+          'Screaming Architecture — the folder structure should scream what the system DOES, not what framework it uses',
+          'Dependency Injection as a religion',
+          'The Open/Closed Principle',
+        ],
+        correctIndex: 1,
+        explanation: 'Screaming Architecture: a new joiner reading the top-level folders should see "CreateInvoice, SendReceipt, RefundOrder" — the business — not "Controllers, Services, Repos".',
+      },
+      {
+        id: 'vsa-h3',
+        difficulty: 'hard',
+        question: 'What is the relationship between vertical slices and MediatR-style "request/handler" libraries?',
+        choices: [
+          'MediatR is required by the vertical-slice pattern',
+          'MediatR (or equivalents) provide a clean way to pipe one request to one handler, matching the one-slice-one-feature shape',
+          'Vertical slices are only legal in C#',
+          'MediatR forces horizontal layering',
+        ],
+        correctIndex: 1,
+        explanation: 'MediatR\'s request→handler mapping naturally expresses "one feature, one handler", making vertical slices easy to implement.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
   /*  Architecture Decision Records                             */
   /* --------------------------------------------------------- */
   'architecture-decision-records': {
