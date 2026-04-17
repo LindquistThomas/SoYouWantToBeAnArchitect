@@ -421,6 +421,137 @@ export const QUIZ_DATA: Record<string, QuizDefinition> = {
   },
 
   /* --------------------------------------------------------- */
+  /*  Architecture Decision Records                             */
+  /* --------------------------------------------------------- */
+  'architecture-decision-records': {
+    infoId: 'architecture-decision-records',
+    questions: [
+      // ---- EASY ----
+      {
+        id: 'adr-e1',
+        difficulty: 'easy',
+        question: 'What does ADR stand for?',
+        choices: [
+          'Application Deployment Record',
+          'Architecture Decision Record',
+          'Automated Data Recovery',
+          'Agile Delivery Roadmap',
+        ],
+        correctIndex: 1,
+        explanation: 'ADR stands for Architecture Decision Record — a short, numbered document capturing one significant architectural decision.',
+      },
+      {
+        id: 'adr-e2',
+        difficulty: 'easy',
+        question: 'Where do ADRs typically live?',
+        choices: [
+          'Only in a shared confluence space nobody reads',
+          'In the repository alongside the code (e.g. docs/adr/)',
+          'In the architect\'s private notebook',
+          'On the company wiki, separate from the code',
+        ],
+        correctIndex: 1,
+        explanation: 'ADRs live next to the code they describe — usually in a docs/adr/ folder — so they\'re version-controlled and reviewed with the same workflow as the code.',
+      },
+      {
+        id: 'adr-e3',
+        difficulty: 'easy',
+        question: 'Which section of a typical ADR captures "what becomes easier, harder, or riskier" after the decision?',
+        choices: [
+          'Status',
+          'Context',
+          'Decision',
+          'Consequences',
+        ],
+        correctIndex: 3,
+        explanation: 'The Consequences section is where trade-offs are made explicit — arguably the most valuable part of an ADR for future readers.',
+      },
+
+      // ---- MEDIUM ----
+      {
+        id: 'adr-m1',
+        difficulty: 'medium',
+        question: 'What should you do when an accepted ADR no longer reflects the chosen architecture?',
+        choices: [
+          'Edit the original ADR to reflect the new decision',
+          'Delete the ADR so it does not confuse readers',
+          'Write a new ADR that supersedes it; mark the old one superseded',
+          'Move the ADR to an archive folder and start over',
+        ],
+        correctIndex: 2,
+        explanation: 'ADRs are immutable. You write a new ADR that supersedes the old one, preserving the history of why the earlier decision was made.',
+      },
+      {
+        id: 'adr-m2',
+        difficulty: 'medium',
+        question: 'Which of these is the best scope for a single ADR?',
+        choices: [
+          'One ADR covering all persistence, messaging, and auth decisions',
+          'One ADR per major quarter of work',
+          'One ADR per architectural decision',
+          'One ADR per microservice',
+        ],
+        correctIndex: 2,
+        explanation: 'Granularity matters: one ADR = one decision. Small, focused ADRs are easier to read, supersede, and search later.',
+      },
+      {
+        id: 'adr-m3',
+        difficulty: 'medium',
+        question: 'Why are ADRs usually append-only and never edited after acceptance?',
+        choices: [
+          'File systems make editing hard',
+          'To preserve the history of thinking so future teams can understand why decisions were made',
+          'Because tooling requires it',
+          'To discourage people from ever revisiting decisions',
+        ],
+        correctIndex: 1,
+        explanation: 'Immutability preserves the record of *why* a decision was made at a point in time — critical context when the world changes and a new ADR supersedes it.',
+      },
+
+      // ---- HARD ----
+      {
+        id: 'adr-h1',
+        difficulty: 'hard',
+        question: 'Who is generally credited with popularizing the lightweight ADR format?',
+        choices: [
+          'Martin Fowler',
+          'Michael Nygard',
+          'Gregor Hohpe',
+          'Robert C. Martin',
+        ],
+        correctIndex: 1,
+        explanation: 'Michael Nygard proposed lightweight ADRs in his 2011 post "Documenting Architecture Decisions" as an alternative to heavyweight architecture docs.',
+      },
+      {
+        id: 'adr-h2',
+        difficulty: 'hard',
+        question: 'Which statement best captures why ADRs pair naturally with "You build it, you run it"?',
+        choices: [
+          'Running systems require fewer decisions than building them',
+          'ADRs replace the need for runbooks',
+          'The team that owns the system also owns the record of why it is the way it is',
+          'Operational teams refuse to take over systems without ADRs',
+        ],
+        correctIndex: 2,
+        explanation: 'Autonomous delivery teams benefit most when the "why" travels with the code — the same people who ship it live with the consequences and write them down.',
+      },
+      {
+        id: 'adr-h3',
+        difficulty: 'hard',
+        question: 'What is the primary intent of the Status field on an ADR (proposed / accepted / superseded)?',
+        choices: [
+          'To trigger an approval workflow in a ticket system',
+          'To let readers tell at a glance which decisions are current and which are history',
+          'To grant the author editing rights',
+          'To determine code review ownership',
+        ],
+        correctIndex: 1,
+        explanation: 'Status makes the lifecycle of a decision legible: readers can immediately see whether an ADR represents the current design or a chapter in its history.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
   /*  Cloud-Native Architecture                                 */
   /* --------------------------------------------------------- */
   'cloud-architecture': {

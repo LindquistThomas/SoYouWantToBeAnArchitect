@@ -211,6 +211,61 @@ export const INFO_POINTS: Record<string, InfoPointDef> = {
     },
   },
 
+  'architecture-decision-records': {
+    floorId: FLOORS.PLATFORM_TEAM,
+    content: {
+      id: 'architecture-decision-records',
+      title: 'Architecture Decision Records (ADRs)',
+      body:
+        'An Architecture Decision Record (ADR) is a short document that ' +
+        'captures one significant architectural decision — the context, the ' +
+        'options considered, the choice made, and its consequences.\n\n' +
+        'ADRs live next to the code (usually under docs/adr/) and are ' +
+        'numbered, immutable, and append-only. You do not edit an old ADR ' +
+        'when circumstances change; you write a new one that supersedes it.\n\n' +
+        'A typical ADR is one page and follows a simple template:\n' +
+        '  • Status  — proposed / accepted / superseded\n' +
+        '  • Context — the forces in play that made this decision necessary\n' +
+        '  • Decision — what you chose, stated clearly\n' +
+        '  • Consequences — what becomes easier, harder, or riskier\n\n' +
+        'ADRs solve a real problem: six months after a design choice, no-one ' +
+        'remembers why it was made. New joiners re-open old debates. With ' +
+        'ADRs, the "why" is written down at the moment of decision, so future ' +
+        'teams can understand, re-evaluate, or intentionally replace it.',
+      links: [
+        { label: 'Michael Nygard — "Documenting Architecture Decisions"', url: 'https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions' },
+        { label: 'adr-tools on GitHub', url: 'https://github.com/npryce/adr-tools' },
+        { label: 'ThoughtWorks Tech Radar: Lightweight ADRs', url: 'https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records' },
+      ],
+      extendedInfo: {
+        title: 'Deep Dive: ADRs in Practice',
+        body:
+          'Michael Nygard proposed ADRs in 2011 as a lightweight alternative ' +
+          'to heavyweight architecture documents that nobody reads and nobody ' +
+          'keeps up to date. The key insights:\n\n' +
+          '1. Immutability. An accepted ADR is never edited. If you change ' +
+          'your mind, write a new ADR with status "supersedes ADR-0012" and ' +
+          'mark the old one "superseded by ADR-0037". The history of your ' +
+          'thinking is preserved.\n\n' +
+          '2. Consequences matter more than the decision. The "easier / ' +
+          'harder / riskier" section is what future readers actually need. ' +
+          'Writing it forces you to acknowledge trade-offs instead of ' +
+          'pretending you picked a silver bullet.\n\n' +
+          '3. Granularity. One ADR = one decision. "We use PostgreSQL" is ' +
+          'one ADR. "We use PostgreSQL AND Redis AND Kafka" is three ADRs. ' +
+          'Small ADRs are easier to read, easier to supersede, and easier ' +
+          'to search for later.\n\n' +
+          '4. Who writes them? Anyone making the decision — architect, tech ' +
+          'lead, or the team itself. ADRs work best when they are a ' +
+          '*working document*, written during the decision meeting, not a ' +
+          'retrospective artefact filled in a week later.\n\n' +
+          'ADRs pair naturally with "You build it, you run it": the team ' +
+          'that owns the system also owns the record of why it is the way it ' +
+          'is, and is on the hook when those consequences show up.',
+      },
+    },
+  },
+
   'cloud-architecture': {
     floorId: FLOORS.CLOUD_TEAM,
     content: {
