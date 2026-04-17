@@ -363,6 +363,9 @@ export class LevelScene extends Phaser.Scene {
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
+
+    const infoPressed = this.player?.getInputManager().isInfoJustPressed();
+
     if (this.dialogs.isOpen) return;
 
     this.player.update(delta);
@@ -372,6 +375,13 @@ export class LevelScene extends Phaser.Scene {
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     // Subscribed handlers (wired in createInfoZones) react to show/hide icons.
     this.zoneManager.update();
+
+    // I key opens the info dialog for the currently-active content zone.
+    const activeZone = this.zoneManager.getActiveZone();
+    if (infoPressed && activeZone && !this.dialogs.isOpen) {
+      this.dialogs.open(activeZone);
+      return;
+    }
 
     this.checkExitProximity();
   }

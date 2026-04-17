@@ -203,6 +203,24 @@ test.describe('Gameplay screenshots', () => {
     await waitForScene(page, 'Floor1Scene');
     await page.waitForTimeout(900);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
+
+    // Walk right toward the monitoring wall (you-build-you-run zone),
+    // then press I to open the info dialog and verify it scrolls.
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(2400);
+    await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('KeyI');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/05b-floor1-info-top.png` });
+    // Scroll with PageDown — quiz button should stay sticky at the bottom.
+    await page.keyboard.press('PageDown');
+    await page.waitForTimeout(300);
+    await page.keyboard.press('PageDown');
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/05c-floor1-info-scrolled.png` });
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
   });
 
   test('floor 2 (cloud team) renders after progression unlock', async ({ page }) => {
