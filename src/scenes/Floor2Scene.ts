@@ -70,7 +70,10 @@ export class Floor2Scene extends LevelScene {
       ],
 
       infoPoints: [
-        { x: 900, y: G, contentId: 'cloud-architecture' },
+        {
+          x: 900, y: G, contentId: 'cloud-architecture',
+          zone: { shape: 'rect', width: 180, height: 220 },
+        },
       ],
     };
   }

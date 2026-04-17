@@ -190,10 +190,16 @@ export class Floor1Scene extends LevelScene {
       ],
 
       infoPoints: [
-        // Platform-team signpost — greets the player on entry (left side).
-        { x: 260, y: G, contentId: 'platform-engineering' },
-        // You-build-you-run — the animated monitoring wall on the ops deck.
-        { x: 930, y: G, contentId: 'you-build-you-run' },
+        // Platform-team signpost — narrow rect around the signpost itself.
+        {
+          x: 260, y: G, contentId: 'platform-engineering',
+          zone: { shape: 'rect', width: 140, height: 220 },
+        },
+        // You-build-you-run — wider rect matching the monitoring wall.
+        {
+          x: 930, y: G, contentId: 'you-build-you-run',
+          zone: { shape: 'rect', width: 280, height: 220 },
+        },
       ],
     };
   }

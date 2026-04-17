@@ -32,9 +32,20 @@ export interface LevelConfig {
   /**
    * Info zones placed in the level.
    * Each zone shows its icon and allows its dialog to open only when the
-   * player is within zoneRadius pixels of (x, y). Default radius: 250.
+   * player is within the zone shape. Default: 120 px circle.
+   *
+   * Prefer `zone` for precise anchor-sized regions (e.g. a signpost or
+   * monitoring wall). `zoneRadius` is kept for simple back-compat.
    */
-  infoPoints?: Array<{ x: number; y: number; contentId: string; zoneRadius?: number }>;
+  infoPoints?: Array<{
+    x: number;
+    y: number;
+    contentId: string;
+    zoneRadius?: number;
+    zone?:
+      | { shape: 'circle'; radius: number }
+      | { shape: 'rect'; width: number; height: number; offsetY?: number };
+  }>;
 }
 
 /**
@@ -274,7 +285,7 @@ export class LevelScene extends Phaser.Scene {
     const config = this.getLevelConfig();
     if (!config.infoPoints?.length) return;
 
-    const DEFAULT_ZONE_RADIUS = 250;
+    const DEFAULT_ZONE_RADIUS = 120;
 
     // One subscriber pair for all zones in this scene — routes by zoneId.
     const onEnter = (...args: unknown[]) => {
@@ -293,8 +304,6 @@ export class LevelScene extends Phaser.Scene {
     });
 
     for (const ip of config.infoPoints) {
-      const radius = ip.zoneRadius ?? DEFAULT_ZONE_RADIUS;
-
       // Icons live in the HUD top bar (shared fixed position) rather than
       // floating above the info point. Only one zone is active at a time,
       // so the icons never overlap. The contentId drives the "unseen"
@@ -309,14 +318,40 @@ export class LevelScene extends Phaser.Scene {
       }
 
       this.infoIconsByZone.set(ip.contentId, icon);
-      this.zoneManager.register(
-        ip.contentId,
-        () => Phaser.Math.Distance.Between(
-          this.player.sprite.x, this.player.sprite.y,
-          ip.x, ip.y,
-        ) < radius,
-      );
+
+      // Build the zone containment check from the declarative shape.
+      const check = this.buildZoneCheck(ip, DEFAULT_ZONE_RADIUS);
+      this.zoneManager.register(ip.contentId, check);
     }
+  }
+
+  /**
+   * Build a per-frame "is the player inside this zone?" predicate for
+   * an info point. Rect zones cover wide anchors (monitoring walls,
+   * stretched consoles) without over-expanding vertically; circle zones
+   * remain the default.
+   */
+  private buildZoneCheck(
+    ip: NonNullable<LevelConfig['infoPoints']>[number],
+    defaultRadius: number,
+  ): () => boolean {
+    const body = () => this.player.sprite;
+    if (ip.zone?.shape === 'rect') {
+      const w = ip.zone.width;
+      const h = ip.zone.height;
+      const offsetY = ip.zone.offsetY ?? -h / 2;
+      const rect = new Phaser.Geom.Rectangle(
+        ip.x - w / 2,
+        ip.y + offsetY - h / 2,
+        w,
+        h,
+      );
+      return () => Phaser.Geom.Rectangle.Contains(rect, body().x, body().y);
+    }
+    const radius = ip.zone?.shape === 'circle'
+      ? ip.zone.radius
+      : (ip.zoneRadius ?? defaultRadius);
+    return () => Phaser.Math.Distance.Between(body().x, body().y, ip.x, ip.y) < radius;
   }
 
   /* ---- banner ---- */
