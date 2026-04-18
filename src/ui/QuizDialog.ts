@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
-import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_REWARDS, QUIZ_PASS_THRESHOLD } from '../config/quizData';
+import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_REWARDS, QUIZ_PASS_THRESHOLD, QUIZ_QUESTION_COUNT, QUIZ_DIFFICULTY_MIX } from '../config/quizData';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { saveQuizResult, isQuizPassed } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
@@ -11,6 +11,13 @@ export interface QuizDialogOptions {
   floorId: FloorId;
   progression: ProgressionSystem;
   onClose?: () => void;
+}
+
+interface Focusable {
+  focus(): void;
+  blur(): void;
+  activate(): void;
+  bounds(): Phaser.Geom.Rectangle;
 }
 
 /**
@@ -27,17 +34,33 @@ export class QuizDialog extends ModalBase {
   private answered = false;
   private alreadyPassed: boolean;
 
+  /* ---- keyboard navigation ---- */
+  private focusables: Focusable[] = [];
+  private focusIndex = -1;
+  private focusArrow?: Phaser.GameObjects.Text;
+  private screen: 'question' | 'feedback' | 'results' = 'question';
+  private upKey?: Phaser.Input.Keyboard.Key;
+  private downKey?: Phaser.Input.Keyboard.Key;
+  private leftKey?: Phaser.Input.Keyboard.Key;
+  private rightKey?: Phaser.Input.Keyboard.Key;
+  private enterKey?: Phaser.Input.Keyboard.Key;
+  private spaceKey?: Phaser.Input.Keyboard.Key;
+  private numKeys: Phaser.Input.Keyboard.Key[] = [];
+  private letterKeys: Phaser.Input.Keyboard.Key[] = [];
+  private navHandler?: () => void;
+
   constructor(scene: Phaser.Scene, options: QuizDialogOptions) {
     super(scene);
     this.options = options;
     this.alreadyPassed = isQuizPassed(options.infoId);
     this.questions = this.selectQuestions(options.infoId);
 
+    this.registerKeyboardNav();
     this.showQuestion();
     this.fadeIn();
   }
 
-  /** Pick 1 easy + 1 medium + 1 hard from the question pool. */
+  /** Pick a difficulty-balanced set of questions per QUIZ_DIFFICULTY_MIX. */
   private selectQuestions(infoId: string): QuizQuestion[] {
     const def = QUIZ_DATA[infoId];
     if (!def) return [];
@@ -47,14 +70,30 @@ export class QuizDialog extends ModalBase {
       byDiff[q.difficulty].push(q);
     }
 
-    const pick = (arr: QuizQuestion[]): QuizQuestion =>
-      arr[Math.floor(Math.random() * arr.length)];
+    const shuffle = <T>(arr: T[]): T[] => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
 
     const selected: QuizQuestion[] = [];
-    if (byDiff.easy.length) selected.push(pick(byDiff.easy));
-    if (byDiff.medium.length) selected.push(pick(byDiff.medium));
-    if (byDiff.hard.length) selected.push(pick(byDiff.hard));
-    return selected;
+    for (const diff of ['easy', 'medium', 'hard'] as QuizDifficulty[]) {
+      const want = QUIZ_DIFFICULTY_MIX[diff];
+      selected.push(...shuffle(byDiff[diff]).slice(0, want));
+    }
+
+    // Fall back: if a pool is short on a difficulty, top up from any remaining.
+    if (selected.length < QUIZ_QUESTION_COUNT) {
+      const usedIds = new Set(selected.map((q) => q.id));
+      const leftover = shuffle(def.questions.filter((q) => !usedIds.has(q.id)));
+      selected.push(...leftover.slice(0, QUIZ_QUESTION_COUNT - selected.length));
+    }
+
+    // Final shuffle so difficulty order isn't predictable within an attempt.
+    return shuffle(selected);
   }
 
   private clearPanel(): void {
@@ -62,6 +101,9 @@ export class QuizDialog extends ModalBase {
     while (this.container.length > 1) {
       this.container.removeAt(1, true);
     }
+    this.focusables = [];
+    this.focusIndex = -1;
+    this.focusArrow = undefined;
   }
 
   /* ---- question rendering ---- */
@@ -69,6 +111,7 @@ export class QuizDialog extends ModalBase {
   private showQuestion(): void {
     this.clearPanel();
     this.answered = false;
+    this.screen = 'question';
 
     const q = this.questions[this.currentIndex];
     if (!q) { this.showResults(); return; }
@@ -92,7 +135,8 @@ export class QuizDialog extends ModalBase {
     const headerH = 70;
     const choicesH = 4 * CHOICE_H + 3 * CHOICE_GAP;
     const closeBarH = 44;
-    const panelH = Math.min(headerH + qHeight + 20 + choicesH + closeBarH + PADDING * 2, GAME_HEIGHT - 40);
+    const hintH = 24;
+    const panelH = Math.min(headerH + qHeight + 20 + choicesH + hintH + closeBarH + PADDING * 2, GAME_HEIGHT - 40);
     const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
     const bg = this.scene.add.graphics();
@@ -135,6 +179,14 @@ export class QuizDialog extends ModalBase {
       this.createChoiceButton(panelX + PADDING, choiceY, PANEL_W - PADDING * 2, CHOICE_H, i, q);
     }
 
+    const hintY = curY + 4 * CHOICE_H + 3 * CHOICE_GAP + 6;
+    const hint = this.scene.add.text(
+      GAME_WIDTH / 2, hintY,
+      '[\u2191\u2193] Navigate   [1-4 / A-D] Answer   [Enter] Select   [Esc] Close',
+      { fontFamily: 'monospace', fontSize: '12px', color: '#667788' },
+    ).setOrigin(0.5, 0);
+    this.container.add(hint);
+
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
@@ -142,6 +194,10 @@ export class QuizDialog extends ModalBase {
     xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
+    this.focusables.push(this.makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
+
+    this.createFocusArrow();
+    this.setFocus(0);
   }
 
   private createChoiceButton(
@@ -152,10 +208,21 @@ export class QuizDialog extends ModalBase {
     const label = `${prefix}.  ${question.choices[index]}`;
 
     const btnBg = this.scene.add.graphics();
-    btnBg.fillStyle(0x1a2a3a, 1);
-    btnBg.fillRoundedRect(x, y, w, h, 6);
-    btnBg.lineStyle(1, 0x2a4a6a, 0.6);
-    btnBg.strokeRoundedRect(x, y, w, h, 6);
+    const drawNormal = () => {
+      btnBg.clear();
+      btnBg.fillStyle(0x1a2a3a, 1);
+      btnBg.fillRoundedRect(x, y, w, h, 6);
+      btnBg.lineStyle(1, 0x2a4a6a, 0.6);
+      btnBg.strokeRoundedRect(x, y, w, h, 6);
+    };
+    const drawHover = () => {
+      btnBg.clear();
+      btnBg.fillStyle(0x2a4a6a, 1);
+      btnBg.fillRoundedRect(x, y, w, h, 6);
+      btnBg.lineStyle(1, 0x4a6a8a, 0.8);
+      btnBg.strokeRoundedRect(x, y, w, h, 6);
+    };
+    drawNormal();
     this.container.add(btnBg);
 
     const btnText = this.scene.add.text(x + 16, y + h / 2, label, {
@@ -172,27 +239,27 @@ export class QuizDialog extends ModalBase {
 
     hitArea.on('pointerover', () => {
       if (this.answered) return;
-      btnBg.clear();
-      btnBg.fillStyle(0x2a4a6a, 1);
-      btnBg.fillRoundedRect(x, y, w, h, 6);
-      btnBg.lineStyle(1, 0x4a6a8a, 0.8);
-      btnBg.strokeRoundedRect(x, y, w, h, 6);
+      drawHover();
       btnText.setColor('#ffffff');
     });
 
     hitArea.on('pointerout', () => {
       if (this.answered) return;
-      btnBg.clear();
-      btnBg.fillStyle(0x1a2a3a, 1);
-      btnBg.fillRoundedRect(x, y, w, h, 6);
-      btnBg.lineStyle(1, 0x2a4a6a, 0.6);
-      btnBg.strokeRoundedRect(x, y, w, h, 6);
+      drawNormal();
       btnText.setColor('#c0c8d4');
     });
 
-    hitArea.on('pointerdown', () => {
+    const activate = () => {
       if (this.answered) return;
       this.onAnswer(index, question);
+    };
+    hitArea.on('pointerdown', activate);
+
+    this.focusables.push({
+      focus: () => { drawHover(); btnText.setColor('#ffffff'); },
+      blur: () => { drawNormal(); btnText.setColor('#c0c8d4'); },
+      activate,
+      bounds: () => new Phaser.Geom.Rectangle(x, y, w, h),
     });
   }
 
@@ -207,6 +274,7 @@ export class QuizDialog extends ModalBase {
 
   private showAnswerFeedback(question: QuizQuestion, selectedIndex: number): void {
     this.clearPanel();
+    this.screen = 'feedback';
 
     const correct = selectedIndex === question.correctIndex;
     const PANEL_W = 620;
@@ -350,6 +418,7 @@ export class QuizDialog extends ModalBase {
       }
     });
     this.container.add(nextBtn);
+    this.focusables.push(this.makeTextFocusable(nextBtn, '#00d4ff', '#88ddff'));
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
@@ -358,10 +427,15 @@ export class QuizDialog extends ModalBase {
     xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
+    this.focusables.push(this.makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
+
+    this.createFocusArrow();
+    this.setFocus(0);
   }
 
   private showResults(): void {
     this.clearPanel();
+    this.screen = 'results';
 
     const total = this.questions.length;
     const passed = this.score >= QUIZ_PASS_THRESHOLD;
@@ -467,6 +541,10 @@ export class QuizDialog extends ModalBase {
     closeBtn.on('pointerout', () => closeBtn.setColor('#00d4ff'));
     closeBtn.on('pointerdown', () => this.close());
     this.container.add(closeBtn);
+    this.focusables.push(this.makeTextFocusable(closeBtn, '#00d4ff', '#88ddff'));
+
+    this.createFocusArrow();
+    this.setFocus(0);
   }
 
   private spawnCelebrationParticles(): void {
@@ -502,5 +580,112 @@ export class QuizDialog extends ModalBase {
 
   protected override onAfterClose(): void {
     this.options.onClose?.();
+  }
+
+  /* ---- keyboard navigation helpers ---- */
+
+  private makeTextFocusable(
+    text: Phaser.GameObjects.Text, normalColor: string, focusColor: string,
+  ): Focusable {
+    return {
+      focus: () => text.setColor(focusColor),
+      blur: () => text.setColor(normalColor),
+      activate: () => text.emit('pointerdown'),
+      bounds: () => text.getBounds(),
+    };
+  }
+
+  private createFocusArrow(): void {
+    this.focusArrow = this.scene.add.text(0, 0, '\u25b6', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#ffd700', fontStyle: 'bold',
+    }).setOrigin(0.5, 0.5).setVisible(false);
+    this.container.add(this.focusArrow);
+  }
+
+  private setFocus(index: number): void {
+    if (index < 0 || index >= this.focusables.length) return;
+    const prev = this.focusables[this.focusIndex];
+    if (prev) prev.blur();
+    this.focusIndex = index;
+    const cur = this.focusables[index];
+    cur.focus();
+    if (this.focusArrow) {
+      const b = cur.bounds();
+      this.focusArrow.setPosition(b.x - 14, b.y + b.height / 2);
+      this.focusArrow.setVisible(true);
+    }
+  }
+
+  private registerKeyboardNav(): void {
+    if (!this.scene.input.keyboard) return;
+    const kb = this.scene.input.keyboard;
+
+    this.upKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+    this.downKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+    this.leftKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+    this.rightKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.spaceKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.numKeys = [
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.THREE),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR),
+    ];
+    this.letterKeys = [
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.B),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.C),
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+    ];
+
+    this.navHandler = () => {
+      if (this.focusables.length === 0) return;
+      const len = this.focusables.length;
+
+      if (Phaser.Input.Keyboard.JustDown(this.upKey!) ||
+          Phaser.Input.Keyboard.JustDown(this.leftKey!)) {
+        this.setFocus((this.focusIndex - 1 + len) % len);
+      } else if (Phaser.Input.Keyboard.JustDown(this.downKey!) ||
+                 Phaser.Input.Keyboard.JustDown(this.rightKey!)) {
+        this.setFocus((this.focusIndex + 1) % len);
+      } else if (Phaser.Input.Keyboard.JustDown(this.enterKey!) ||
+                 Phaser.Input.Keyboard.JustDown(this.spaceKey!)) {
+        this.focusables[this.focusIndex]?.activate();
+      } else if (this.screen === 'question' && !this.answered) {
+        // Number/letter shortcuts pick an answer directly.
+        const q = this.questions[this.currentIndex];
+        if (!q) return;
+        for (let i = 0; i < q.choices.length; i++) {
+          if (Phaser.Input.Keyboard.JustDown(this.numKeys[i]) ||
+              Phaser.Input.Keyboard.JustDown(this.letterKeys[i])) {
+            this.setFocus(i);
+            this.focusables[i]?.activate();
+            return;
+          }
+        }
+      }
+    };
+    this.scene.events.on('update', this.navHandler);
+  }
+
+  protected override onBeforeClose(): void {
+    if (this.navHandler) {
+      this.scene.events.off('update', this.navHandler);
+      this.navHandler = undefined;
+    }
+    this.upKey?.destroy();
+    this.downKey?.destroy();
+    this.leftKey?.destroy();
+    this.rightKey?.destroy();
+    this.enterKey?.destroy();
+    this.spaceKey?.destroy();
+    this.numKeys.forEach((k) => k.destroy());
+    this.letterKeys.forEach((k) => k.destroy());
+    this.upKey = this.downKey = this.leftKey = this.rightKey = undefined;
+    this.enterKey = this.spaceKey = undefined;
+    this.numKeys = [];
+    this.letterKeys = [];
   }
 }
