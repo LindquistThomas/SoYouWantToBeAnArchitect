@@ -395,10 +395,13 @@ export class HubScene extends Phaser.Scene {
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
     const floorH = HubScene.FLOOR_H;
+    const sw = HubScene.SHAFT_WIDTH;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
     for (const [, y] of Object.entries(positions)) {
       const walkY = y + floorH;
       const dockY = walkY + 8; // same expression used in buildElevator
-      this.shaftDoors.push(new HubFloorDoors(this, cx, walkY, dockY));
+      this.shaftDoors.push(new HubFloorDoors(this, leftEdge, rightEdge, walkY, dockY));
     }
   }
 

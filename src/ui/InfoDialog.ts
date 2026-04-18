@@ -136,7 +136,11 @@ export class InfoDialog extends ModalBase {
     this.container.add(scrollContent);
 
     // Geometry mask clips children to the visible viewport.
+    // The mask graphics must share the container's scrollFactor(0) — otherwise
+    // when the camera is scrolled the mask clips a region that's nowhere near
+    // the modal's screen-space position, hiding all scroll-content children.
     const maskGfx = this.scene.make.graphics({ x: 0, y: 0 }, false);
+    maskGfx.setScrollFactor(0);
     maskGfx.fillStyle(0xffffff);
     maskGfx.fillRect(panelX, contentTop, panelW, contentH);
     this.scrollMaskGfx = maskGfx;

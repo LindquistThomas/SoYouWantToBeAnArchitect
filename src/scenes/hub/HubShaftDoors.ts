@@ -1,57 +1,59 @@
 import * as Phaser from 'phaser';
+import { GAME_WIDTH } from '../../config/gameConfig';
 
 /**
- * Pair of sliding landing doors rendered at a floor opening. The two leaves
- * meet at the shaft centre when closed and slide outward (into wall pockets)
- * when opening. Animation is driven per-frame by `update(cabY, dt)` — the
- * doors target "open" when the cab is docked at this floor and "closed"
- * otherwise.
+ * Side-view landing doorways at one floor of the hub shaft.
  *
- * Drawn in front of the cab (depth 4) so landing doors read as belonging to
- * the hallway wall rather than to the shaft interior; when the cab is
- * docked here, the opening doors reveal the cab behind them.
+ * Viewed from the side, the two "doors" read as rectangular openings cut
+ * into the shaft walls at the walking surface — one on the left wall, one
+ * on the right. When closed they are filled with a steel door panel that
+ * matches the surrounding wall. When the cab docks at this floor, the
+ * panel retracts upward into a header slot above the opening, revealing
+ * the dark passage the player then walks through.
+ *
+ * The controller animates `openAmount` toward 1 (open) when the cab's
+ * platform Y is within `PROXIMITY` of this floor's dock Y, and toward 0
+ * otherwise.
  */
 export class HubFloorDoors {
-  private readonly scene: Phaser.Scene;
   private readonly gfx: Phaser.GameObjects.Graphics;
-  private readonly cx: number;
-  private readonly floorY: number;
-  /** Full width of the opening (sum of both leaves when closed). */
-  private readonly openingW: number;
-  /** Vertical extent of the doors (door top→floor). */
-  private readonly doorTop: number;
-  private readonly doorBottom: number;
+  private readonly leftX: number;
+  private readonly rightX: number;
+  private readonly openingTop: number;
+  private readonly openingBottom: number;
 
   /** 0 = fully closed, 1 = fully open. */
   private openAmount = 0;
-  /** Target open amount (0 or 1). Animated toward by `update`. */
   private target = 0;
 
-  private static readonly OPENING_W = 140;
-  private static readonly DOOR_HEIGHT = 150;
-  /** How close (px) the cab centre must be to this floor to trigger open. */
-  private static readonly PROXIMITY = 24;
-  /** Per-millisecond open/close rate (0..1 per ms). */
+  private static readonly OPENING_WIDTH = 48;
+  private static readonly OPENING_HEIGHT = 132;
+  /** Cab must be within this Y distance of dock to open. */
+  private static readonly PROXIMITY = 28;
+  /** Open/close speed, amount-per-ms. */
   private static readonly RATE = 1 / 350;
 
-  /**
-   * @param floorY Y of the walking surface at this floor.
-   * @param dockY  Y of the cab platform when docked at this floor.
-   */
-  constructor(scene: Phaser.Scene, cx: number, floorY: number, private readonly dockY: number) {
-    this.scene = scene;
-    this.cx = cx;
-    this.floorY = floorY;
-    this.openingW = HubFloorDoors.OPENING_W;
-    this.doorBottom = floorY + 4;
-    this.doorTop = this.doorBottom - HubFloorDoors.DOOR_HEIGHT;
+  constructor(
+    scene: Phaser.Scene,
+    shaftLeftEdge: number,
+    shaftRightEdge: number,
+    walkY: number,
+    private readonly dockY: number,
+  ) {
+    // Place the left doorway straddling the left shaft wall; same on right.
+    this.leftX = shaftLeftEdge;
+    this.rightX = shaftRightEdge;
+    this.openingBottom = walkY;
+    this.openingTop = walkY - HubFloorDoors.OPENING_HEIGHT;
 
+    // Depth 3: above the concrete back wall + steel pillars (depth 0/1) so
+    // the opening "cuts through" the pillar visually; below the cab (depth
+    // 2/3/4) so doors don't appear in front of the cab when it's adjacent.
     this.gfx = scene.add.graphics();
-    this.gfx.setDepth(4);
+    this.gfx.setDepth(1.5);
     this.draw();
   }
 
-  /** Drive the door based on cab position and frame delta. */
   update(cabY: number, deltaMs: number): void {
     const dist = Math.abs(cabY - this.dockY);
     this.target = dist < HubFloorDoors.PROXIMITY ? 1 : 0;
@@ -73,92 +75,93 @@ export class HubFloorDoors {
   private draw(): void {
     const g = this.gfx;
     g.clear();
-
-    const leafW = this.openingW / 2;
-    const slide = leafW * this.openAmount;
-    const top = this.doorTop;
-    const bottom = this.doorBottom;
-    const h = bottom - top;
-
-    // Door frame trim (stroke only — leaving the interior transparent so the
-    // cab interior shows through when the doors slide open).
-    const frameX = this.cx - this.openingW / 2 - 6;
-    const frameW = this.openingW + 12;
-    const frameY = top - 6;
-    const frameH = h + 10;
-    g.lineStyle(2, 0x4a4a58, 1);
-    g.strokeRect(frameX, frameY, frameW, frameH);
-    g.lineStyle(1, 0x6a6a82, 0.8);
-    g.lineBetween(frameX + 2, frameY + 2, frameX + frameW - 2, frameY + 2);
-
-    // Floor threshold plate (always visible)
-    g.fillStyle(0x6a6a82, 1);
-    g.fillRect(this.cx - this.openingW / 2 - 4, bottom, this.openingW + 8, 4);
-    g.lineStyle(1, 0x33333f, 1);
-    for (let gx = this.cx - this.openingW / 2; gx < this.cx + this.openingW / 2; gx += 8) {
-      g.lineBetween(gx, bottom + 1, gx, bottom + 3);
-    }
-
-    // Header beam above the doors
-    g.fillStyle(0x3a3a48, 1);
-    g.fillRect(frameX, frameY - 4, frameW, 4);
-    g.fillStyle(0x55556a, 1);
-    g.fillRect(frameX, frameY - 4, frameW, 1);
-
-    // Left leaf — slides left when opening
-    this.drawLeaf(
-      g,
-      this.cx - leafW - slide,
-      top,
-      leafW,
-      h,
-      /* handleRight */ true,
-    );
-    // Right leaf — slides right when opening
-    this.drawLeaf(
-      g,
-      this.cx + slide,
-      top,
-      leafW,
-      h,
-      /* handleRight */ false,
-    );
+    this.drawOpening(g, this.leftX);
+    this.drawOpening(g, this.rightX);
   }
 
-  private drawLeaf(
+  /** Draw a single doorway (opening + header slot + retractable panel) at centerX. */
+  private drawOpening(g: Phaser.GameObjects.Graphics, centerX: number): void {
+    const w = HubFloorDoors.OPENING_WIDTH;
+    const h = HubFloorDoors.OPENING_HEIGHT;
+    const x = centerX - w / 2;
+    const yTop = this.openingTop;
+    const yBot = this.openingBottom;
+
+    // 1) The passage cavity (always dark — this is what's visible when the
+    //    panel is retracted). Clip so it doesn't spill outside the shaft/
+    //    hallway boundaries (the GAME_WIDTH edges).
+    const cavityX = Math.max(0, x);
+    const cavityRight = Math.min(GAME_WIDTH, x + w);
+    g.fillStyle(0x07070c, 1);
+    g.fillRect(cavityX, yTop, cavityRight - cavityX, h);
+
+    // 2) Header slot above the opening (where the door retracts into).
+    const headerH = 8;
+    g.fillStyle(0x15151c, 1);
+    g.fillRect(cavityX, yTop - headerH, cavityRight - cavityX, headerH);
+
+    // 3) Retracting door panel — slides up into the header as openAmount
+    //    grows. At openAmount=0 it covers the full opening; at 1 it's fully
+    //    lifted above the opening top.
+    const panelH = h;
+    const panelY = yTop + panelH * (1 - this.openAmount) - panelH;
+    // Clip panel so the visible portion is only what still overlaps the
+    // cavity (the rest has "slid up" behind the header).
+    const visibleTop = Math.max(panelY, yTop);
+    const visibleBottom = Math.min(panelY + panelH, yBot);
+    if (visibleBottom > visibleTop) {
+      this.drawDoorPanel(g, cavityX, visibleTop, cavityRight - cavityX, visibleBottom - visibleTop);
+    }
+
+    // 4) Door frame (thin steel trim around the opening — always visible).
+    g.lineStyle(2, 0x55606e, 1);
+    g.strokeRect(cavityX, yTop, cavityRight - cavityX, h);
+    // Frame highlight
+    g.lineStyle(1, 0x88909c, 0.8);
+    g.lineBetween(cavityX + 1, yTop + 1, cavityX + 1, yBot - 1);
+    // Header lip (bottom edge of the retracted-door pocket)
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRect(cavityX - 1, yTop - 2, (cavityRight - cavityX) + 2, 2);
+    g.fillStyle(0x6a6a82, 1);
+    g.fillRect(cavityX - 1, yTop - 2, (cavityRight - cavityX) + 2, 1);
+
+    // 5) Threshold plate flush with the walking surface.
+    g.fillStyle(0x6a6a82, 1);
+    g.fillRect(cavityX - 2, yBot - 1, (cavityRight - cavityX) + 4, 2);
+    g.lineStyle(1, 0x33333f, 1);
+    for (let gx = cavityX; gx < cavityRight; gx += 6) {
+      g.lineBetween(gx, yBot - 1, gx, yBot);
+    }
+  }
+
+  /** Brushed-steel door panel fill. */
+  private drawDoorPanel(
     g: Phaser.GameObjects.Graphics,
     x: number,
     y: number,
     w: number,
     h: number,
-    handleRight: boolean,
   ): void {
-    // Brushed-steel body
+    if (w <= 0 || h <= 0) return;
+    // Base
     g.fillStyle(0x7a8494, 1);
     g.fillRect(x, y, w, h);
     // Highlight column
-    g.fillStyle(0x9aa2b2, 0.8);
-    g.fillRect(x + 4, y + 2, 3, h - 4);
-    // Shadow column near the meeting edge
-    const shadowX = handleRight ? x + w - 5 : x + 2;
-    g.fillStyle(0x3a4250, 0.6);
-    g.fillRect(shadowX, y + 2, 2, h - 4);
-    // Vertical brushed grain
+    g.fillStyle(0x9aa2b2, 0.85);
+    g.fillRect(x + 3, y, 2, h);
+    // Shadow column
+    g.fillStyle(0x3a4250, 0.7);
+    g.fillRect(x + w - 4, y, 2, h);
+    // Brushed grain
     g.lineStyle(1, 0x6a7484, 0.45);
-    for (let gx = x + 8; gx < x + w - 4; gx += 6) {
-      g.lineBetween(gx, y + 4, gx, y + h - 4);
+    for (let gx = x + 7; gx < x + w - 3; gx += 5) {
+      g.lineBetween(gx, y + 2, gx, y + h - 2);
     }
-    // Inset panel
-    g.lineStyle(1, 0x2a3240, 0.8);
-    g.strokeRect(x + 6, y + 10, w - 12, h - 20);
-    // Handle (small vertical bar near the meeting edge)
-    const hx = handleRight ? x + w - 8 : x + 4;
-    g.fillStyle(0x22262e, 1);
-    g.fillRect(hx, y + h / 2 - 12, 3, 24);
-    g.fillStyle(0x55606e, 1);
-    g.fillRect(hx + 1, y + h / 2 - 12, 1, 24);
-    // Outer edge highlight
-    g.lineStyle(1, 0x22262e, 1);
-    g.strokeRect(x, y, w, h);
+    // Subtle inset panel outline (only if enough room vertically)
+    if (h > 24) {
+      g.lineStyle(1, 0x2a3240, 0.7);
+      g.strokeRect(x + 5, y + 6, w - 10, h - 12);
+    }
   }
 }
+
