@@ -2,83 +2,68 @@
 
 ## Purpose
 
-Add a reusable game object (player, enemy, collectible, UI element, etc.) to the game. Game objects encapsulate their own rendering, physics, and behavior.
+Add a reusable gameplay entity (player, enemy, collectible, interactive prop). Entities encapsulate their own rendering, physics body, and per-frame behaviour.
 
-## Based On
+## Convention
 
-- Standard Phaser `Phaser.GameObjects.Sprite` / `Phaser.Physics.Arcade.Sprite` patterns.
-- Project convention: reusable objects live in `src/objects/` with PascalCase filenames.
+- Entities live in `src/entities/` (or `src/entities/enemies/` for enemy variants).
+- Filename = PascalCase class name, `.ts`.
+- Extend `Phaser.Physics.Arcade.Sprite` for physics-driven entities; `Phaser.GameObjects.Sprite` for static visuals.
+- Textures are **procedural** — register them in `SpriteGenerator` (`src/systems/SpriteGenerator.ts`), not loaded as image files.
 
 ## Template
 
-Create a new file at `src/objects/<ObjectName>.js`:
+`src/entities/MyThing.ts`:
 
-```js
-import Phaser from 'phaser';
+```ts
+import * as Phaser from 'phaser';
 
-export class ObjectName extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, texture) {
-    super(scene, x, y, texture);
-
+export class MyThing extends Phaser.Physics.Arcade.Sprite {
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    super(scene, x, y, 'my-thing');      // 'my-thing' = texture key from SpriteGenerator
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // Configure physics body
     this.setCollideWorldBounds(true);
+    // this.setSize(…); this.setOffset(…); tune the body as needed.
   }
 
-  update(time, delta) {
-    // Per-frame behavior
+  update(_time: number, _delta: number): void {
+    // Per-frame behaviour. Called from the scene's update() loop, not automatically.
   }
 }
 ```
 
-For non-physics objects, extend `Phaser.GameObjects.Sprite` instead and omit the physics lines.
+## Integration
 
-## Integration Steps
+1. Add the texture in `SpriteGenerator` and ensure it's generated during `BootScene`.
+2. Instantiate the entity in the scene's `create()`:
+   ```ts
+   this.myThing = new MyThing(this, 400, 300);
+   ```
+3. If the entity has per-frame logic, call it from the scene's `update()`:
+   ```ts
+   update(time: number, delta: number) {
+     this.myThing?.update(time, delta);
+   }
+   ```
+4. For collision / overlap, wire it up with `this.physics.add.collider(...)` or `.overlap(...)` in `create()`.
 
-1. Create the object file in `src/objects/`.
-2. Ensure the texture/spritesheet is loaded in the `Preloader` scene.
-3. Import and instantiate the object inside the scene's `create()` method:
+## Side effects via EventBus
 
-```js
-import { ObjectName } from '../objects/ObjectName.js';
+Trigger sounds, particles, UI feedback through the typed EventBus — don't call `AudioManager` directly:
 
-create() {
-  this.myObject = new ObjectName(this, 400, 300, 'texture-key');
-}
+```ts
+import { eventBus } from '../systems/EventBus';
+eventBus.emit('sfx:jump');
 ```
 
-4. If the object has an `update()` method, call it from the scene's `update()`:
+Declare any new event names in `GameEvents` (`src/systems/EventBus.ts`) so TypeScript enforces payload correctness across the codebase.
 
-```js
-update(time, delta) {
-  this.myObject.update(time, delta);
-}
-```
+## Persistence
 
-## Prerequisites
+If the entity contributes to save state (collectible counts, unlocks, …), go through `ProgressionSystem` — never import `SaveManager` directly from scenes or entities. Add the field to `ProgressionState` / `SaveData` and update `defaultState`, `persist`, `loadFromSave`.
 
-Using `Phaser.Physics.Arcade.Sprite` requires Arcade physics to be enabled in the game config in `src/main.js`:
+## Gravity
 
-```js
-const config = {
-  // ...
-  physics: {
-    default: 'arcade',
-    arcade: {
-      gravity: { y: 0 },
-      debug: false
-    }
-  }
-};
-```
-
-Adjust `gravity` as needed for your game (e.g., `{ y: 300 }` for a platformer).
-
-## Conventions
-
-- One class per file, file named after the class.
-- Objects receive `scene` as the first constructor argument so they can register themselves.
-- Keep object-specific input handling inside the object class to avoid cluttering scenes.
-- Use `scene.add.existing(this)` and `scene.physics.add.existing(this)` in the constructor to self-register.
+The game config in `src/main.ts` already enables Arcade physics with `gravity.y = PLAYER_GRAVITY`. Entities that shouldn't fall need `this.setAllowGravity(false)`.

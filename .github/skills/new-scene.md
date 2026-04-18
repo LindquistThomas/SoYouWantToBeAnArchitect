@@ -2,57 +2,82 @@
 
 ## Purpose
 
-Add a new Phaser scene to the game. Every distinct screen or game state (menu, gameplay, game-over, etc.) is its own scene.
+Add a new Phaser scene. Every distinct screen or gameplay area is its own scene.
 
-## Based On
+For a playable **floor** (platforming level with tokens, enemies, info points), prefer extending `LevelScene` — see the "New floor" variant at the bottom.
 
-- Standard Phaser `Phaser.Scene` lifecycle used in every Phaser project.
-- Project convention: scenes live in `src/scenes/` with PascalCase filenames.
+## Convention
+
+- Scenes live in `src/scenes/` (or `src/scenes/products/` for product detail rooms).
+- Filename = exported class name in PascalCase, suffixed with `Scene` (e.g. `LobbyScene.ts`).
+- The string passed to `super(...)` is the scene **key** and must be unique. By convention it matches the class name.
 
 ## Template
 
-Create a new file at `src/scenes/<SceneName>.js`:
+Create `src/scenes/<Name>Scene.ts`:
 
-```js
-import Phaser from 'phaser';
+```ts
+import * as Phaser from 'phaser';
 
-export class SceneName extends Phaser.Scene {
+export class NameScene extends Phaser.Scene {
   constructor() {
-    super('SceneName');
+    super('NameScene');
   }
 
-  preload() {
-    // Load assets specific to this scene (prefer using the Preloader scene instead)
+  create(): void {
+    // Build the scene. Assets should already be loaded by BootScene.
+    // Register zones / input / UI here.
+    this.events.once('shutdown', () => {
+      // Unsubscribe any EventBus handlers here.
+    });
   }
 
-  create() {
-    // Set up game objects, input, and events
-  }
-
-  update(time, delta) {
-    // Per-frame game logic
+  update(_time: number, _delta: number): void {
+    // Per-frame logic (zoneManager.update(), entity updates, …).
   }
 }
 ```
 
-## Integration Steps
+## Integration
 
-1. Create the scene file in `src/scenes/`.
-2. Import the scene in `src/main.js`.
-3. Add the scene class to the `scene` array in the Phaser game config.
+1. Register the scene in `src/main.ts`:
+   ```ts
+   import { NameScene } from './scenes/NameScene';
+   // …
+   scene: [BootScene, MenuScene, ElevatorScene, /* …, */ NameScene],
+   ```
+2. If the scene has background music, add it to `SCENE_MUSIC` in `src/config/audioConfig.ts`:
+   ```ts
+   NameScene: 'music_floor2',
+   ```
+   `MusicPlugin` will start/stop it automatically on scene transitions.
+3. Transition into the scene with `this.scene.start('NameScene')`. Elevator-driven transitions go through `ElevatorScene`.
 
-```js
-// In src/main.js
-import { SceneName } from './scenes/SceneName.js';
+## New floor variant
 
-const config = {
-  // ...
-  scene: [Boot, Preloader, MainMenu, Game, SceneName]
-};
+Floors extend `LevelScene` and declare their content as a `LevelConfig`:
+
+```ts
+import { LevelScene } from './LevelScene';
+
+export class MyFloorScene extends LevelScene {
+  constructor() {
+    super('MyFloorScene', {
+      floorId: FLOORS.MY_FLOOR,
+      platforms: [/* … */],
+      tokens:    [/* … */],
+      enemies:   [{ type: 'slime', x: 400, y: 700, minX: 300, maxX: 600, speed: 60 }],
+      infoPoints:[{ id: 'my-info-card', x: 800, y: 700 /*, zoneRadius?: number */ }],
+    });
+  }
+}
 ```
 
-## Conventions
+Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and register the scene in `main.ts`.
 
-- The string passed to `super()` must be unique across all scenes and is used as the scene key.
-- Keep asset loading in the `Preloader` scene whenever possible; only use `preload()` in other scenes for scene-specific assets.
-- Transition between scenes using `this.scene.start('SceneKey')`.
+## Conventions checklist
+
+- Load assets in `BootScene`, not in the new scene.
+- Clean up EventBus subscriptions on `shutdown` (see `src/systems/EventBus.ts`).
+- Zone-gated UI starts hidden; reveal it via `zone:enter`.
+- Don't reference raw keycodes — use `GameAction`s through `scene.inputs`.

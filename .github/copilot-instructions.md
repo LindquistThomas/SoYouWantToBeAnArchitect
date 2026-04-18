@@ -1,282 +1,178 @@
-# Copilot Instructions for MyFirstPhaserGame
+# Copilot Instructions — So You Want To Be An Architect
 
-## Project Overview
+A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Units) to unlock floors of a building, each representing a domain team.
 
-This is a Phaser-based browser game built entirely through vibe coding (AI-assisted development). The project uses the Node.js ecosystem with Vite as the bundler.
-
-## Repository Structure
+## Repository structure
 
 ```
-MyFirstPhaserGame/
-├── .github/
-│   ├── copilot-instructions.md   # This file — AI coding guidance
-│   └── skills/                   # Prompt-based skills for common tasks
-├── .gitignore                    # Node.js / Vite ignores
-├── LICENSE                       # MIT
-├── README.md                     # Project description
-└── CONTRIBUTING.md               # Contributor guide
+.
+├── index.html                # Vite entry (loads src/main.ts)
+├── package.json              # Scripts, deps (phaser ^3.90)
+├── tsconfig.json             # TypeScript strict
+├── vite.config.ts            # Bundler config
+├── vitest.config.ts          # Unit tests (jsdom, 60% floor on src/systems & src/input)
+├── playwright.config.ts      # E2E / visual tests
+├── eslint.config.js
+├── public/
+│   └── music/                # MP3/OGG music tracks loaded in BootScene
+├── src/
+│   ├── main.ts               # Phaser.Game config + scene registration
+│   ├── config/               # gameConfig, levelData, audioConfig, infoContent, quizData
+│   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator
+│   ├── input/                # Typed action bindings (actions.ts, bindings.ts, InputService)
+│   ├── plugins/              # MusicPlugin, DebugPlugin (Phaser ScenePlugins)
+│   ├── scenes/               # BootScene, MenuScene, ElevatorScene, LobbyScene, …TeamScene, products/
+│   ├── systems/              # ProgressionSystem, EventBus, ZoneManager, AudioManager,
+│   │                         # QuizManager, InfoDialogManager, SaveManager,
+│   │                         # SpriteGenerator, SoundGenerator, MusicGenerator
+│   └── ui/                   # InfoDialog, ModalBase, ElevatorButtons, InfoIcon, HUD, …
+├── tests/                    # Playwright specs + helpers/ (see testing section)
+└── .github/
+    ├── copilot-instructions.md   # This file
+    └── skills/                   # new-scene, add-game-object, debug-with-playwright, git-worktree
 ```
 
-As the game grows, the expected source layout (following standard Phaser + Vite conventions) is:
+There is **no** `public/assets/` directory — only `public/music/` exists today. Procedural sprites and SFX are generated at runtime by `SpriteGenerator` and `SoundGenerator`; only music is shipped as static files.
 
-```
-src/
-├── main.js          # Phaser game config and entry point
-├── scenes/          # One file per Phaser scene
-│   ├── Boot.js
-│   ├── Preloader.js
-│   ├── MainMenu.js
-│   └── Game.js
-└── objects/         # Reusable game objects and sprites
-public/
-└── assets/          # Images, audio, tilemaps, spritesheets
-index.html           # HTML shell that loads the Vite bundle
-package.json         # Dependencies and scripts
-vite.config.js       # Vite configuration
-```
+## Language, tooling, scripts
 
-## Key Conventions
+- **TypeScript** (strict), ES modules. Never introduce `.js` source files.
+- Scenes, entities, UI components, and systems use **PascalCase** filenames matching the exported class.
+- Config / tooling files use lowercase (`vite.config.ts`, `eslint.config.js`).
+- Package manager: **npm** (lockfile is `package-lock.json`).
 
-### Language & Style
-- Use **JavaScript** (ES modules, `import`/`export`).
-- Follow the naming conventions implied by the Node.js `.gitignore` already in the repo.
-- File names use **PascalCase** for scenes and game objects (e.g., `MainMenu.js`, `Player.js`).
-- Config and tooling files use **lowercase** (e.g., `vite.config.js`, `package.json`).
+Scripts from `package.json`:
 
-### Phaser Patterns
-- Each scene is a class extending `Phaser.Scene`.
-- Scenes implement `preload()`, `create()`, and `update()` lifecycle methods as needed.
-- Scene keys are registered as strings in the Phaser game config and must match the key passed to `super()` in the scene constructor.
-- Assets are loaded in a dedicated `Preloader` scene, not scattered across scenes.
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server (exposes `window.__game` for tests). |
+| `npm run build` | `tsc && vite build` — typecheck is part of the build. |
+| `npm run lint` | ESLint across the repo. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run test:unit` | Vitest (pure logic; jsdom). |
+| `npm run test:unit:coverage` | Vitest with coverage; 60% floor on `src/systems/**` and `src/input/**`. |
+| `npm run test:e2e` | Playwright integration specs. |
+| `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
+| `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm test` | `test:unit && test:e2e`. |
+| `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — the pre-PR gate. |
 
-### Bundling & Dev Server
-- **Vite** is the bundler (indicated by Vite-specific entries in `.gitignore`).
-- Use `npm run dev` for local development and `npm run build` for production builds.
-- Static assets live in `public/assets/` so Vite serves them as-is.
+**Before declaring work done:** run `npm run test:all`. For pure-docs changes, `npm run lint && npm run typecheck` is sufficient.
 
-## How to Extend This Project
+## Architecture pointers
 
-1. **Add a new scene** — Use the `new-scene` skill in `.github/skills/`.
-2. **Add a game object** — Use the `add-game-object` skill in `.github/skills/`.
-3. **Add an asset** — Place it in `public/assets/` and load it in the `Preloader` scene.
-4. **Add a dependency** — Run `npm install <package>` and import it where needed.
+Short index of where things live. Reach for these instead of re-implementing.
 
-### Persistence / Save System
+- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — the only public API for save/load. Tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Persists via `SaveManager` (localStorage key `architect_default_v1`).
+- **`SaveManager`** — infrastructure. Scenes must not import it; use `ProgressionSystem`. The one exception is `SaveManager.hasSave()` for UI checks (e.g. a "Continue" button).
+- **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
+- **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.
+- **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`.
+- **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). `MusicGenerator` is a retained but unused procedural fallback.
+- **`SpriteGenerator`** — procedural pixel-art textures for player, enemies, tokens, platforms, elevator cab, etc.
+- **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data in `src/config/quizData.ts`.
+- **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content in `src/config/infoContent.ts`.
+- **`LevelScene`** (`src/scenes/LevelScene.ts`) — shared base for floor scenes. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) provide a `LevelConfig` with platforms, tokens, enemies (`type: 'slime' | 'bot'`), and info points. Enemies are scene-local, no persistence; they respawn on re-entry.
+- **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
-Player progress is saved to localStorage via `src/systems/SaveManager.ts`. When adding new features that introduce persistent state (new collectibles, unlockables, stats, etc.):
+## Conventions
 
-1. Add the new data to `SaveData` in `SaveManager.ts` and to `ProgressionState` in `ProgressionSystem.ts`.
-2. Update `defaultState()`, `persist()`, and `loadFromSave()` in `ProgressionSystem` to handle the new fields.
-3. Call `this.persist()` in ProgressionSystem after any state mutation that should survive a reload.
-4. **Do not** import `SaveManager` from scene code — interact with persistence only through `ProgressionSystem`'s public API. The one exception is `hasSave()` for UI checks (e.g. showing a "Continue" button).
+- **EventBus lifecycle**: always unsubscribe handlers in the scene's `shutdown` event. EventBus is a singleton; Phaser scenes are reused between start/stop, so handlers accumulate forever if not cleaned up.
+- **Zone-gated UI** (info icons, lobby kiosks, …) starts hidden; `zone:enter`/`zone:exit` reveals and hides it. Never initialise a zone-gated element as visible.
+- **Direct calls beat events** for parent→child updates (e.g. refreshing a quiz badge on an `InfoIcon` after a dialog closes). Use EventBus only for loose coupling across systems.
+- **Gameplay mechanics that share a widget with content zones** (e.g. in-room lift buttons) must drive visibility from physics state, not from `ZoneManager`. Content zones are for informational content only.
+- **Persistent state lives in `ProgressionSystem`**. When adding a new persistent field:
+  1. Extend `SaveData` in `SaveManager.ts` and `ProgressionState` in `ProgressionSystem.ts`.
+  2. Update `defaultState()`, `persist()`, `loadFromSave()`.
+  3. Call `this.persist()` after any mutation that must survive a reload.
+- **Text resolution**: `main.ts` monkey-patches `scene.add.text` / `scene.make.text` to default to `resolution: 2` so glyphs stay crisp after FIT scaling. Don't re-override this unless you have a reason.
+- **Dev-only global**: `main.ts` exposes `window.__game` when `import.meta.env.DEV` is true. Playwright relies on this.
 
-### EventBus Pattern
+## How to extend
 
-The project uses a standalone `EventBus` (`src/systems/EventBus.ts`) for loose coupling between game systems. It has no Phaser dependency and is imported as a singleton.
+### Add a scene
+Follow `.github/skills/new-scene.md`. Key steps: create `src/scenes/<Name>Scene.ts` extending `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
 
-**When to use the EventBus:**
-- Triggering side effects (audio, particles, UI feedback) from gameplay actions
-- Any case where the emitter shouldn't know about the consumer
-- Cross-system communication where direct imports create circular or tight coupling
+### Add a floor / level
+Subclass `LevelScene` and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.
 
-**When NOT to use the EventBus:**
-- Direct parent-child communication (pass callbacks or use Phaser's built-in scene events)
-- Single-use wiring where a direct function call is clearer
-- Performance-critical per-frame logic (event dispatch has overhead vs direct calls)
+### Add an enemy
+Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot', x, y, minX, maxX, speed }`. Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
 
-**Event naming conventions:**
-- `sfx:<action>` — sound effects (e.g., `sfx:jump`, `sfx:collect`)
-- `music:play` — play a music track by key
-- `music:stop` — stop current music
-- `zone:enter` — player entered a named content zone (payload: `zoneId: string`)
-- `zone:exit` — player left a named content zone (payload: `zoneId: string`)
+### Add a sound effect
+1. Generate the waveform in `SoundGenerator.generateSounds()` and register the audio key.
+2. Declare the event in `GameEvents` (`src/systems/EventBus.ts`) — TypeScript will now enforce correct usage everywhere.
+3. Add the event→key mapping in `SFX_EVENTS` (`src/config/audioConfig.ts`).
+4. Emit from the relevant entity: `eventBus.emit('sfx:myevent')`.
 
-**To add a new sound effect:**
-1. Generate the sound in `SoundGenerator.ts` and register it in `generateSounds()`
-2. Add the event→key mapping in `src/config/audioConfig.ts` under `SFX_EVENTS`
-3. Emit the event from the relevant entity/system: `eventBus.emit('sfx:myevent')`
+### Add music for a scene
+1. Put the file in `public/music/` and load it in `BootScene.preload()` with key `music_<name>`.
+2. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
-**To add music for a new scene:**
-1. Place the audio file under `public/music/` (MP3 or OGG) and load it in `BootScene.preload()` with a `music_<name>` key
-2. Add the scene→music mapping in `src/config/audioConfig.ts` under `SCENE_MUSIC`
-3. The `MusicPlugin` handles playback automatically — no scene code changes needed
+### Add an info card
+Add the entry to `src/config/infoContent.ts`. Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `id`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
 
-### Zone System
+### Add a quiz
+Add the question set to `src/config/quizData.ts` keyed by ID. Quiz state is tracked automatically by `QuizManager`.
 
-Content zones gate which info cards, quizzes, and zone-specific UI (e.g. ElevatorButtons) are accessible. **This is the default pattern for any feature that should only appear in a specific area of a scene.**
-
-**How it works:**
-
-1. `ZoneManager` (`src/systems/ZoneManager.ts`) tracks named zones. Each zone has an ID and a `check: () => boolean` lambda — the check can be anything (physics body contact, proximity distance, rectangle overlap, custom state).
-2. `zoneManager.update()` is called once per frame. It emits `zone:enter` or `zone:exit` on the EventBus **only when the state changes** — not every frame.
-3. UI components subscribe to those events and show/hide themselves. The scene's update loop has no `setVisible()` calls for zone-gated elements.
-4. `zoneManager.getActiveZone()` provides a synchronous query for keyboard input handlers that need the current zone immediately (no event latency needed).
-
-**Adding a new zone (e.g. a lobby kiosk):**
-
-```typescript
-// In create() — register the zone:
-zoneManager.register('lobby-kiosk', () => Phaser.Math.Distance.Between(...) < 200);
-
-// In create() — subscribe once, unsubscribe on shutdown:
-const onEnter = (...args: unknown[]) => {
-  if ((args[0] as string) === 'lobby-kiosk') myIcon.setVisible(true);
-};
-const onExit = (...args: unknown[]) => {
-  if ((args[0] as string) === 'lobby-kiosk') myIcon.setVisible(false);
-};
+### Add a zone
+Register in the scene's `create()`:
+```ts
+zoneManager.register('my-zone', () => /* boolean */);
+const onEnter = (id: string) => { if (id === 'my-zone') thing.setVisible(true); };
+const onExit  = (id: string) => { if (id === 'my-zone') thing.setVisible(false); };
 eventBus.on('zone:enter', onEnter);
 eventBus.on('zone:exit', onExit);
 this.events.once('shutdown', () => {
   eventBus.off('zone:enter', onEnter);
   eventBus.off('zone:exit', onExit);
 });
-
-// In update() — one call drives all zones:
+// In update():
 zoneManager.update();
 ```
 
-**Rules:**
-- Always unsubscribe from the EventBus in the scene's `shutdown` event. EventBus is a singleton; Phaser scenes are not destroyed between start/stop, so handlers accumulate if not cleaned up.
-- Info icons (`InfoIcon`) start hidden; zone events reveal them. Never initialise a zone-gated icon as visible.
-- Badge refresh (quiz result on an icon) is a direct parent-to-child call — use `icon.setQuizBadge()` directly in the dialog close callback. No event needed.
-- Gameplay mechanics that happen to use the same button (e.g. in-room lift buttons in `LevelScene`) are **not** content zones. Drive them with direct `setVisible()` calls from physics state — not via ZoneManager.
-- `LevelConfig.infoPoints` accepts an optional `zoneRadius` per point (default 250 px). Override `createInfoZones()` in a subclass for non-circular zones.
+## Testing
 
-**Zone IDs match content IDs** (`infoContent.ts` keys) so the same string identifies both the zone and the dialog to open.
+Two suites, different purposes:
 
-### Audio Architecture
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Has a 60% coverage floor on `src/systems/**` and `src/input/**`. Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
-Audio is fully decoupled via the EventBus. `AudioManager` is a purely reactive subscriber — no module calls it directly. Music is triggered automatically by `MusicPlugin` (a Phaser ScenePlugin) on scene transitions. SFX are triggered by entities emitting events on the EventBus.
+Playwright helpers in `tests/helpers/playwright.ts`:
 
-SFX are procedurally generated at runtime in `SoundGenerator.ts`. Background music is loaded from audio files under `public/music/` in `BootScene.preload()`. A procedural `MusicGenerator.ts` is retained as an unused fallback — see `public/music/README.md`.
+- `waitForGame(page)` — waits for `window.__game`, then focuses the canvas so keyboard input reaches Phaser.
+- `waitForScene(page, 'SceneKey')` — waits for the scene to be active and settle.
+- `seedFullProgressSave(page, { totalAU?, floorAU? })` — pre-populates the save slot and marks the elevator info dialog as seen so it doesn't swallow input.
+- `clearStorage(page)` — wipes localStorage before boot.
+- `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.
 
-### AI Collaboration Guidelines
+For detailed Playwright debugging recipes, see `.github/skills/debug-with-playwright.md`.
 
-When responding to ideas or feature requests:
-- **Always challenge ideas critically** — identify trade-offs, edge cases, and simpler alternatives before implementing
-- **Provide options with pros and cons** — don't just implement the first approach; present at least 2 options for non-trivial decisions
-- **Push back on over-engineering** — if a simpler solution exists, present it alongside the complex one
-- **Question assumptions** — ask "do we actually need this?" before building abstractions
+## Common tripwires
 
-## Debugging & Visual Verification with Playwright
+Short list of recurring mistakes. Check here first when something breaks inexplicably.
 
-When you need to see how a feature actually looks in the browser, or when a bug is hard to reproduce without visual context, use the Playwright screenshot tests:
+- **`Space` is Jump only.** Scene transitions and dialog confirmation go through `Enter` (bound to `Confirm` / `Interact` / `ToggleInfo`). In Playwright, press `Enter`, not `Space`, to start the game from `MenuScene`.
+- **Unsubscribe EventBus handlers on scene shutdown** (see Conventions). Missing this produces ghost handlers that fire for every future scene instance.
+- **Never `import { saveManager } from '.../SaveManager'` in scene code** — go through `ProgressionSystem`. The one whitelisted exception is `SaveManager.hasSave()` for a "Continue" UI check.
+- **Mask graphics for a scrollFactor:0 modal must also set `scrollFactor(0)`.** Otherwise a scrolled camera drags the mask off the modal and the content disappears (`src/ui/InfoDialog.ts`, `src/ui/ModalBase.ts`).
+- **Elevator boundary clamp** must only zero velocity when moving *out* of bounds (`src/entities/Elevator.ts`). Clamping unconditionally at the start position blocks upward movement.
+- **Platform Y = tile TOP, not tile center.** `LevelScene` adds `TILE_SIZE/2` when placing tiles.
+- **Info icons start hidden**; a `zone:enter` is what reveals them. Do not set them visible in `create()`.
+- **Local branches use `git worktree`**, not `git checkout -b`. Switching the primary checkout clobbers shared `node_modules`/`dist`/`playwright-report` and breaks concurrent sessions. See `.github/skills/git-worktree.md`.
 
-```bash
-# Run all screenshot tests and save PNGs to tests/screenshots/
-npm test
+## Git branching
 
-# Run with a visible browser window (useful for watching scene transitions)
-npm run test:headed
+For any local branch, use a sibling git worktree at `C:\code\SoYouWantToBeAnArchitect-<slug>` with a kebab-case, type-prefixed branch name (`fix/…`, `feat/…`, `chore/…`). The primary checkout stays on `main`. Full workflow and integration steps live in `.github/skills/git-worktree.md`.
 
-# Open the interactive Playwright UI (step-by-step trace, timeline scrubber)
-npm run test:ui
-```
+If the user explicitly asks to work on the current checkout (no worktree), honour that.
 
-Screenshots land in `tests/screenshots/` and are committed to the repo so reviewers can see the current visual state without running the game.
+## AI collaboration
 
-### Adding a one-off debug screenshot
+When responding to feature requests or design ideas:
 
-Inside any test in `tests/gameplay.spec.ts`, call:
-
-```ts
-await page.screenshot({ path: 'tests/screenshots/debug-my-feature.png' });
-// or clip to a specific area:
-await page.screenshot({ path: 'tests/screenshots/debug-hud.png', clip: { x: 0, y: 0, width: 640, height: 120 } });
-```
-
-### Jumping to a specific scene for inspection
-
-The dev server exposes `window.__game` (a `Phaser.Game` reference). Tests use it to navigate without going through the full game flow:
-
-```ts
-// Wait for an active scene then call its ScenePlugin to switch
-await page.evaluate(() => {
-  const scene = window.__game!.scene.getScenes(true)
-    .find(s => s.sys.settings.key === 'ElevatorScene');
-  scene!.scene.start('PlatformTeamScene');
-});
-await waitForScene(page, 'PlatformTeamScene');
-await page.screenshot({ path: 'tests/screenshots/debug-floor1.png' });
-```
-
-For private methods (like `ElevatorScene.enterFloor`), use bracket notation — TypeScript visibility is stripped at runtime:
-
-```ts
-(scene as Record<string, unknown>)['enterFloor'](1);
-```
-
-### Pre-seeding progression state
-
-To skip grinding AU tokens and test locked content, inject a save into `localStorage` before the page loads:
-
-```ts
-await page.addInitScript(() => {
-  localStorage.setItem('architect_default_v1', JSON.stringify({
-    totalAU: 50,
-    floorAU: { 0: 0, 1: 25, 2: 25 },
-    unlockedFloors: [0, 1, 2],
-    currentFloor: 0,
-    collectedTokens: { 0: [], 1: [], 2: [] },
-  }));
-  // Mark info dialogs as seen so they don't block keyboard input:
-  localStorage.setItem('architect_info_seen_v1', JSON.stringify(['architecture-elevator']));
-});
-```
-
-## Local Branching — Use Git Worktrees
-
-When the user asks you to create a new branch for local work, **use a git worktree** instead of switching the current checkout. This keeps `main` (and its `node_modules`, `dist/`, `playwright-report/`, `test-results/`) intact while you work.
-
-### Convention
-
-- Create sibling worktrees next to the repo: `C:\code\SoYouWantToBeAnArchitect-<short-branch-slug>`
-- Branch name: descriptive, kebab-case, with a type prefix (e.g. `fix/`, `feat/`, `chore/`)
-
-### Workflow
-
-```powershell
-# From the main repo on `main`
-git worktree add ..\SoYouWantToBeAnArchitect-<slug> -b <type>/<slug>
-cd ..\SoYouWantToBeAnArchitect-<slug>
-npm install          # each worktree needs its own node_modules
-# ...edit, build (`npm run build`), test (`npm test`), commit...
-```
-
-When the task is done, ask the user whether to **rebase** or **merge** back to `main`, then integrate from the main worktree:
-
-```powershell
-cd ..\SoYouWantToBeAnArchitect
-git fetch origin
-# Rebase path:
-git -C ..\SoYouWantToBeAnArchitect-<slug> rebase origin/main
-git merge --ff-only <type>/<slug>
-# Or merge path:
-git merge --no-ff <type>/<slug>
-
-# Clean up
-git worktree remove ..\SoYouWantToBeAnArchitect-<slug>
-git branch -d <type>/<slug>
-```
-
-### Rules
-
-- Never delete or force-remove a worktree with uncommitted changes without confirming with the user.
-- Do not share `node_modules` across worktrees via symlinks unless the user asks — Vite/Playwright caches can collide.
-- `playwright-report/` and `test-results/` are per-worktree by design; don't copy them back to `main`.
-- If the user explicitly asks to work on the current checkout (no worktree), honor that.
-
-## Vibe Coding Workflow
-
-This project is developed through conversational AI assistance. When prompting:
-
-- Describe the desired game behavior or mechanic in plain language.
-- Reference existing scenes or objects by name so the AI can locate them.
-- Ask for one change at a time to keep diffs small and reviewable.
-- Test in the browser after each change (`npm run dev`).
-
-Example prompts:
-- "Add a Player object in `src/objects/Player.js` that moves with arrow keys."
-- "Create a GameOver scene that shows the final score and a restart button."
-- "Make the enemies in `Game.js` spawn every 2 seconds from the right side."
+- **Challenge before implementing.** Identify trade-offs, edge cases, and simpler alternatives. Don't just build the first thing that comes to mind.
+- **Offer options for non-trivial decisions.** Present at least two approaches with brief pros/cons; let the user choose.
+- **Resist over-engineering.** If a 10-line change beats a new abstraction, say so.
+- **Question assumptions.** "Do we actually need this?" is a valid question.
+- **One change at a time.** Keep diffs small and reviewable; run `npm run test:all` (or the narrower script relevant to the change) before declaring done.
