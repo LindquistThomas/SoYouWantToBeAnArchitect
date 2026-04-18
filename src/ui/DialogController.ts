@@ -23,7 +23,7 @@ export interface DialogControllerOptions {
 /**
  * Shared orchestrator for info + quiz dialogs.
  *
- * Both HubScene and LevelScene used to carry near-identical
+ * Both ElevatorScene and LevelScene used to carry near-identical
  * `openInfoDialog` / `openQuizDialog` pairs. This class owns that flow:
  * the dialog-open guard, INFO_POINTS / QUIZ_DATA lookups, quiz-status
  * derivation, and parent-to-child badge refresh after a quiz closes.

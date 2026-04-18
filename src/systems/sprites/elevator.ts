@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
 
-/** Hub elevator: cab platform + concrete shaft wall tile. */
+/** Elevator: cab platform + concrete shaft wall tile. */
 export function generateElevatorSprites(scene: Phaser.Scene): void {
   // --- Cab platform (cyan slab) ---
   const ew = 160;

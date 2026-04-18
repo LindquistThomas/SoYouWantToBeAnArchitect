@@ -11,13 +11,13 @@ const ELEVATOR_CAB_HALF_WIDTH = 70;
 const ELEVATOR_PLAT_HW = 80;
 
 /**
- * Owns the hub's elevator entity and the per-frame ride logic.
+ * Owns the scene's elevator entity and the per-frame ride logic.
  *
  * Encapsulates the sticky "on-elevator" state, cab constraints while
  * between floors, and music-cue emission when the cab starts/stops.
- * Constructed by HubScene in `create()` after the player exists.
+ * Constructed by ElevatorScene in `create()` after the player exists.
  */
-export class HubElevatorController {
+export class ElevatorController {
   readonly elevator: Elevator;
   /** Half-width of the elevator platform physics body (for floor-entry checks). */
   static readonly PLATFORM_HALF_WIDTH = ELEVATOR_PLAT_HW;
@@ -109,7 +109,7 @@ export class HubElevatorController {
     this.elevator.updateVisuals();
   }
 
-  /** Synchronous query used by HubScene.checkFloorEntry to exclude shaft pixels. */
+  /** Synchronous query used by ElevatorScene.checkFloorEntry to exclude shaft pixels. */
   getPlatformX(): number {
     return this.elevator.platform.x;
   }

@@ -24,7 +24,7 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 
 | Floor | Department | Theme |
 |-------|-----------|-------|
-| F0 | Lobby | Hub — the elevator shaft |
+| F0 | Lobby | Elevator shaft |
 | F1 | Platform Team | Green — Infrastructure tokens |
 | F2 | Cloud Team | Blue — Cloud certification tokens |
 

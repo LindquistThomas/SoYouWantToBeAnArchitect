@@ -61,7 +61,7 @@ export interface LevelConfig {
  * - Fixed camera (no scrolling) — the room fits GAME_WIDTH × GAME_HEIGHT.
  * - Multiple platforms at different heights.
  * - Small in-room elevators the player rides with Up/Down.
- * - Exit door returns to the hub elevator shaft.
+ * - Exit door returns to the elevator shaft.
  */
 export class LevelScene extends Phaser.Scene {
   protected player!: Player;
@@ -494,16 +494,16 @@ export class LevelScene extends Phaser.Scene {
       this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Elevator`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
-      if (this.inputs.justPressed('Interact')) this.returnToHub();
+      if (this.inputs.justPressed('Interact')) this.returnToElevator();
     } else {
       this.interactPrompt?.setVisible(false);
     }
   }
 
-  protected returnToHub(): void {
+  protected returnToElevator(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('HubScene'));
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene'));
   }
 }

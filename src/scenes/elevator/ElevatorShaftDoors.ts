@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH } from '../../config/gameConfig';
 
 /**
- * Side-view landing doorways at one floor of the hub shaft.
+ * Side-view landing doorways at one floor of the elevator shaft.
  *
  * Viewed from the side, the two "doors" read as rectangular openings cut
  * into the shaft walls at the walking surface — one on the left wall, one
@@ -15,7 +15,7 @@ import { GAME_WIDTH } from '../../config/gameConfig';
  * platform Y is within `PROXIMITY` of this floor's dock Y, and toward 0
  * otherwise.
  */
-export class HubFloorDoors {
+export class ElevatorShaftDoors {
   private readonly gfx: Phaser.GameObjects.Graphics;
   private readonly leftX: number;
   private readonly rightX: number;
@@ -44,7 +44,7 @@ export class HubFloorDoors {
     this.leftX = shaftLeftEdge;
     this.rightX = shaftRightEdge;
     this.openingBottom = walkY;
-    this.openingTop = walkY - HubFloorDoors.OPENING_HEIGHT;
+    this.openingTop = walkY - ElevatorShaftDoors.OPENING_HEIGHT;
 
     // Depth 3: above the concrete back wall + steel pillars (depth 0/1) so
     // the opening "cuts through" the pillar visually; below the cab (depth
@@ -56,9 +56,9 @@ export class HubFloorDoors {
 
   update(cabY: number, deltaMs: number): void {
     const dist = Math.abs(cabY - this.dockY);
-    this.target = dist < HubFloorDoors.PROXIMITY ? 1 : 0;
+    this.target = dist < ElevatorShaftDoors.PROXIMITY ? 1 : 0;
 
-    const step = HubFloorDoors.RATE * deltaMs;
+    const step = ElevatorShaftDoors.RATE * deltaMs;
     if (this.openAmount < this.target) {
       this.openAmount = Math.min(this.target, this.openAmount + step);
     } else if (this.openAmount > this.target) {
@@ -81,8 +81,8 @@ export class HubFloorDoors {
 
   /** Draw a single doorway (opening + header slot + retractable panel) at centerX. */
   private drawOpening(g: Phaser.GameObjects.Graphics, centerX: number): void {
-    const w = HubFloorDoors.OPENING_WIDTH;
-    const h = HubFloorDoors.OPENING_HEIGHT;
+    const w = ElevatorShaftDoors.OPENING_WIDTH;
+    const h = ElevatorShaftDoors.OPENING_HEIGHT;
     const x = centerX - w / 2;
     const yTop = this.openingTop;
     const yBot = this.openingBottom;

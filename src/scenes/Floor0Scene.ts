@@ -46,11 +46,11 @@ export class Floor0Scene extends Phaser.Scene {
     hit.on('pointerdown', () => buttonBg.setFillStyle(0x0088cc, 0.95));
     hit.on('pointerup', () => {
       buttonBg.setFillStyle(0x44ccff, 0.95);
-      this.scene.start('HubScene');
+      this.scene.start('ElevatorScene');
     });
 
     this.contextToken = pushContext('menu');
-    const goBack = () => this.scene.start('HubScene');
+    const goBack = () => this.scene.start('ElevatorScene');
     this.inputs.on('Cancel', goBack);
     this.inputs.on('Confirm', goBack);
 

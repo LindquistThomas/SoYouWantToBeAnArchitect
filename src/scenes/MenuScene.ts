@@ -369,11 +369,11 @@ export class MenuScene extends Phaser.Scene {
 
   private startGame(): void {
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('HubScene', { loadSave: false }));
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', { loadSave: false }));
   }
 
   private continueGame(): void {
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('HubScene', { loadSave: true }));
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', { loadSave: true }));
   }
 }

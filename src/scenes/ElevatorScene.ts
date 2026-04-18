@@ -9,22 +9,22 @@ import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { DialogController } from '../ui/DialogController';
 import { ZoneManager } from '../systems/ZoneManager';
 import { markSeen } from '../systems/InfoDialogManager';
-import { HubZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './hub/HubZones';
-import { HubElevatorController } from './hub/HubElevatorController';
-import { HubFloorDoors } from './hub/HubShaftDoors';
+import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './elevator/ElevatorZones';
+import { ElevatorController } from './elevator/ElevatorController';
+import { ElevatorShaftDoors } from './elevator/ElevatorShaftDoors';
 
 const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
 const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
 
 /**
- * Product doors rendered directly on the PRODUCTS floor inside the hub.
+ * Product doors rendered directly on the PRODUCTS floor of the shaft.
  * Walking up to a door and pressing Space/Enter transitions straight to
  * the matching product room scene ΓÇö no intermediate hall scene.
  *
- * x is a world X in the hub (must lie in the right-of-shaft walk surface,
+ * x is a world X in the elevator scene (must lie in the right-of-shaft walk surface,
  * i.e. roughly 770..1250).
  */
-interface HubProductDoor {
+interface ElevatorProductDoor {
   x: number;
   label: string;
   sceneKey: string;
@@ -33,19 +33,19 @@ interface HubProductDoor {
 }
 
 /**
- * Hub / Elevator-shaft scene ΓÇö Impossible-Mission style.
+ * Elevator-shaft scene ΓÇö Impossible-Mission style.
  *
  * The player rides the elevator up and down using Up/Down controls.
  * At each floor there is an opening; walking off the elevator onto
  * the floor platform triggers a scene transition to that floor's level.
  *
  * Structural concerns are extracted to focused collaborators:
- *   - HubElevatorController  ΓÇö elevator entity, ride loop, music cues
- *   - HubZones               ΓÇö zone registrations, info icons, first-ride setup
+ *   - ElevatorController  ΓÇö elevator entity, ride loop, music cues
+ *   - ElevatorZones               ΓÇö zone registrations, info icons, first-ride setup
  *   - DialogController       ΓÇö info + quiz dialog orchestration
  * This scene owns world construction, the update loop, and scene transitions.
  */
-export class HubScene extends Phaser.Scene {
+export class ElevatorScene extends Phaser.Scene {
   private player!: Player;
   private hud!: HUD;
   private progression!: ProgressionSystem;
@@ -55,7 +55,7 @@ export class HubScene extends Phaser.Scene {
   private elevatorButtons?: ElevatorButtons;
 
   /** Product doors on the PRODUCTS floor. Start with two; easy to extend. */
-  private static readonly PRODUCT_DOORS: HubProductDoor[] = [
+  private static readonly PRODUCT_DOORS: ElevatorProductDoor[] = [
     { x: 900,  label: 'ISY Project Controls', sceneKey: 'ProductIsyProjectControlsScene', contentId: 'product-isy-project-controls' },
     { x: 1120, label: 'ISY Beskrivelse',      sceneKey: 'ProductIsyBeskrivelseScene',     contentId: 'product-isy-beskrivelse'      },
   ];
@@ -67,25 +67,25 @@ export class HubScene extends Phaser.Scene {
   private spawnAtProductDoor?: string;
 
   private dialogs!: DialogController;
-  private zones!: HubZones;
-  private elevatorCtrl!: HubElevatorController;
-  private shaftDoors: HubFloorDoors[] = [];
+  private zones!: ElevatorZones;
+  private elevatorCtrl!: ElevatorController;
+  private shaftDoors: ElevatorShaftDoors[] = [];
 
   private zoneManager = new ZoneManager();
 
-  /** Total scrollable world height for the hub shaft. */
+  /** Total scrollable world height for the elevator shaft. */
   private static readonly WORLD_HEIGHT = 2760;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   /** Number of tile rows stacked per floor slab. */
   private static readonly FLOOR_TILE_ROWS = 2;
   /** Pixel height of one floor slab. */
-  private static readonly FLOOR_H = HubScene.FLOOR_TILE_ROWS * TILE_SIZE; // 256
+  private static readonly FLOOR_H = ElevatorScene.FLOOR_TILE_ROWS * TILE_SIZE; // 256
   private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 56;
   private static readonly FLOOR_DETECTION_TOLERANCE = 18;
 
   constructor() {
-    super({ key: 'HubScene' });
+    super({ key: 'ElevatorScene' });
   }
 
   init(data?: { loadSave?: boolean; returnFromProductDoor?: string }): void {
@@ -107,7 +107,7 @@ export class HubScene extends Phaser.Scene {
     this.isTransitioning = false;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
-    const wh = HubScene.WORLD_HEIGHT;
+    const wh = ElevatorScene.WORLD_HEIGHT;
     this.physics.world.setBounds(0, 0, GAME_WIDTH, wh);
 
     this.createShaftBackground(wh);
@@ -115,7 +115,7 @@ export class HubScene extends Phaser.Scene {
     this.createLobbyDecorations();
     this.createFloorDecorations();
     this.createPlayer();
-    this.elevatorCtrl = new HubElevatorController(this, this.player, this.buildElevator());
+    this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator());
     this.createShaftDoors();
     this.createUI();
 
@@ -138,7 +138,7 @@ export class HubScene extends Phaser.Scene {
 
     const positions = this.getFloorYPositions();
     const lobbyY = positions[FLOORS.LOBBY];
-    this.zones = new HubZones({
+    this.zones = new ElevatorZones({
       scene: this,
       zoneManager: this.zoneManager,
       dialogs: this.dialogs,
@@ -146,14 +146,14 @@ export class HubScene extends Phaser.Scene {
       elevatorButtons: () => this.elevatorButtons,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
       boardX: 300,
-      boardY: lobbyY + HubScene.FLOOR_H - 60,
+      boardY: lobbyY + ElevatorScene.FLOOR_H - 60,
     });
   }
 
   /* ---- background ---- */
   private createShaftBackground(worldHeight: number): void {
     const cx = GAME_WIDTH / 2;
-    const sw = HubScene.SHAFT_WIDTH;
+    const sw = ElevatorScene.SHAFT_WIDTH;
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
 
@@ -230,10 +230,10 @@ export class HubScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    const sw = HubScene.SHAFT_WIDTH;
+    const sw = ElevatorScene.SHAFT_WIDTH;
     const WALK_H = 8;
-    const floorH = HubScene.FLOOR_H;
-    const elevHW = HubElevatorController.PLATFORM_HALF_WIDTH;
+    const floorH = ElevatorScene.FLOOR_H;
+    const elevHW = ElevatorController.PLATFORM_HALF_WIDTH;
     // Walking surfaces extend to the elevator platform edges so there are
     // no cracks between the floor and the elevator.
     const elevLeft = cx - elevHW;  // 560
@@ -249,7 +249,7 @@ export class HubScene extends Phaser.Scene {
       const rightEdge = cx + sw / 2;
 
       // Visual floor slab ΓÇö stacked tile rows (no physics)
-      for (let row = 0; row < HubScene.FLOOR_TILE_ROWS; row++) {
+      for (let row = 0; row < ElevatorScene.FLOOR_TILE_ROWS; row++) {
         const tileY = y + row * TILE_SIZE + TILE_SIZE / 2;
         for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
           this.add.image(tileLeft + TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
@@ -331,7 +331,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     // Shaft safety net ΓÇö collision floor at the very bottom of the shaft.
-    const netY = HubScene.WORLD_HEIGHT - 4;
+    const netY = ElevatorScene.WORLD_HEIGHT - 4;
     const shaftNet = this.add.rectangle(cx, netY, sw, 8, 0x000000, 0).setDepth(0);
     this.physics.add.existing(shaftNet, true);
     this.platforms.add(shaftNet);
@@ -341,9 +341,9 @@ export class HubScene extends Phaser.Scene {
   private createLobbyDecorations(): void {
     const positions = this.getFloorYPositions();
     const lobbyY = positions[FLOORS.LOBBY];
-    const floorBottom = lobbyY + HubScene.FLOOR_H;
+    const floorBottom = lobbyY + ElevatorScene.FLOOR_H;
     const cx = GAME_WIDTH / 2;
-    const sw = HubScene.SHAFT_WIDTH;
+    const sw = ElevatorScene.SHAFT_WIDTH;
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
 
@@ -365,11 +365,11 @@ export class HubScene extends Phaser.Scene {
   private createFloorDecorations(): void {
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    const sw = HubScene.SHAFT_WIDTH;
+    const sw = ElevatorScene.SHAFT_WIDTH;
     const rightEdge = cx + sw / 2;
 
     // F1 ΓÇö Platform Team: server racks, desks, and networking gear
-    const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + HubScene.FLOOR_H;
+    const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + ElevatorScene.FLOOR_H;
     this.add.image(120, f1Bottom - 50, 'server_rack').setDepth(3);
     this.add.image(180, f1Bottom - 50, 'server_rack').setDepth(3);
     this.add.image(300, f1Bottom - 36, 'desk_monitor').setDepth(3);
@@ -381,13 +381,13 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 440, f1Bottom - 10, 'router').setDepth(3);
 
     // F (Products) ΓÇö door-lined hall: left-side ambience + product doors on the right.
-    const fProductsBottom = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
+    const fProductsBottom = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
     this.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
     this.add.image(rightEdge + 100, fProductsBottom - 40, 'plant_tall').setDepth(3);
     this.add.image(rightEdge + 240, fProductsBottom - 32, 'plant_small').setDepth(11);
 
     // Render a door sprite + name plate for each product.
-    for (const door of HubScene.PRODUCT_DOORS) {
+    for (const door of ElevatorScene.PRODUCT_DOORS) {
       this.add.image(door.x, fProductsBottom - 56, 'door_unlocked').setDepth(3);
       this.add.text(door.x, fProductsBottom - 130, door.label, {
         fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
@@ -397,7 +397,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     // F3 ΓÇö Business: finance left, product leadership right
-    const f3Bottom = positions[FLOORS.BUSINESS] + HubScene.FLOOR_H;
+    const f3Bottom = positions[FLOORS.BUSINESS] + ElevatorScene.FLOOR_H;
     this.add.image(150, f3Bottom - 36, 'desk_monitor').setDepth(3);
     this.add.image(310, f3Bottom - 22, 'monitor_dash').setDepth(3);
     this.add.image(rightEdge + 120, f3Bottom - 36, 'desk_monitor').setDepth(3);
@@ -405,7 +405,7 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 440, f3Bottom - 40, 'plant_tall').setDepth(3);
 
     // F4 ΓÇö Executive Suite: penthouse vibe with plants and an info board
-    const f4Bottom = positions[FLOORS.EXECUTIVE] + HubScene.FLOOR_H;
+    const f4Bottom = positions[FLOORS.EXECUTIVE] + ElevatorScene.FLOOR_H;
     this.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     this.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
     this.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
@@ -417,7 +417,7 @@ export class HubScene extends Phaser.Scene {
   private buildElevator(): Elevator {
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    const floorH = HubScene.FLOOR_H;
+    const floorH = ElevatorScene.FLOOR_H;
     const startY = positions[this.progression.getCurrentFloor()] + floorH + 8;
 
     const elevator = new Elevator(this, cx, startY);
@@ -430,14 +430,14 @@ export class HubScene extends Phaser.Scene {
   private createShaftDoors(): void {
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    const floorH = HubScene.FLOOR_H;
-    const sw = HubScene.SHAFT_WIDTH;
+    const floorH = ElevatorScene.FLOOR_H;
+    const sw = ElevatorScene.SHAFT_WIDTH;
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
     for (const [, y] of Object.entries(positions)) {
       const walkY = y + floorH;
       const dockY = walkY + 8; // same expression used in buildElevator
-      this.shaftDoors.push(new HubFloorDoors(this, leftEdge, rightEdge, walkY, dockY));
+      this.shaftDoors.push(new ElevatorShaftDoors(this, leftEdge, rightEdge, walkY, dockY));
     }
   }
 
@@ -447,15 +447,15 @@ export class HubScene extends Phaser.Scene {
     const lobbyY = positions[FLOORS.LOBBY];
 
     let spawnX = 200;
-    let spawnY = lobbyY + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+    let spawnY = lobbyY + ElevatorScene.FLOOR_H - ElevatorScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
 
     // If returning from a product room, spawn next to the door we came through.
     if (this.spawnAtProductDoor) {
-      const door = HubScene.PRODUCT_DOORS.find((d) => d.contentId === this.spawnAtProductDoor);
+      const door = ElevatorScene.PRODUCT_DOORS.find((d) => d.contentId === this.spawnAtProductDoor);
       if (door) {
-        const productsWalkY = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
+        const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
         spawnX = door.x;
-        spawnY = productsWalkY - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+        spawnY = productsWalkY - ElevatorScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
       }
     }
 
@@ -484,11 +484,11 @@ export class HubScene extends Phaser.Scene {
   /* ---- helpers ---- */
   private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 350,
-      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 880,
-      [FLOORS.PRODUCTS]: HubScene.WORLD_HEIGHT - 1410,
-      [FLOORS.BUSINESS]: HubScene.WORLD_HEIGHT - 1940,
-      [FLOORS.EXECUTIVE]: HubScene.WORLD_HEIGHT - 2470,
+      [FLOORS.LOBBY]: ElevatorScene.WORLD_HEIGHT - 350,
+      [FLOORS.PLATFORM_TEAM]: ElevatorScene.WORLD_HEIGHT - 880,
+      [FLOORS.PRODUCTS]: ElevatorScene.WORLD_HEIGHT - 1410,
+      [FLOORS.BUSINESS]: ElevatorScene.WORLD_HEIGHT - 1940,
+      [FLOORS.EXECUTIVE]: ElevatorScene.WORLD_HEIGHT - 2470,
     };
   }
 
@@ -534,7 +534,7 @@ export class HubScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    // Emit zone:enter / zone:exit events; HubZones' subscribers react.
+    // Emit zone:enter / zone:exit events; ElevatorZones' subscribers react.
     this.zoneManager.update();
 
     // Keyboard info shortcut: synchronous zone query.
@@ -572,14 +572,14 @@ export class HubScene extends Phaser.Scene {
 
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const positions = this.getFloorYPositions();
-    const walkY = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
-    if (Math.abs(body.bottom - walkY) > HubScene.FLOOR_DETECTION_TOLERANCE) {
+    const walkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
+    if (Math.abs(body.bottom - walkY) > ElevatorScene.FLOOR_DETECTION_TOLERANCE) {
       this.productDoorPrompt?.setVisible(false);
       return;
     }
 
     const px = this.player.sprite.x;
-    for (const door of HubScene.PRODUCT_DOORS) {
+    for (const door of ElevatorScene.PRODUCT_DOORS) {
       if (Math.abs(px - door.x) < 60) {
         this.productDoorPrompt
           ?.setText(`Press Space/Enter \u2192 ${door.label}`)
@@ -592,7 +592,7 @@ export class HubScene extends Phaser.Scene {
     this.productDoorPrompt?.setVisible(false);
   }
 
-  private enterProductDoor(door: HubProductDoor): void {
+  private enterProductDoor(door: ElevatorProductDoor): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
@@ -609,7 +609,7 @@ export class HubScene extends Phaser.Scene {
 
     const px = this.player.sprite.x;
     const cx = GAME_WIDTH / 2;
-    const sw = HubScene.SHAFT_WIDTH;
+    const sw = ElevatorScene.SHAFT_WIDTH;
 
     if (px > cx - sw / 2 + 20 && px < cx + sw / 2 - 20) return;
 
@@ -623,8 +623,8 @@ export class HubScene extends Phaser.Scene {
       // stepping onto the walk surface must not auto-transition.
       if (fId === FLOORS.PRODUCTS) continue;
 
-      const walkingSurface = floorY + HubScene.FLOOR_H;
-      if (Math.abs(bodyBottom - walkingSurface) < HubScene.FLOOR_DETECTION_TOLERANCE) {
+      const walkingSurface = floorY + ElevatorScene.FLOOR_H;
+      if (Math.abs(bodyBottom - walkingSurface) < ElevatorScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
           // Floor 1 splits into two rooms ΓÇö left of shaft = Platform,
           // right of shaft = Architecture (ADRs).

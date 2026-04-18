@@ -98,16 +98,16 @@ export class ProductRoomScene extends LevelScene {
   }
 
   /**
-   * Return to the hub ΓÇö product doors now live directly on the PRODUCTS
-   * floor in HubScene, so we go back there and tell HubScene which door
-   * to respawn next to.
+   * Return to the elevator shaft ΓÇö product doors now live directly on the
+   * PRODUCTS floor in ElevatorScene, so we go back there and tell
+   * ElevatorScene which door to respawn next to.
    */
-  protected override returnToHub(): void {
+  protected override returnToElevator(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () =>
-      this.scene.start('HubScene', { returnFromProductDoor: this.cfg.contentId }),
+      this.scene.start('ElevatorScene', { returnFromProductDoor: this.cfg.contentId }),
     );
   }
 
@@ -121,7 +121,7 @@ export class ProductRoomScene extends LevelScene {
       this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Hall`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
-      if (this.inputs.justPressed('Interact')) this.returnToHub();
+      if (this.inputs.justPressed('Interact')) this.returnToElevator();
     } else {
       this.interactPrompt?.setVisible(false);
     }

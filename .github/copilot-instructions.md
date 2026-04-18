@@ -193,18 +193,18 @@ The dev server exposes `window.__game` (a `Phaser.Game` reference). Tests use it
 ```ts
 // Wait for an active scene then call its ScenePlugin to switch
 await page.evaluate(() => {
-  const hub = window.__game!.scene.getScenes(true)
-    .find(s => s.sys.settings.key === 'HubScene');
-  hub!.scene.start('Floor1Scene');
+  const scene = window.__game!.scene.getScenes(true)
+    .find(s => s.sys.settings.key === 'ElevatorScene');
+  scene!.scene.start('Floor1Scene');
 });
 await waitForScene(page, 'Floor1Scene');
 await page.screenshot({ path: 'tests/screenshots/debug-floor1.png' });
 ```
 
-For private methods (like `HubScene.enterFloor`), use bracket notation — TypeScript visibility is stripped at runtime:
+For private methods (like `ElevatorScene.enterFloor`), use bracket notation — TypeScript visibility is stripped at runtime:
 
 ```ts
-(hub as Record<string, unknown>)['enterFloor'](1);
+(scene as Record<string, unknown>)['enterFloor'](1);
 ```
 
 ### Pre-seeding progression state

@@ -5,7 +5,7 @@ Add background music and sound effects to enhance game feel.
 ### Music
 
 - **Menu theme** — chiptune/retro intro loop
-- **Hub/Elevator** — ambient electronic loop
+- **Elevator shaft** — ambient electronic loop
 - **Floor 1 (Platform Team)** — upbeat retro track
 - **Floor 2 (Cloud Team)** — airy/atmospheric track
 - **Victory jingle** — short fanfare when unlocking a new floor

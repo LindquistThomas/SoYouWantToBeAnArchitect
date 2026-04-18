@@ -23,7 +23,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     id: FLOORS.LOBBY,
     name: 'Lobby',
     description: 'The ground floor. Your journey begins here.',
-    sceneKey: 'HubScene',
+    sceneKey: 'ElevatorScene',
     auRequired: 0,
     auLabel: 'Welcome AU',
     totalAU: 0,

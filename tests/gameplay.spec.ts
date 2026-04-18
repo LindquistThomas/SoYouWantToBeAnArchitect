@@ -98,16 +98,16 @@ test.describe('Gameplay screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/01-menu.png`, fullPage: false });
   });
 
-  test('hub (elevator shaft) renders with lobby in view', async ({ page }) => {
+  test('elevator scene renders with lobby in view', async ({ page }) => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Click START GAME to enter the hub.
+    // Click START GAME to enter the elevator shaft.
     await page.keyboard.press('Space');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/02-hub-lobby.png` });
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/02-elevator-lobby.png` });
   });
 
   test('floor 0 test scene opens and can return', async ({ page }) => {
@@ -127,49 +127,49 @@ test.describe('Gameplay screenshots', () => {
     await waitForScene(page, 'MenuScene');
 
     await page.keyboard.press('Space');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
 
     await page.evaluate(() => {
       const g = window.__game!;
-      const hub = g.scene
+      const scene = g.scene
         .getScenes(true)
-        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
-      if (!hub) throw new Error('HubScene not active');
-      (hub['enterFloor0Test'] as () => void)();
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      (scene['enterFloor0Test'] as () => void)();
     });
 
     await waitForScene(page, 'Floor0Scene');
     await page.screenshot({ path: `${SCREENSHOT_DIR}/03-floor0-test-scene.png` });
 
     await page.keyboard.press('Enter');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
   });
 
-  test('elevator info dialog opens from hub info action', async ({ page }) => {
+  test('elevator info dialog opens from elevator info action', async ({ page }) => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
     await page.keyboard.press('Space');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
 
     await page.evaluate(() => {
       const g = window.__game!;
-      const hub = g.scene
+      const scene = g.scene
         .getScenes(true)
-        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
-      if (!hub) throw new Error('HubScene not active');
-      (hub['openInfoDialog'] as (id: string) => void)('architecture-elevator');
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      (scene['openInfoDialog'] as (id: string) => void)('architecture-elevator');
     });
 
     await page.waitForFunction(
       () => {
         const g = window.__game;
         if (!g) return false;
-        const hub = g.scene
+        const scene = g.scene
           .getScenes(true)
-          .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
-        return hub != null && hub['dialogOpen'] === true;
+          .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+        return scene != null && scene['dialogOpen'] === true;
       },
       undefined,
       { timeout: 15_000 },
@@ -186,19 +186,19 @@ test.describe('Gameplay screenshots', () => {
 
     // Continue so Floor 1 is already unlocked via the pre-seeded save.
     await page.keyboard.press('Enter');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
     await page.waitForTimeout(600);
 
-    // Use HubScene's own private enterFloor() method (accessible via bracket
+    // Use ElevatorScene's own private enterFloor() method (accessible via bracket
     // notation in compiled JS) — mirrors exactly what the game does when the
     // player walks off the elevator, including the fade-out transition.
     await page.evaluate(() => {
       const g = window.__game!;
-      const hub = g.scene
+      const scene = g.scene
         .getScenes(true)
-        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
-      if (!hub) throw new Error('HubScene not active');
-      (hub['enterFloor'] as (id: number) => void)(1);
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'Floor1Scene');
     await page.waitForTimeout(900);
@@ -230,7 +230,7 @@ test.describe('Gameplay screenshots', () => {
     await waitForScene(page, 'MenuScene');
 
     await page.keyboard.press('Enter');
-    await waitForScene(page, 'HubScene');
+    await waitForScene(page, 'ElevatorScene');
     await page.waitForTimeout(400);
     // The HUD is a scroll-fixed overlay; a fresh screenshot focused on the
     // top-left captures it clearly.

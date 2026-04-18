@@ -10,7 +10,7 @@ export interface ElevatorButtonState {
  * Reusable on-screen ▲/▼ elevator buttons.
  *
  * Appears when the player stands on an elevator and hides when they
- * step off.  Both HubScene and LevelScene share this component.
+ * step off.  Both ElevatorScene and LevelScene share this component.
  */
 export class ElevatorButtons {
   private container: Phaser.GameObjects.Container;

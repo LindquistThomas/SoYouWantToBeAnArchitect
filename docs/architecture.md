@@ -21,10 +21,13 @@ src/
 ├── scenes/
 │   ├── BootScene.ts      Generates every sprite + sound before gameplay starts.
 │   ├── MenuScene.ts      Title screen; new game / continue.
-│   ├── HubScene.ts       Lobby orchestrator; delegates to `hub/` collaborators.
-│   ├── hub/HubElevatorController.ts
+│   ├── ElevatorScene.ts  Elevator-shaft orchestrator; delegates to `elevator/` collaborators.
+│   ├── elevator/ElevatorController.ts
 │   │                     Owns the Elevator entity + ride loop + music cues.
-│   ├── hub/HubZones.ts   Owns lobby zones, info icons, first-ride intro flow.
+│   ├── elevator/ElevatorZones.ts
+│   │                     Owns lobby zones, info icons, first-ride intro flow.
+│   ├── elevator/ElevatorShaftDoors.ts
+│   │                     Side-view landing doors that open when the cab docks.
 │   ├── LevelScene.ts     Shared base scene for the floors below.
 │   ├── Floor0Scene.ts    Tutorial floor (tier-0 content).
 │   ├── Floor1Scene.ts    Platform Team.
@@ -62,11 +65,11 @@ src/
 ### Scene graph
 
 ```
-BootScene  →  MenuScene  →  HubScene  ↔  Floor0/1/2 (via LevelScene)
+BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor0/1/2 (via LevelScene)
 ```
 
 `BootScene` runs every sprite + sound generator once, then hands off to
-`MenuScene`. `HubScene` is the central lobby; elevator rides transition
+`MenuScene`. `ElevatorScene` is the central shaft/lobby; elevator rides transition
 to `Floor0/1/2Scene` (each a thin wrapper around `LevelScene`).
 
 ### Runtime wiring
@@ -108,7 +111,7 @@ events:
 
 | Event              | Payload           | Emitters                     | Consumers        |
 |--------------------|-------------------|------------------------------|------------------|
-| `music:play`       | `key: string`     | Scenes, HubElevatorController| AudioManager     |
+| `music:play`       | `key: string`     | Scenes, ElevatorController   | AudioManager     |
 | `music:stop`       | —                 | MusicPlugin                  | AudioManager     |
 | `zone:enter`       | `zoneId: string`  | ZoneManager                  | Scenes, UI       |
 | `zone:exit`        | `zoneId: string`  | ZoneManager                  | Scenes, UI       |

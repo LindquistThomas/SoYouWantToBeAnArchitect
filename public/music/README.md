@@ -3,7 +3,7 @@
 Background music is loaded from the MP3 files in this directory:
 
 - `retro-synth/retro_synth.mp3` — default game music (MenuScene, Floor1Scene, Floor2Scene)
-- `elevator-jazz/elevator_jazz.mp3` — elevator shaft (HubScene)
+- `elevator-jazz/elevator_jazz.mp3` — elevator shaft (ElevatorScene)
 
 These are loaded in `src/scenes/BootScene.ts` via `this.load.audio(...)`. SFX (jumps, footsteps, quiz feedback, info-card and link clicks) remain procedurally generated in `src/systems/SoundGenerator.ts`.
 
@@ -23,9 +23,9 @@ Used in: MenuScene, Floor1Scene, Floor2Scene
 | Pixabay — 80s Synth | https://pixabay.com/music/search/80s%20synth/ |
 | Pixabay — Retrogaming | https://pixabay.com/music/search/retrogaming/ |
 
-## Jazzy Elevator Music (HubScene)
+## Jazzy Elevator Music (ElevatorScene)
 
-Used in: HubScene (elevator shaft)
+Used in: ElevatorScene (elevator shaft)
 
 | Source | Link |
 |--------|------|

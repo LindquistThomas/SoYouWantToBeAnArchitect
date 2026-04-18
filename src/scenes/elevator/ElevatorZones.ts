@@ -19,7 +19,7 @@ const BOARD_RADIUS = 120;
 const INFO_ICON_X = 210;
 const INFO_ICON_Y = 22;
 
-export interface HubZonesOptions {
+export interface ElevatorZonesOptions {
   scene: Phaser.Scene;
   zoneManager: ZoneManager;
   dialogs: DialogController;
@@ -35,23 +35,23 @@ export interface HubZonesOptions {
 }
 
 /**
- * Owns the hub's zone registrations, the two lobby info icons, and the
+ * Owns the scene's zone registrations, the two lobby info icons, and the
  * "first-ride" elevator-info flow. Encapsulates what used to be
- * `HubScene.registerZones` + `setupElevatorInfo` + `createInfoIcon` and
+ * `ElevatorScene.registerZones` + `setupElevatorInfo` + `createInfoIcon` and
  * their private fields.
  *
  * Designed to be created once per scene in `create()`; listener cleanup is
  * wired to the scene's `shutdown` event so reuse across restarts is safe.
  */
-export class HubZones {
+export class ElevatorZones {
   /** Info icon for the elevator zone. */
   elevatorInfoIcon?: InfoIcon;
   /** Info icon for the lobby welcome board. */
   lobbyBoardIcon?: InfoIcon;
 
-  private readonly opts: HubZonesOptions;
+  private readonly opts: ElevatorZonesOptions;
 
-  constructor(opts: HubZonesOptions) {
+  constructor(opts: ElevatorZonesOptions) {
     this.opts = opts;
     this.register();
     this.createElevatorInfoIcon();

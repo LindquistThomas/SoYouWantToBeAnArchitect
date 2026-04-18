@@ -153,7 +153,7 @@ function generateRetroSynth(): ArrayBuffer {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Jazzy Elevator Music — HubScene                                   */
+/*  Jazzy Elevator Music — ElevatorScene                                   */
 /* ------------------------------------------------------------------ */
 
 function generateElevatorJazz(): ArrayBuffer {

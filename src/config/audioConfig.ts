@@ -15,7 +15,7 @@ type SfxEventName = Extract<GameEventName, `sfx:${string}`>;
 /** Scene key → background music Phaser audio key. */
 export const SCENE_MUSIC: Record<string, string> = {
   MenuScene:    'music_menu',
-  HubScene:     'music_elevator_jazz',
+  ElevatorScene:     'music_elevator_jazz',
   Floor0Scene:  'music_floor1',
   Floor1Scene:  'music_floor1',
   Floor1ArchScene: 'music_floor1',

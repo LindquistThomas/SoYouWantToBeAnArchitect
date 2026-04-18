@@ -13,7 +13,7 @@ function createTile(
   gfx.destroy();
 }
 
-/** Generic hub/wall/floor/background tile textures (TILE_SIZE square). */
+/** Generic shaft/wall/floor/background tile textures (TILE_SIZE square). */
 export function generateTileSprites(scene: Phaser.Scene): void {
   const S = TILE_SIZE;
 
