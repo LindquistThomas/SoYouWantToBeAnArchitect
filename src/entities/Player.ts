@@ -44,6 +44,19 @@ export class Player {
   private airborneSince: number | null = null;
   /** Minimum airborne duration before a walk-off-ledge landing emits dust. */
   private readonly LANDING_DUST_MIN_AIRBORNE_MS = 150;
+  /**
+   * Grace window before switching to the airborne (`fall`) animation. Avoids
+   * 1-frame physics hiccups (e.g. tile seams, platform hand-offs) flicking
+   * the idle character into a squat pose.
+   */
+  private readonly AIRBORNE_ANIM_GRACE_MS = 80;
+
+  /** Average horizontal pixels traveled per walk-frame to match the sprite stride. */
+  private readonly WALK_PX_PER_FRAME = 14;
+  private readonly WALK_MIN_FPS = 4;
+  private readonly WALK_MAX_FPS = 14;
+  /** Last applied walk fps, rounded — avoids restarting the tween every frame. */
+  private currentWalkFps = 10;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
@@ -190,7 +203,7 @@ export class Player {
     this.updateAnimation(onGround);
   }
 
-  /* ---- Scripted forward flip ---- */
+  /* ---- Scripted forward jump ---- */
   private startFlip(): void {
     this.isFlipping = true;
     this.flipElapsed = 0;
@@ -198,14 +211,14 @@ export class Player {
     this.flipStartY = this.sprite.y;
     this.flipDirection = this.facingRight ? 1 : -1;
 
-    // Disable physics gravity during flip — we control position manually
+    // Disable physics gravity during jump — we control position manually
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
     this.sprite.setVelocity(0, 0);
 
-    // Play flip animation once
-    this.currentAnim = 'flip';
-    this.sprite.anims.play('player_flip', true);
+    // Upright jump: hold the static tucked fall pose (no rotation).
+    this.currentAnim = 'fall';
+    this.sprite.anims.play('player_fall', true);
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
@@ -273,7 +286,15 @@ export class Player {
     let newAnim: PlayerAnimState;
 
     if (!onGround) {
-      // Airborne but not mid-flip — show static tucked pose
+      // Require a short airborne grace before committing to the fall pose —
+      // prevents 1-frame onGround flickers (tile seams, platform handoffs)
+      // from forcing an idle character into the tucked squat silhouette.
+      const airborneMs =
+        this.airborneSince !== null ? this.scene.time.now - this.airborneSince : 0;
+      if (airborneMs < this.AIRBORNE_ANIM_GRACE_MS) {
+        // Stay on whatever ground anim we had; don't force a change this frame.
+        return;
+      }
       newAnim = 'fall';
     } else if (vx > 20) {
       newAnim = 'walk';
@@ -284,7 +305,26 @@ export class Player {
     if (newAnim !== this.currentAnim) {
       this.currentAnim = newAnim;
       this.sprite.anims.play(`player_${newAnim}`, true);
+      if (newAnim === 'walk') {
+        this.currentWalkFps = this.computeWalkFps(vx);
+        this.sprite.anims.msPerFrame = 1000 / this.currentWalkFps;
+      }
+    } else if (newAnim === 'walk') {
+      // Keep foot cadence matched to ground speed while walking. Only push
+      // the new rate through when it has changed meaningfully, so we don't
+      // restart the tween every frame on tiny velocity jitter.
+      const targetFps = this.computeWalkFps(vx);
+      if (Math.abs(targetFps - this.currentWalkFps) >= 1) {
+        this.currentWalkFps = targetFps;
+        this.sprite.anims.msPerFrame = 1000 / targetFps;
+      }
     }
+  }
+
+  private computeWalkFps(vx: number): number {
+    const raw = vx / this.WALK_PX_PER_FRAME;
+    const clamped = Math.max(this.WALK_MIN_FPS, Math.min(this.WALK_MAX_FPS, raw));
+    return Math.round(clamped);
   }
 
   private emitDust(): void {

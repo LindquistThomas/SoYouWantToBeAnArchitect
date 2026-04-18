@@ -130,11 +130,11 @@ export function generatePlayerSprites(scene: Phaser.Scene): void {
   drawBlueprint(0, 11, 17);      // tube just in front of the hand
   drawLegs(0, 0, 0, 0, 5, 8);
 
-  // Frame 1: breathing — body and arm sink 1 px.
+  // Frame 1: breathing — upper body and arm sink 1 px; legs/feet stay planted.
   drawUpperBody(1, 1);
   drawArm(1, 10, 11);
   drawBlueprint(1, 11, 18);
-  drawLegs(1, 1, 0, 0, 5, 8);
+  drawLegs(1, 0, 0, 0, 5, 8);
 
   /* ------------------------- Walk 2-5 ------------------------- */
   // Contact = legs spread, body grounded (by=0). Passing = legs together, body lifted (by=-1).
