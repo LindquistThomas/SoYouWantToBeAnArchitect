@@ -80,13 +80,12 @@ export class HubFloorDoors {
     const bottom = this.doorBottom;
     const h = bottom - top;
 
-    // Door frame (fixed, behind leaves) — dark cavity + bright trim
+    // Door frame trim (stroke only — leaving the interior transparent so the
+    // cab interior shows through when the doors slide open).
     const frameX = this.cx - this.openingW / 2 - 6;
     const frameW = this.openingW + 12;
     const frameY = top - 6;
     const frameH = h + 10;
-    g.fillStyle(0x1a1a20, 1);
-    g.fillRect(frameX, frameY, frameW, frameH);
     g.lineStyle(2, 0x4a4a58, 1);
     g.strokeRect(frameX, frameY, frameW, frameH);
     g.lineStyle(1, 0x6a6a82, 0.8);

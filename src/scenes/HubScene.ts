@@ -488,6 +488,9 @@ export class HubScene extends Phaser.Scene {
       delta,
     );
 
+    const cabY = this.elevatorCtrl.elevator.getY();
+    for (const door of this.shaftDoors) door.update(cabY, delta);
+
     this.checkFloorEntry();
   }
 
