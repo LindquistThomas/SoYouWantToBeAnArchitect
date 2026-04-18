@@ -28,7 +28,7 @@ export interface ProductRoomConfig {
 /**
  * A self-contained room dedicated to a single product. Reached from
  * the Products hall (`Floor3ProductsScene`) by walking through the
- * matching door and pressing E.
+ * matching door and pressing Space/Enter.
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms — token
  * collection state is shared but no rooms define tokens, so there is
@@ -117,7 +117,7 @@ export class ProductRoomScene extends LevelScene {
       this.exitDoor.x, this.exitDoor.y,
     );
     if (d < 90) {
-      this.interactPrompt?.setText('Press E \u2192 Products Hall').setPosition(
+      this.interactPrompt?.setText('Press Space/Enter \u2192 Products Hall').setPosition(
         this.exitDoor.x - 80, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.player.getInputManager().isInteractJustPressed()) this.returnToHub();

@@ -18,7 +18,7 @@ export class InputManager {
     D: Phaser.Input.Keyboard.Key;
   };
   private spaceKey!: Phaser.Input.Keyboard.Key;
-  private interactKey!: Phaser.Input.Keyboard.Key;
+  private enterKey!: Phaser.Input.Keyboard.Key;
   private infoKey!: Phaser.Input.Keyboard.Key;
   private jumpJustPressedFlag = false;
   private interactJustPressedFlag = false;
@@ -35,7 +35,7 @@ export class InputManager {
       D: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
     this.spaceKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.interactKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.enterKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.infoKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I);
   }
 
@@ -46,7 +46,7 @@ export class InputManager {
       up: this.cursors?.up?.isDown || this.wasd?.W?.isDown || false,
       down: this.cursors?.down?.isDown || this.wasd?.S?.isDown || false,
       jump: this.spaceKey?.isDown || false,
-      interact: this.interactKey?.isDown || false,
+      interact: this.spaceKey?.isDown || this.enterKey?.isDown || false,
     };
   }
 
@@ -63,7 +63,7 @@ export class InputManager {
   }
 
   isInteractJustPressed(): boolean {
-    const interactDown = this.interactKey?.isDown || false;
+    const interactDown = (this.spaceKey?.isDown || this.enterKey?.isDown) || false;
     if (interactDown && !this.interactJustPressedFlag) {
       this.interactJustPressedFlag = true;
       return true;

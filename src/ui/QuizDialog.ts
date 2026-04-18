@@ -642,6 +642,12 @@ export class QuizDialog extends ModalBase {
     ];
 
     this.navHandler = () => {
+      // Esc may have just closed the dialog in an earlier listener on the same
+      // 'update' emit; keys are nulled in onBeforeClose but EventEmitter3 still
+      // dispatches to this listener. Bail out cleanly instead of dereferencing
+      // the destroyed keys (which would throw and abort the scene update,
+      // leaving the close-tween stranded and the dialog visible).
+      if (!this.upKey) return;
       if (this.focusables.length === 0) return;
       const len = this.focusables.length;
 

@@ -15,7 +15,7 @@ interface ProductDoor {
  * Products floor — a long hall lined with a door for each ISY product.
  *
  * Each door opens into a dedicated product room scene. Walk up to a
- * door and press E to enter; the room's exit door returns the player
+ * door and press Space/Enter to enter; the room's exit door returns the player
  * to this hall, respawning next to the door they came through.
  */
 export class Floor3ProductsScene extends LevelScene {
@@ -102,7 +102,7 @@ export class Floor3ProductsScene extends LevelScene {
 
     for (const door of Floor3ProductsScene.DOORS) {
       if (Math.abs(px - door.x) < 60) {
-        this.interactPrompt?.setText(`Press E \u2192 ${door.label}`).setPosition(
+        this.interactPrompt?.setText(`Press Space/Enter \u2192 ${door.label}`).setPosition(
           door.x - 100, G - 180,
         ).setVisible(true);
         if (this.player.getInputManager().isInteractJustPressed()) {

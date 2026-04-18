@@ -490,7 +490,7 @@ export class LevelScene extends Phaser.Scene {
       this.exitDoor.x, this.exitDoor.y,
     );
     if (d < 90) {
-      this.interactPrompt?.setText('Press E \u2192 Elevator').setPosition(
+      this.interactPrompt?.setText('Press Space/Enter \u2192 Elevator').setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.player.getInputManager().isInteractJustPressed()) this.returnToHub();
