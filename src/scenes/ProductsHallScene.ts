@@ -1,4 +1,3 @@
-import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../config/gameConfig';
 import { allKeyLabels } from '../input';
 import { LevelScene, LevelConfig } from './LevelScene';

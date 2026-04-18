@@ -42,7 +42,6 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
    * Called once per frame by LevelScene. Default no-op; subclasses
    * override to add patrol / seek / hover behavior.
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   update(_time: number, _delta: number): void { /* no-op */ }
 
   /**

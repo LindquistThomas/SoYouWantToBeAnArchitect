@@ -52,10 +52,10 @@ function midiToFreq(note: number): number {
 }
 
 // Convenient MIDI note names
-const C2 = 36, D2 = 38, Eb2 = 39, F2 = 41, G2 = 43, Ab2 = 44, Bb2 = 46;
-const C3 = 48, D3 = 50, Eb3 = 51, F3 = 53, G3 = 55, Ab3 = 56, A3 = 57, Bb3 = 58;
+const C2 = 36, Eb2 = 39, F2 = 41, G2 = 43, Ab2 = 44, Bb2 = 46;
+const C3 = 48, D3 = 50, F3 = 53, G3 = 55, Ab3 = 56, A3 = 57, Bb3 = 58;
 const C4 = 60, D4 = 62, Eb4 = 63, E4 = 64, F4 = 65, G4 = 67, Ab4 = 68, A4 = 69, Bb4 = 70;
-const C5 = 72, D5 = 74, Eb5 = 75, G5 = 79;
+const C5 = 72, D5 = 74, Eb5 = 75;
 
 /* ------------------------------------------------------------------ */
 /*  Envelope                                                          */

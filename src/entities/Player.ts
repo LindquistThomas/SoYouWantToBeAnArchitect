@@ -12,7 +12,6 @@ const FLIP_FRAME_COUNT = 8;                 // animation frames in a flip
 const FLIP_FRAME_RATE = (FLIP_FRAME_COUNT / FLIP_DURATION) * 1000; // frames per second
 
 /** Sprite dimensions — must match SpriteGenerator. */
-const SPRITE_WIDTH = 64;
 const SPRITE_HEIGHT = 160;
 const HITBOX_MARGIN_X = 12;
 const HITBOX_MARGIN_Y = 16;

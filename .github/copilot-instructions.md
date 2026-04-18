@@ -97,7 +97,7 @@ The project uses a standalone `EventBus` (`src/systems/EventBus.ts`) for loose c
 3. Emit the event from the relevant entity/system: `eventBus.emit('sfx:myevent')`
 
 **To add music for a new scene:**
-1. Generate the track in `MusicGenerator.ts` and register it in `generateMusic()`
+1. Place the audio file under `public/music/` (MP3 or OGG) and load it in `BootScene.preload()` with a `music_<name>` key
 2. Add the scene→music mapping in `src/config/audioConfig.ts` under `SCENE_MUSIC`
 3. The `MusicPlugin` handles playback automatically — no scene code changes needed
 
@@ -149,7 +149,7 @@ zoneManager.update();
 
 Audio is fully decoupled via the EventBus. `AudioManager` is a purely reactive subscriber — no module calls it directly. Music is triggered automatically by `MusicPlugin` (a Phaser ScenePlugin) on scene transitions. SFX are triggered by entities emitting events on the EventBus.
 
-All audio (SFX and music) is procedurally generated at runtime in `SoundGenerator.ts` and `MusicGenerator.ts` — the project has zero external audio files.
+SFX are procedurally generated at runtime in `SoundGenerator.ts`. Background music is loaded from audio files under `public/music/` in `BootScene.preload()`. A procedural `MusicGenerator.ts` is retained as an unused fallback — see `public/music/README.md`.
 
 ### AI Collaboration Guidelines
 

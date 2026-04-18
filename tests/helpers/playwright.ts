@@ -124,7 +124,6 @@ export function attachErrorWatchers(page: Page): ErrorWatcher {
 
   page.on('pageerror', (err) => {
     const msg = err.message;
-    // eslint-disable-next-line no-console
     console.error('[page error]', msg);
     if (!isIgnorable(msg)) errors.push(`[pageerror] ${msg}`);
   });
@@ -132,7 +131,6 @@ export function attachErrorWatchers(page: Page): ErrorWatcher {
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
     const text = msg.text();
-    // eslint-disable-next-line no-console
     console.error('[console]', text);
     if (!isIgnorable(text)) errors.push(`[console] ${text}`);
   });
