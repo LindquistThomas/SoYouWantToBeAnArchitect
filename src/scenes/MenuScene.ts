@@ -237,6 +237,12 @@ export class MenuScene extends Phaser.Scene {
   private createTitlePanel(): void {
     const cx = 360;
     const cy = GAME_HEIGHT / 2;
+    const TEXT_DEPTH = 20;
+
+    // Semi-transparent backdrop so the left column reads clearly over the skyline.
+    const panel = this.add.graphics().setDepth(TEXT_DEPTH - 1);
+    panel.fillStyle(0x05060f, 0.55);
+    panel.fillRect(0, cy - 260, 720, 440);
 
     // Title with a soft glow (stack of offset shadows).
     const titleStyle: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -248,11 +254,11 @@ export class MenuScene extends Phaser.Scene {
       color: '#ffffff', fontStyle: 'bold',
     };
     this.add.text(cx, cy - 220, 'SO YOU WANT', titleStyle).setOrigin(0.5)
-      .setShadow(0, 0, '#0099cc', 18, true, true);
+      .setShadow(0, 0, '#0099cc', 18, true, true).setDepth(TEXT_DEPTH);
     this.add.text(cx, cy - 170, 'TO BE AN', titleStyle).setOrigin(0.5)
-      .setShadow(0, 0, '#0099cc', 18, true, true);
+      .setShadow(0, 0, '#0099cc', 18, true, true).setDepth(TEXT_DEPTH);
     const headline = this.add.text(cx, cy - 100, 'ARCHITECT', subStyle).setOrigin(0.5)
-      .setShadow(0, 0, '#33ddff', 24, true, true);
+      .setShadow(0, 0, '#33ddff', 24, true, true).setDepth(TEXT_DEPTH);
 
     // Subtle title pulse (scale only the headline so the surrounding lines stay still).
     this.tweens.add({
@@ -262,14 +268,16 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(cx, cy - 50, 'Ride the elevator. Translate between floors.', {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(TEXT_DEPTH);
 
     // Start button
     const btn = this.makeButton(cx, cy + 40, '[ START GAME ]', 26, () => this.startGame());
+    btn.setDepth(TEXT_DEPTH);
     this.tweens.add({ targets: btn, alpha: 0.65, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
 
     if (hasSave()) {
-      this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, () => this.continueGame());
+      this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, () => this.continueGame())
+        .setDepth(TEXT_DEPTH);
       this.input.keyboard?.once('keydown-ENTER', () => this.continueGame());
     }
   }
