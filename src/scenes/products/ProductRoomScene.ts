@@ -29,7 +29,7 @@ export interface ProductRoomConfig {
 /**
  * A self-contained room dedicated to a single product. Reached from
  * the Products hall (`ProductsHallScene`) by walking through the
- * matching door and pressing Space/Enter.
+ * matching door and pressing Enter (or tapping the door).
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token
  * collection state is shared but no rooms define tokens, so there is

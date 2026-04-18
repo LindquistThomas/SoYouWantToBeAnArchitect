@@ -3,9 +3,8 @@
  * should ever reference a physical key code — always use an action.
  *
  * Actions are grouped by the context(s) in which they are meaningful.
- * The context system (see InputService) ensures that e.g. `Jump` does
- * not fire while a modal is open, even if both `Jump` and `Confirm`
- * share the Space key.
+ * The context system (see InputService) ensures that e.g. `Interact`
+ * does not fire while a modal is open.
  */
 export type GameAction =
   // Movement axes

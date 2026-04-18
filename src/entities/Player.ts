@@ -29,7 +29,7 @@ export class Player {
 
   /** True while the player is mid-flip (scripted arc). */
   private isFlipping = false;
-  /** When false, Space/jump input is ignored (e.g. while riding the elevator). */
+  /** When false, jump input is ignored (e.g. while riding the elevator). */
   private flipEnabled = true;
   private flipElapsed = 0;
   private flipStartX = 0;

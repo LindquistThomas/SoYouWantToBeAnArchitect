@@ -324,6 +324,11 @@ export class LevelScene extends Phaser.Scene {
   protected createExit(): void {
     const c = this.getLevelConfig();
     this.exitDoor = this.add.image(c.exitPosition.x, c.exitPosition.y, 'door_exit').setDepth(4);
+    // Clickable/tappable — mouse and touch users can hit the door
+    // directly instead of having to press Enter while standing next
+    // to it. Dispatches the same Interact action a key press would.
+    this.exitDoor.setInteractive({ useHandCursor: true });
+    this.exitDoor.on('pointerdown', () => this.inputs.emit('Interact'));
     this.add.text(c.exitPosition.x, c.exitPosition.y - 70, '\u2190 ELEVATOR', {
       fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
     }).setOrigin(0.5).setDepth(5);
