@@ -17,6 +17,7 @@ export class ProductLeadershipScene extends LevelScene {
 
   constructor() {
     super('ProductLeadershipScene', FLOORS.BUSINESS);
+    this.returnSide = 'right';
   }
 
   protected override createDecorations(): void {

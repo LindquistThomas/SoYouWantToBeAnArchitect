@@ -22,6 +22,7 @@ export class ArchitectureTeamScene extends LevelScene {
 
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
+    this.returnSide = 'right';
   }
 
   protected override createDecorations(): void {

@@ -66,6 +66,13 @@ export class ElevatorScene extends Phaser.Scene {
   /** If returning from a product room, which door to spawn next to. */
   private spawnAtProductDoor?: string;
 
+  /** If returning from a floor/room scene, which floor to spawn on. */
+  private spawnAtFloor?: FloorId;
+  /** Which side of the shaft to spawn on when returning from a floor. */
+  private spawnAtFloorSide: 'left' | 'right' = 'left';
+  /** Suppress auto-entry for this floor until the player rides the elevator. */
+  private skipFloorEntry?: FloorId;
+
   private dialogs!: DialogController;
   private zones!: ElevatorZones;
   private elevatorCtrl!: ElevatorController;
@@ -93,7 +100,12 @@ export class ElevatorScene extends Phaser.Scene {
     super({ key: 'ElevatorScene' });
   }
 
-  init(data?: { loadSave?: boolean; returnFromProductDoor?: string }): void {
+  init(data?: {
+    loadSave?: boolean;
+    returnFromProductDoor?: string;
+    returnFromFloor?: FloorId;
+    returnFromSide?: 'left' | 'right';
+  }): void {
     if (!this.registry.get('progression')) {
       const progression = new ProgressionSystem();
       if (data?.loadSave) {
@@ -105,6 +117,9 @@ export class ElevatorScene extends Phaser.Scene {
     }
     this.progression = this.registry.get('progression') as ProgressionSystem;
     this.spawnAtProductDoor = data?.returnFromProductDoor;
+    this.spawnAtFloor = data?.returnFromFloor;
+    this.spawnAtFloorSide = data?.returnFromSide ?? 'left';
+    this.skipFloorEntry = data?.returnFromFloor;
     this.zoneManager.clear();
   }
 
@@ -537,6 +552,17 @@ export class ElevatorScene extends Phaser.Scene {
         spawnX = door.x;
         spawnY = productsWalkY - ElevatorScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
       }
+    } else if (this.spawnAtFloor !== undefined && this.spawnAtFloor !== FLOORS.LOBBY) {
+      // Returning from a floor/room scene — place the player on that floor,
+      // just outside the shaft on the side they exited to.
+      const floorY = positions[this.spawnAtFloor];
+      if (floorY !== undefined) {
+        const walkY = floorY + ElevatorScene.FLOOR_H;
+        const cx = GAME_WIDTH / 2;
+        const sw = ElevatorScene.SHAFT_WIDTH;
+        spawnX = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
+        spawnY = walkY - ElevatorScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+      }
     }
 
     this.player = new Player(this, spawnX, spawnY);
@@ -644,6 +670,12 @@ export class ElevatorScene extends Phaser.Scene {
       this.progression.setCurrentFloor(elevFloor);
     }
 
+    // Once the player gets back on the elevator, clear the return-spawn guard
+    // so they can enter the floor again next time.
+    if (this.skipFloorEntry !== undefined && this.elevatorCtrl.isOnElevator) {
+      this.skipFloorEntry = undefined;
+    }
+
     this.checkFloorEntry();
     this.checkProductDoorEntry();
   }
@@ -709,9 +741,11 @@ export class ElevatorScene extends Phaser.Scene {
     for (const [floorId, floorY] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
-      // PRODUCTS floor uses explicit doors (see checkProductDoorEntry) ΓÇö
+      // PRODUCTS floor uses explicit doors (see checkProductDoorEntry) —
       // stepping onto the walk surface must not auto-transition.
       if (fId === FLOORS.PRODUCTS) continue;
+      // Don't immediately re-enter the floor the player just returned from.
+      if (fId === this.skipFloorEntry) continue;
 
       const walkingSurface = floorY + ElevatorScene.FLOOR_H;
       if (Math.abs(bodyBottom - walkingSurface) < ElevatorScene.FLOOR_DETECTION_TOLERANCE) {

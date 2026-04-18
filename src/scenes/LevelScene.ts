@@ -76,6 +76,13 @@ export class LevelScene extends Phaser.Scene {
   protected interactPrompt?: Phaser.GameObjects.Text;
   protected auCollected = 0;
 
+  /**
+   * Which side of the elevator shaft this room sits on.
+   * Used to place the player on return so they re-enter the elevator
+   * on the same side they stepped off — default 'left'.
+   */
+  protected returnSide: 'left' | 'right' = 'left';
+
   /** In-room elevator platforms + their shaft graphics. */
   private roomLifts: Array<{
     platform: Phaser.Physics.Arcade.Image;
@@ -523,6 +530,9 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene'));
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', {
+      returnFromFloor: this.floorId,
+      returnFromSide: this.returnSide,
+    }));
   }
 }
