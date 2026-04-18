@@ -11,6 +11,7 @@ import { ZoneManager } from '../systems/ZoneManager';
 import { markSeen } from '../systems/InfoDialogManager';
 import { HubZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './hub/HubZones';
 import { HubElevatorController } from './hub/HubElevatorController';
+import { HubFloorDoors } from './hub/HubShaftDoors';
 
 const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
 const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
@@ -40,6 +41,7 @@ export class HubScene extends Phaser.Scene {
   private dialogs!: DialogController;
   private zones!: HubZones;
   private elevatorCtrl!: HubElevatorController;
+  private shaftDoors: HubFloorDoors[] = [];
 
   private zoneManager = new ZoneManager();
 
@@ -85,6 +87,7 @@ export class HubScene extends Phaser.Scene {
     this.createFloorDecorations();
     this.createPlayer();
     this.elevatorCtrl = new HubElevatorController(this, this.player, this.buildElevator());
+    this.createShaftDoors();
     this.createUI();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
@@ -124,26 +127,75 @@ export class HubScene extends Phaser.Scene {
   private createShaftBackground(worldHeight: number): void {
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
 
+    // Concrete back wall (shaft interior) — tiled
     for (let y = 0; y < worldHeight; y += TILE_SIZE) {
       this.add.tileSprite(cx, y, sw, TILE_SIZE, 'elevator_shaft').setDepth(0);
     }
 
-    const rail = this.add.graphics();
-    rail.fillStyle(0x00aaff, 0.6);
-    rail.fillRect(cx - sw / 2 - 8, 0, 8, worldHeight);
-    rail.fillRect(cx + sw / 2, 0, 8, worldHeight);
-    rail.lineStyle(2, 0x005588, 0.4);
-    rail.lineBetween(cx - sw / 2 + 20, 0, cx - sw / 2 + 20, worldHeight);
-    rail.lineBetween(cx + sw / 2 - 20, 0, cx + sw / 2 - 20, worldHeight);
-    rail.setDepth(1);
+    // Inner shadow along both walls (ambient occlusion in the corners)
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.45);
+    shadow.fillRect(leftEdge, 0, 8, worldHeight);
+    shadow.fillRect(rightEdge - 8, 0, 8, worldHeight);
+    shadow.setDepth(0);
 
+    // Steel shaft walls — dark outer pillars flanking the concrete
+    const walls = this.add.graphics();
+    walls.fillStyle(0x1a1a22, 1);
+    walls.fillRect(leftEdge - 12, 0, 12, worldHeight);
+    walls.fillRect(rightEdge, 0, 12, worldHeight);
+    // Wall bevel highlight
+    walls.fillStyle(0x33333f, 1);
+    walls.fillRect(leftEdge - 12, 0, 2, worldHeight);
+    walls.fillRect(rightEdge + 10, 0, 2, worldHeight);
+    walls.setDepth(1);
+
+    // Vertical steel guide rails (two T-section rails the cab slides on)
+    const rails = this.add.graphics();
+    const railOffsets = [-sw / 2 + 18, sw / 2 - 18];
+    for (const off of railOffsets) {
+      const rx = cx + off;
+      // Rail shadow
+      rails.fillStyle(0x0d0d12, 0.8);
+      rails.fillRect(rx - 3, 0, 8, worldHeight);
+      // Rail body
+      rails.fillStyle(0x55606e, 1);
+      rails.fillRect(rx - 2, 0, 4, worldHeight);
+      // Rail highlight
+      rails.fillStyle(0x88909c, 1);
+      rails.fillRect(rx - 1, 0, 1, worldHeight);
+    }
+    rails.setDepth(1);
+
+    // Periodic horizontal I-beams / maintenance struts
     const beams = this.add.graphics();
-    beams.lineStyle(1, 0x003355, 0.3);
-    for (let y = 0; y < worldHeight; y += 200) {
-      beams.lineBetween(cx - sw / 2, y, cx + sw / 2, y);
+    for (let y = 60; y < worldHeight; y += 240) {
+      // Avoid drawing beams across floor openings (keep shaft openings clean)
+      beams.fillStyle(0x3a3a48, 1);
+      beams.fillRect(leftEdge + 2, y, sw - 4, 4);
+      beams.fillStyle(0x55556a, 1);
+      beams.fillRect(leftEdge + 2, y, sw - 4, 1);
+      beams.fillStyle(0x1a1a22, 1);
+      beams.fillRect(leftEdge + 2, y + 4, sw - 4, 1);
+      // Bolts
+      beams.fillStyle(0x88909c, 1);
+      beams.fillCircle(leftEdge + 10, y + 2, 1.2);
+      beams.fillCircle(rightEdge - 10, y + 2, 1.2);
     }
     beams.setDepth(1);
+
+    // Warning chevrons every few meters on the wall
+    const chev = this.add.graphics();
+    chev.fillStyle(0xffcc33, 0.25);
+    for (let y = 120; y < worldHeight; y += 480) {
+      for (let i = 0; i < 3; i++) {
+        chev.fillTriangle(leftEdge + 26 + i * 6, y, leftEdge + 32 + i * 6, y, leftEdge + 29 + i * 6, y + 8);
+      }
+    }
+    chev.setDepth(1);
   }
 
   /* ---- platforms ---- */
@@ -337,6 +389,17 @@ export class HubScene extends Phaser.Scene {
       elevator.addFloor(Number(id), y + floorH + 8);
     }
     return elevator;
+  }
+
+  private createShaftDoors(): void {
+    const positions = this.getFloorYPositions();
+    const cx = GAME_WIDTH / 2;
+    const floorH = HubScene.FLOOR_H;
+    for (const [, y] of Object.entries(positions)) {
+      const walkY = y + floorH;
+      const dockY = walkY + 8; // same expression used in buildElevator
+      this.shaftDoors.push(new HubFloorDoors(this, cx, walkY, dockY));
+    }
   }
 
   /* ---- player ---- */

@@ -11,6 +11,10 @@
 export interface GameEvents {
   'music:play': [key: string];
   'music:stop': [];
+  /** Temporarily replace the current music with a new track; pair with `music:pop`. */
+  'music:push': [key: string];
+  /** Restore the music that was playing before the most recent `music:push`. */
+  'music:pop': [];
 
   'zone:enter': [zoneId: string];
   'zone:exit': [zoneId: string];

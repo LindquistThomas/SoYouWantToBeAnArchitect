@@ -58,6 +58,7 @@ export class QuizDialog extends ModalBase {
     this.registerKeyboardNav();
     this.showQuestion();
     this.fadeIn();
+    eventBus.emit('music:push', 'music_quiz');
   }
 
   /** Pick a difficulty-balanced set of questions per QUIZ_DIFFICULTY_MIX. */
@@ -671,6 +672,7 @@ export class QuizDialog extends ModalBase {
   }
 
   protected override onBeforeClose(): void {
+    eventBus.emit('music:pop');
     if (this.navHandler) {
       this.scene.events.off('update', this.navHandler);
       this.navHandler = undefined;

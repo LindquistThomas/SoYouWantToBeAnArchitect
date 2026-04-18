@@ -13,6 +13,8 @@ export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
   private currentMusic: Phaser.Sound.BaseSound | null = null;
   private currentMusicKey: string | null = null;
+  /** Stack of music keys suspended by `music:push`, popped back on `music:pop`. */
+  private musicStack: string[] = [];
 
   constructor(sound: Phaser.Sound.BaseSoundManager) {
     this.sound = sound;
@@ -25,6 +27,8 @@ export class AudioManager {
   registerEventListeners(): void {
     eventBus.on('music:play', (key) => this.playMusic(key));
     eventBus.on('music:stop', () => this.stopMusic());
+    eventBus.on('music:push', (key) => this.pushMusic(key));
+    eventBus.on('music:pop', () => this.popMusic());
 
     const events = Object.keys(SFX_EVENTS) as Array<keyof typeof SFX_EVENTS>;
     for (const event of events) {
@@ -45,6 +49,23 @@ export class AudioManager {
     this.currentMusic = this.sound.add(key, { loop: true, volume });
     this.currentMusic.play();
     this.currentMusicKey = key;
+  }
+
+  /** Suspend the current track and start a new one. Restore with popMusic. */
+  private pushMusic(key: string): void {
+    if (this.currentMusicKey === key) return;
+    if (this.currentMusicKey) this.musicStack.push(this.currentMusicKey);
+    this.playMusic(key);
+  }
+
+  /** Restore the track suspended by the most recent pushMusic. */
+  private popMusic(): void {
+    const prev = this.musicStack.pop();
+    if (prev) {
+      this.playMusic(prev);
+    } else {
+      this.stopMusic();
+    }
   }
 
   /** Stop the current music track. */
