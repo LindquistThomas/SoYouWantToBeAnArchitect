@@ -467,6 +467,16 @@ export class Elevator {
     return this.currentFloor;
   }
 
+  /**
+   * Set the docked-floor id without moving the cab. Used when the scene
+   * initialises the elevator at a floor the player has just returned from —
+   * without this, `currentFloor` defaults to 0 and the HUD reports the wrong
+   * floor until the cab snaps somewhere.
+   */
+  setCurrentFloor(floorId: number): void {
+    this.currentFloor = floorId;
+  }
+
   /** Returns the floor id the elevator is currently stopped at, or null if between floors. */
   getFloorAtCurrentPosition(): number | null {
     for (const [id, y] of this.floorStops) {

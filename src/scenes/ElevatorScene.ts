@@ -431,6 +431,10 @@ export class ElevatorScene extends Phaser.Scene {
     for (const [id, y] of Object.entries(positions)) {
       elevator.addFloor(Number(id), y + floorH + 8);
     }
+    // Cab starts docked at whichever floor the player was last on — keep
+    // the elevator's internal floor id in sync so the HUD doesn't show
+    // F0/Lobby while physically parked at F1 on scene re-entry.
+    elevator.setCurrentFloor(this.progression.getCurrentFloor());
     return elevator;
   }
 
@@ -631,6 +635,14 @@ export class ElevatorScene extends Phaser.Scene {
     for (const door of this.shaftDoors) door.update(cabY, delta);
     this.updateShaftCable();
     this.updateFloorLEDs();
+
+    // Keep progression.currentFloor aligned with the docked cab so the HUD
+    // floor label tracks the player as they ride between floors. Elevator
+    // only bumps its currentFloor on arrival, so this writes rarely.
+    const elevFloor = this.elevatorCtrl.elevator.getCurrentFloor() as FloorId;
+    if (elevFloor !== this.progression.getCurrentFloor()) {
+      this.progression.setCurrentFloor(elevFloor);
+    }
 
     this.checkFloorEntry();
     this.checkProductDoorEntry();
