@@ -16,7 +16,8 @@ interface ProductDoor {
  * Products floor — a long hall lined with a door for each ISY product.
  *
  * Each door opens into a dedicated product room scene. Walk up to a
- * door and press Space/Enter to enter; the room's exit door returns the player
+ * door. Walk up to a door and press Enter — or tap/click it — to enter;
+ * the room's exit door returns the player
  * to this hall, respawning next to the door they came through.
  */
 export class ProductsHallScene extends LevelScene {
@@ -48,7 +49,11 @@ export class ProductsHallScene extends LevelScene {
 
     // Render each product door with a name plate above it.
     for (const door of ProductsHallScene.DOORS) {
-      this.add.image(door.x, G - 56, 'door_unlocked').setDepth(3);
+      const img = this.add.image(door.x, G - 56, 'door_unlocked').setDepth(3);
+      // Click / tap the door directly to enter — matches the keyboard
+      // Enter path but lets touch/mouse users bypass proximity.
+      img.setInteractive({ useHandCursor: true });
+      img.on('pointerdown', () => this.enterProductRoom(door));
       this.add.text(door.x, G - 130, door.label, {
         fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
         fontStyle: 'bold', align: 'center',

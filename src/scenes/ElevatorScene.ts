@@ -18,8 +18,8 @@ const PRODUCT_LEADERSHIP_SCENE_KEY = 'ProductLeadershipScene';
 
 /**
  * Product doors rendered directly on the PRODUCTS floor of the shaft.
- * Walking up to a door and pressing Space/Enter transitions straight to
- * the matching product room scene ΓÇö no intermediate hall scene.
+ * Walking up to a door and pressing Enter (or tapping the door) transitions
+ * straight to the matching product room scene ΓÇö no intermediate hall scene.
  *
  * x is a world X in the elevator scene (must lie in the right-of-shaft walk surface,
  * i.e. roughly 770..1250).
@@ -408,9 +408,12 @@ export class ElevatorScene extends Phaser.Scene {
     this.add.image(rightEdge + 100, fProductsBottom - 40, 'plant_tall').setDepth(3);
     this.add.image(rightEdge + 240, fProductsBottom - 32, 'plant_small').setDepth(11);
 
-    // Render a door sprite + name plate for each product.
+    // Render a door sprite + name plate for each product. Door is also
+    // clickable/tappable — mouse and touch users can enter directly.
     for (const door of ElevatorScene.PRODUCT_DOORS) {
-      this.add.image(door.x, fProductsBottom - 56, 'door_unlocked').setDepth(3);
+      const img = this.add.image(door.x, fProductsBottom - 56, 'door_unlocked').setDepth(3);
+      img.setInteractive({ useHandCursor: true });
+      img.on('pointerdown', () => this.enterProductDoor(door));
       this.add.text(door.x, fProductsBottom - 130, door.label, {
         fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
         fontStyle: 'bold', align: 'center',
@@ -680,7 +683,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.checkProductDoorEntry();
   }
 
-  /** Show prompt + handle Space/Enter when standing near a product door. */
+  /** Show prompt + handle Enter when standing near a product door. */
   private checkProductDoorEntry(): void {
     if (this.isTransitioning) return;
     if (this.elevatorCtrl.isOnElevator) {
@@ -704,7 +707,7 @@ export class ElevatorScene extends Phaser.Scene {
     for (const door of ElevatorScene.PRODUCT_DOORS) {
       if (Math.abs(px - door.x) < 60) {
         this.productDoorPrompt
-          ?.setText(`Press Space/Enter \u2192 ${door.label}`)
+          ?.setText(`Press Enter \u2192 ${door.label}`)
           .setPosition(door.x - 120, walkY - 180)
           .setVisible(true);
         if (this.inputs.justPressed('Interact')) this.enterProductDoor(door);

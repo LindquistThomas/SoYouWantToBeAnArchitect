@@ -377,7 +377,7 @@ export class MenuScene extends Phaser.Scene {
 
   private createControlsFooter(): void {
     const cx = GAME_WIDTH / 2;
-    this.add.text(cx, GAME_HEIGHT - 60, '\u2191\u2193 / W S: Select   |   Enter / Space / Tap: Confirm', {
+    this.add.text(cx, GAME_HEIGHT - 60, '\u2191\u2193 / W S: Select   |   Enter / Tap: Confirm', {
       fontFamily: 'monospace', fontSize: '14px', color: '#7a8aa3',
     }).setOrigin(0.5).setDepth(10);
 

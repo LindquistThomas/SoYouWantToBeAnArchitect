@@ -104,7 +104,7 @@ test.describe('Gameplay screenshots', () => {
     await waitForScene(page, 'MenuScene');
 
     // Click START GAME to enter the elevator shaft.
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/02-elevator-lobby.png` });
@@ -126,7 +126,7 @@ test.describe('Gameplay screenshots', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
     await page.evaluate(() => {
@@ -150,7 +150,7 @@ test.describe('Gameplay screenshots', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
     await page.evaluate(() => {

@@ -26,12 +26,13 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   MoveDown:  [K.DOWN, K.S],
 
   // --- Gameplay verbs ---
-  // Jump and Interact share Space because the player is either on the
-  // ground near an interactable (Interact fires, scene transitions) or
-  // not (Jump fires). Jump additionally honours the classic Up/W keys.
+  // Space is reserved exclusively for Jump so it never triggers a
+  // scene transition or dialog by accident. Action verbs (entering
+  // doors, opening info cards) all go through Enter — which is also
+  // dispatched by pointer/touch events on interactive game objects.
   Jump:       [K.SPACE, K.UP, K.W],
-  Interact:   [K.SPACE, K.ENTER],
-  ToggleInfo: [K.I],
+  Interact:   [K.ENTER],
+  ToggleInfo: [K.I, K.ENTER],
 
   // --- Menu / dialog navigation ---
   NavigateUp:    [K.UP, K.W],
@@ -42,7 +43,7 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   PageDown:      [K.PAGE_DOWN],
 
   // --- Generic UI verbs ---
-  Confirm: [K.SPACE, K.ENTER],
+  Confirm: [K.ENTER],
   Cancel:  [K.ESC],
 
   // --- Quiz shortcuts ---

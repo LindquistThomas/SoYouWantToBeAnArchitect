@@ -18,7 +18,8 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 |-----|--------|
 | WASD / Arrow Keys | Move |
 | Space | Jump |
-| E | Interact (enter doors, call elevator) |
+| Enter / Click / Tap | Interact (enter doors, show info cards) |
+| I | Show info card for nearby zone |
 
 ### Floors
 
