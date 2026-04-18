@@ -298,6 +298,8 @@ export const INFO_POINTS: Record<string, InfoPointDef> = {
         { label: 'c4model.com (Simon Brown)', url: 'https://c4model.com/' },
         { label: 'Structurizr — diagrams-as-code tool', url: 'https://structurizr.com/' },
         { label: 'Simon Brown talk: "Visualise, Document, and Explore"', url: 'https://www.youtube.com/watch?v=x2-rSnhpw0g' },
+        { label: 'Norconsult Digital — C4 / Structurizr docs', url: 'https://docs.norconsultdigital.no/architecture/c4_structurizr/' },
+        { label: 'Norconsult Digital — software-architecture repo', url: 'https://github.com/norconsult-digital/software-architecture' },
       ],
       extendedInfo: {
         title: 'Deep Dive: Why C4 Works',
