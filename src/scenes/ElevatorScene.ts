@@ -71,6 +71,11 @@ export class ElevatorScene extends Phaser.Scene {
   private elevatorCtrl!: ElevatorController;
   private shaftDoors: ElevatorShaftDoors[] = [];
 
+  /** Cable tile sprite that spans from shaft ceiling down to the top of the cab. */
+  private shaftCable?: Phaser.GameObjects.TileSprite;
+  /** Per-floor 2-LED indicator graphics; lit when the cab Y is near the landing. */
+  private floorLEDs: Map<number, { gfx: Phaser.GameObjects.Graphics; x: number; y: number; dockY: number }> = new Map();
+
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the elevator shaft. */
@@ -117,6 +122,8 @@ export class ElevatorScene extends Phaser.Scene {
     this.createPlayer();
     this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator());
     this.createShaftDoors();
+    this.createShaftCable();
+    this.createFloorLEDs();
     this.createUI();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
@@ -441,6 +448,75 @@ export class ElevatorScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Cable rendered as a vertical TileSprite anchored at the shaft ceiling (y=0)
+   * and stretched downward to the top of the cab. Updated every frame in update().
+   */
+  private createShaftCable(): void {
+    const cx = GAME_WIDTH / 2;
+    // Depth 1.7: above shaft back wall (0) / rails / beams (1) / shaft doors (1.5),
+    // below the elevator cab graphics (2) and platform (3).
+    this.shaftCable = this.add.tileSprite(cx, 0, 4, 1, 'elevator_cable')
+      .setOrigin(0.5, 0)
+      .setDepth(1.7);
+    this.updateShaftCable();
+  }
+
+  private updateShaftCable(): void {
+    if (!this.shaftCable || !this.elevatorCtrl) return;
+    // Approximate cab top: platform Y minus the cab height (see Elevator.CAB_H=172).
+    const cabTop = this.elevatorCtrl.elevator.getY() - 172;
+    const h = Math.max(0, cabTop);
+    this.shaftCable.setSize(4, h);
+  }
+
+  /**
+   * Place a tiny 2-LED indicator near the shaft opening on the right side of
+   * the shaft wall for each landing. LEDs light green when the cab Y is within
+   * ~12 px of the landing dock Y.
+   */
+  private createFloorLEDs(): void {
+    const positions = this.getFloorYPositions();
+    const cx = GAME_WIDTH / 2;
+    const sw = ElevatorScene.SHAFT_WIDTH;
+    const rightEdge = cx + sw / 2;
+    const floorH = ElevatorScene.FLOOR_H;
+
+    for (const [idStr, yTop] of Object.entries(positions)) {
+      const id = Number(idStr);
+      const walkY = yTop + floorH;
+      const dockY = walkY + 8;
+      // Mount just above the shaft opening on the inside of the right shaft wall.
+      const ledX = rightEdge - 12;
+      const ledY = walkY - 148;
+      const gfx = this.add.graphics();
+      gfx.setDepth(5);
+      this.floorLEDs.set(id, { gfx, x: ledX, y: ledY, dockY });
+    }
+    this.updateFloorLEDs();
+  }
+
+  private updateFloorLEDs(): void {
+    if (!this.elevatorCtrl) return;
+    const cabY = this.elevatorCtrl.elevator.getY();
+    for (const { gfx, x, y, dockY } of this.floorLEDs.values()) {
+      const lit = Math.abs(cabY - dockY) <= 12;
+      const color = lit ? 0x00ff66 : 0x335533;
+      gfx.clear();
+      // Small backing plate for contrast
+      gfx.fillStyle(0x111118, 1);
+      gfx.fillRect(x - 1, y - 1, 12, 6);
+      gfx.fillStyle(color, 1);
+      gfx.fillCircle(x + 2, y + 2, 2);
+      gfx.fillCircle(x + 8, y + 2, 2);
+      if (lit) {
+        gfx.fillStyle(0x00ff66, 0.35);
+        gfx.fillCircle(x + 2, y + 2, 4);
+        gfx.fillCircle(x + 8, y + 2, 4);
+      }
+    }
+  }
+
   /* ---- player ---- */
   private createPlayer(): void {
     const positions = this.getFloorYPositions();
@@ -553,6 +629,8 @@ export class ElevatorScene extends Phaser.Scene {
 
     const cabY = this.elevatorCtrl.elevator.getY();
     for (const door of this.shaftDoors) door.update(cabY, delta);
+    this.updateShaftCable();
+    this.updateFloorLEDs();
 
     this.checkFloorEntry();
     this.checkProductDoorEntry();

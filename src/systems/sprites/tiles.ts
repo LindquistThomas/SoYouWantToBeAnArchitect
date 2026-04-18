@@ -53,6 +53,23 @@ export function generateTileSprites(scene: Phaser.Scene): void {
     gfx.lineBetween(0, S / 2, S, S / 2);
   });
 
+  // Rim-lit variant used only by Floor4Scene (Executive Suite).
+  // Mirrors platform_floor2 but adds a 2px lighter top rim and a 1px
+  // top-left specular for depth against the gradient-sky background.
+  createTile(scene, 'platform_floor4_lit', S, (gfx) => {
+    gfx.fillStyle(0x023e8a); gfx.fillRect(0, 0, S, S);
+    gfx.fillStyle(0x0077b6);
+    gfx.fillRect(2, 2, S - 4, 4);
+    gfx.fillRect(2, 2, 4, S - 4);
+    gfx.lineStyle(1, 0x023e8a, 0.4);
+    gfx.lineBetween(S / 2, 0, S / 2, S);
+    gfx.lineBetween(0, S / 2, S, S / 2);
+    gfx.fillStyle(0x90d5ff);
+    gfx.fillRect(0, 0, S, 2);
+    gfx.fillStyle(0xffffff);
+    gfx.fillRect(1, 1, 1, 1);
+  });
+
   createTile(scene, 'bg_tile', S, (gfx) => {
     gfx.fillStyle(0x16213e); gfx.fillRect(0, 0, S, S);
     gfx.fillStyle(0x1a2542, 0.5);

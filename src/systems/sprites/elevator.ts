@@ -13,8 +13,33 @@ export function generateElevatorSprites(scene: Phaser.Scene): void {
   eGfx.fillRect(0, 0, ew, 3);
   eGfx.fillRect(0, 0, 6, eh);
   eGfx.fillRect(ew - 6, 0, 6, eh);
+  // Top highlight (2px) and bottom shadow (4px) stripes
+  eGfx.fillStyle(0x66ddff, 1);
+  eGfx.fillRect(0, 0, ew, 2);
+  eGfx.fillStyle(0x004466, 1);
+  eGfx.fillRect(0, eh - 4, ew, 4);
+  // Centered cable bolt (grey circle, ~6px dia) near top-center
+  eGfx.fillStyle(0x555555, 1);
+  eGfx.fillCircle(ew / 2, 3, 3);
+  eGfx.fillStyle(0x333333, 1);
+  eGfx.fillCircle(ew / 2, 3, 1);
+  // Small 2x2 corner rivets at top-left and top-right
+  eGfx.fillStyle(0x888888, 1);
+  eGfx.fillRect(3, 3, 2, 2);
+  eGfx.fillRect(ew - 5, 3, 2, 2);
   eGfx.generateTexture('elevator_platform', ew, eh);
   eGfx.destroy();
+
+  // --- Cable texture: 4px wide, 64px tall, dark grey with highlight stripe ---
+  const cw = 4;
+  const ch = 64;
+  const cGfx = scene.make.graphics({ x: 0, y: 0 }, false);
+  cGfx.fillStyle(0x2a2a2a, 1);
+  cGfx.fillRect(0, 0, cw, ch);
+  cGfx.fillStyle(0x4a4a4a, 1);
+  cGfx.fillRect(cw / 2 - 0.5, 0, 1, ch);
+  cGfx.generateTexture('elevator_cable', cw, ch);
+  cGfx.destroy();
 
   // --- Shaft back-wall tile: weathered concrete with seams and stains ---
   const sw = 200;
@@ -67,6 +92,11 @@ export function generateElevatorSprites(scene: Phaser.Scene): void {
   // Rust drip under mid seam
   s.fillStyle(0x4a2a1a, 0.35);
   s.fillRect(sw / 3 + 1, sh / 2 + 2, 2, 20);
+
+  // Faint vertical guide rails (subtle)
+  s.lineStyle(1, 0x3a3a44, 0.25);
+  s.lineBetween(Math.round(sw * 0.45), 0, Math.round(sw * 0.45), sh);
+  s.lineBetween(Math.round(sw * 0.55), 0, Math.round(sw * 0.55), sh);
 
   s.generateTexture('elevator_shaft', sw, sh);
   s.destroy();

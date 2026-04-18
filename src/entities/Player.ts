@@ -36,6 +36,11 @@ export class Player {
   private flipStartY = 0;
   private flipDirection = 1; // 1 = right, -1 = left
 
+  /** Tracks airborne→grounded transitions for the land-squash tell. */
+  private wasOnGround = true;
+  /** True while the short `player_land` anim is playing; gates updateAnimation. */
+  private isLanding = false;
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
 
@@ -90,6 +95,16 @@ export class Player {
         repeat: -1,
       });
     }
+
+    // Land: 120ms squash-tell reusing walk frames (no new sheet frames needed)
+    if (!anims.exists('player_land')) {
+      anims.create({
+        key: 'player_land',
+        frames: anims.generateFrameNumbers('player', { frames: [2, 3] }),
+        frameRate: 16,
+        repeat: 0,
+      });
+    }
   }
 
   private createDustEmitter(): void {
@@ -115,8 +130,17 @@ export class Player {
     // ---- Scripted flip in progress ----
     if (this.isFlipping) {
       this.updateFlip(delta);
+      // Mid-flip we treat the player as grounded for the land-tell so the
+      // flip's own emitDust handles the landing, not player_land.
+      this.wasOnGround = true;
       return;
     }
+
+    // Land tell: fire once on airborne→grounded transition (walking off ledges).
+    if (!this.wasOnGround && onGround) {
+      this.playLandAnim();
+    }
+    this.wasOnGround = onGround;
 
     const inputs = this.scene.inputs;
     const h = inputs.horizontal();
@@ -211,7 +235,23 @@ export class Player {
     }
   }
 
+  private playLandAnim(): void {
+    this.isLanding = true;
+    this.sprite.anims.play('player_land', true);
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleY: { from: 0.92, to: 1 },
+      duration: 120,
+      ease: 'Quad.easeOut',
+    });
+    this.scene.time.delayedCall(120, () => {
+      this.isLanding = false;
+      this.sprite.setScale(1, 1);
+    });
+  }
+
   private updateAnimation(onGround: boolean): void {
+    if (this.isLanding) return;
     const vx = Math.abs(this.sprite.body!.velocity.x);
     let newAnim: PlayerAnimState;
 
