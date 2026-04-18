@@ -13,6 +13,8 @@ import { hasSave } from '../systems/SaveManager';
  */
 export class MenuScene extends Phaser.Scene {
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
+  private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
+  private selectedIndex = 0;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -20,6 +22,8 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor(0x05060f);
+    this.menuButtons = [];
+    this.selectedIndex = 0;
 
     this.createStarfield();
     this.createSkylineBackdrop();
@@ -27,8 +31,42 @@ export class MenuScene extends Phaser.Scene {
     this.createTitlePanel();
     this.createControlsFooter();
 
-    this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
+    this.setupKeyboardNavigation();
+    this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
+  }
+
+  private setupKeyboardNavigation(): void {
+    const kb = this.input.keyboard;
+    if (!kb) return;
+    kb.on('keydown-UP', () => this.moveSelection(-1));
+    kb.on('keydown-W', () => this.moveSelection(-1));
+    kb.on('keydown-DOWN', () => this.moveSelection(1));
+    kb.on('keydown-S', () => this.moveSelection(1));
+    kb.on('keydown-ENTER', () => this.activateSelection());
+    kb.on('keydown-SPACE', () => this.activateSelection());
+  }
+
+  private moveSelection(delta: number): void {
+    if (this.menuButtons.length === 0) return;
+    const n = this.menuButtons.length;
+    this.selectedIndex = (this.selectedIndex + delta + n) % n;
+    this.updateSelection();
+  }
+
+  private activateSelection(): void {
+    const entry = this.menuButtons[this.selectedIndex];
+    if (entry) entry.action();
+  }
+
+  private updateSelection(): void {
+    this.menuButtons.forEach((entry, i) => {
+      if (i === this.selectedIndex) {
+        entry.btn.setColor('#ffffff').setScale(1.08);
+      } else {
+        entry.btn.setColor(COLORS.titleText).setScale(1.0);
+      }
+    });
   }
 
   /* ---- background layers ---- */
@@ -271,14 +309,16 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(TEXT_DEPTH);
 
     // Start button
-    const btn = this.makeButton(cx, cy + 40, '[ START GAME ]', 26, () => this.startGame());
+    const startAction = () => this.startGame();
+    const btn = this.makeButton(cx, cy + 40, '[ START GAME ]', 26, startAction);
     btn.setDepth(TEXT_DEPTH);
-    this.tweens.add({ targets: btn, alpha: 0.65, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+    this.menuButtons.push({ btn, action: startAction });
 
     if (hasSave()) {
-      this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, () => this.continueGame())
-        .setDepth(TEXT_DEPTH);
-      this.input.keyboard?.once('keydown-ENTER', () => this.continueGame());
+      const continueAction = () => this.continueGame();
+      const contBtn = this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, continueAction);
+      contBtn.setDepth(TEXT_DEPTH);
+      this.menuButtons.push({ btn: contBtn, action: continueAction });
     }
   }
 
@@ -293,15 +333,21 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: `${fontPx}px`, color: COLORS.titleText,
       padding: { x: 24, y: 12 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    btn.on('pointerover', () => btn.setColor('#ffffff').setScale(1.08));
-    btn.on('pointerout', () => btn.setColor(COLORS.titleText).setScale(1.0));
+    btn.on('pointerover', () => {
+      const idx = this.menuButtons.findIndex((e) => e.btn === btn);
+      if (idx >= 0) {
+        this.selectedIndex = idx;
+        this.updateSelection();
+      }
+    });
+    btn.on('pointerout', () => this.updateSelection());
     btn.on('pointerdown', onClick);
     return btn;
   }
 
   private createControlsFooter(): void {
     const cx = GAME_WIDTH / 2;
-    this.add.text(cx, GAME_HEIGHT - 60, 'WASD / Arrows: Move   |   Space: Jump   |   I: Info   |   E: Interact', {
+    this.add.text(cx, GAME_HEIGHT - 60, '\u2191\u2193 / W S: Select   |   Enter / Space / Tap: Confirm', {
       fontFamily: 'monospace', fontSize: '14px', color: '#7a8aa3',
     }).setOrigin(0.5).setDepth(10);
 
