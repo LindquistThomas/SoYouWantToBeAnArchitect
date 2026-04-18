@@ -85,8 +85,14 @@ export class ElevatorScene extends Phaser.Scene {
 
   private zoneManager = new ZoneManager();
 
-  /** Total scrollable world height for the elevator shaft. */
-  private static readonly WORLD_HEIGHT = 2760;
+  /**
+   * Vertical extent of the visible shaft. Top is the executive floor slab's
+   * top edge (the shaft ceiling sits here); bottom is the lobby floor slab's
+   * bottom edge (the pit floor sits here). Cached in create() from
+   * {@link getFloorYPositions}.
+   */
+  private shaftExtent!: { top: number; bottom: number; height: number };
+
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   /** Number of tile rows stacked per floor slab. */
@@ -127,10 +133,12 @@ export class ElevatorScene extends Phaser.Scene {
     this.isTransitioning = false;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
-    const wh = ElevatorScene.WORLD_HEIGHT;
-    this.physics.world.setBounds(0, 0, GAME_WIDTH, wh);
+    this.shaftExtent = this.computeShaftExtent();
+    const worldH = this.shaftExtent.bottom;
+    this.physics.world.setBounds(0, 0, GAME_WIDTH, worldH);
 
-    this.createShaftBackground(wh);
+    this.createShaftBackground(this.shaftExtent.top, this.shaftExtent.bottom);
+    this.createShaftCaps(this.shaftExtent.top, this.shaftExtent.bottom);
     this.createPlatforms();
     this.createLobbyDecorations();
     this.createFloorDecorations();
@@ -142,7 +150,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.createUI();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
-    this.cameras.main.setBounds(0, 0, GAME_WIDTH, wh);
+    this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldH);
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     this.dialogs = new DialogController(this, {
@@ -173,33 +181,37 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   /* ---- background ---- */
-  private createShaftBackground(worldHeight: number): void {
+  private createShaftBackground(top: number, bottom: number): void {
     const cx = GAME_WIDTH / 2;
     const sw = ElevatorScene.SHAFT_WIDTH;
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
+    const shaftH = bottom - top;
 
-    // Concrete back wall (shaft interior) ΓÇö tiled
-    for (let y = 0; y < worldHeight; y += TILE_SIZE) {
-      this.add.tileSprite(cx, y, sw, TILE_SIZE, 'elevator_shaft').setDepth(0);
+    // Concrete back wall (shaft interior) — tiled
+    for (let y = top; y < bottom; y += TILE_SIZE) {
+      const tileH = Math.min(TILE_SIZE, bottom - y);
+      this.add
+        .tileSprite(cx, y + tileH / 2, sw, tileH, 'elevator_shaft')
+        .setDepth(0);
     }
 
     // Inner shadow along both walls (ambient occlusion in the corners)
     const shadow = this.add.graphics();
     shadow.fillStyle(0x000000, 0.45);
-    shadow.fillRect(leftEdge, 0, 8, worldHeight);
-    shadow.fillRect(rightEdge - 8, 0, 8, worldHeight);
+    shadow.fillRect(leftEdge, top, 8, shaftH);
+    shadow.fillRect(rightEdge - 8, top, 8, shaftH);
     shadow.setDepth(0);
 
-    // Steel shaft walls ΓÇö dark outer pillars flanking the concrete
+    // Steel shaft walls — dark outer pillars flanking the concrete
     const walls = this.add.graphics();
     walls.fillStyle(0x1a1a22, 1);
-    walls.fillRect(leftEdge - 12, 0, 12, worldHeight);
-    walls.fillRect(rightEdge, 0, 12, worldHeight);
+    walls.fillRect(leftEdge - 12, top, 12, shaftH);
+    walls.fillRect(rightEdge, top, 12, shaftH);
     // Wall bevel highlight
     walls.fillStyle(0x33333f, 1);
-    walls.fillRect(leftEdge - 12, 0, 2, worldHeight);
-    walls.fillRect(rightEdge + 10, 0, 2, worldHeight);
+    walls.fillRect(leftEdge - 12, top, 2, shaftH);
+    walls.fillRect(rightEdge + 10, top, 2, shaftH);
     walls.setDepth(1);
 
     // Vertical steel guide rails (two T-section rails the cab slides on)
@@ -209,19 +221,19 @@ export class ElevatorScene extends Phaser.Scene {
       const rx = cx + off;
       // Rail shadow
       rails.fillStyle(0x0d0d12, 0.8);
-      rails.fillRect(rx - 3, 0, 8, worldHeight);
+      rails.fillRect(rx - 3, top, 8, shaftH);
       // Rail body
       rails.fillStyle(0x55606e, 1);
-      rails.fillRect(rx - 2, 0, 4, worldHeight);
+      rails.fillRect(rx - 2, top, 4, shaftH);
       // Rail highlight
       rails.fillStyle(0x88909c, 1);
-      rails.fillRect(rx - 1, 0, 1, worldHeight);
+      rails.fillRect(rx - 1, top, 1, shaftH);
     }
     rails.setDepth(1);
 
     // Periodic horizontal I-beams / maintenance struts
     const beams = this.add.graphics();
-    for (let y = 60; y < worldHeight; y += 240) {
+    for (let y = top + 60; y < bottom; y += 240) {
       // Avoid drawing beams across floor openings (keep shaft openings clean)
       beams.fillStyle(0x3a3a48, 1);
       beams.fillRect(leftEdge + 2, y, sw - 4, 4);
@@ -239,12 +251,57 @@ export class ElevatorScene extends Phaser.Scene {
     // Warning chevrons every few meters on the wall
     const chev = this.add.graphics();
     chev.fillStyle(0xffcc33, 0.25);
-    for (let y = 120; y < worldHeight; y += 480) {
+    for (let y = top + 120; y < bottom; y += 480) {
       for (let i = 0; i < 3; i++) {
         chev.fillTriangle(leftEdge + 26 + i * 6, y, leftEdge + 32 + i * 6, y, leftEdge + 29 + i * 6, y + 8);
       }
     }
     chev.setDepth(1);
+  }
+
+  /**
+   * Solid caps closing the shaft at the executive ceiling and the lobby pit.
+   * Draws a dark steel beam band plus a thin bevel so the terminations read as
+   * structural, not clipped.
+   */
+  private createShaftCaps(top: number, bottom: number): void {
+    const cx = GAME_WIDTH / 2;
+    const sw = ElevatorScene.SHAFT_WIDTH;
+    const leftEdge = cx - sw / 2;
+    const capW = sw + 24; // cover the outer steel pillars too
+
+    const g = this.add.graphics().setDepth(1);
+
+    // --- Ceiling cap at the executive slab top ---
+    const ceilH = 24;
+    g.fillStyle(0x1a1a22, 1);
+    g.fillRect(leftEdge - 12, top - ceilH, capW, ceilH);
+    // Bolted rivet strip along the underside
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRect(leftEdge - 12, top - 6, capW, 2);
+    g.fillStyle(0x88909c, 1);
+    for (let rx = leftEdge + 4; rx < leftEdge + capW - 16; rx += 16) {
+      g.fillCircle(rx, top - 5, 1.2);
+    }
+    // Top highlight line
+    g.fillStyle(0x33333f, 1);
+    g.fillRect(leftEdge - 12, top - ceilH, capW, 2);
+
+    // --- Pit floor cap at the lobby slab bottom ---
+    const pitH = 24;
+    // Concrete pit base
+    g.fillStyle(0x2a2a34, 1);
+    g.fillRect(leftEdge - 12, bottom, capW, pitH);
+    // Oil-stain shadow across the pit
+    g.fillStyle(0x000000, 0.35);
+    g.fillRect(leftEdge - 8, bottom + 4, capW - 8, 6);
+    // Bolted rivet strip along the top edge
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRect(leftEdge - 12, bottom + 2, capW, 2);
+    g.fillStyle(0x88909c, 1);
+    for (let rx = leftEdge + 4; rx < leftEdge + capW - 16; rx += 16) {
+      g.fillCircle(rx, bottom + 3, 1.2);
+    }
   }
 
   /* ---- platforms ---- */
@@ -358,11 +415,8 @@ export class ElevatorScene extends Phaser.Scene {
       }
     }
 
-    // Shaft safety net ΓÇö collision floor at the very bottom of the shaft.
-    const netY = ElevatorScene.WORLD_HEIGHT - 4;
-    const shaftNet = this.add.rectangle(cx, netY, sw, 8, 0x000000, 0).setDepth(0);
-    this.physics.add.existing(shaftNet, true);
-    this.platforms.add(shaftNet);
+    // Shaft bottom is closed by the pit cap (see createShaftCaps) and the
+    // camera / physics world bounds; no separate safety-net collider needed.
 
     // Invisible shaft walls: prevent airborne players from arcing across the
     // shaft from one floor's walk surface onto the other. Each wall is a stack
@@ -387,12 +441,12 @@ export class ElevatorScene extends Phaser.Scene {
     };
 
     const buildWallColumn = (xCenter: number): void => {
-      let cursor = 0;
+      let cursor = this.shaftExtent.top;
       for (const walkY of walkYs) {
         addWallSegment(xCenter, cursor, walkY - OPENING_ABOVE);
         cursor = walkY + OPENING_BELOW;
       }
-      addWallSegment(xCenter, cursor, ElevatorScene.WORLD_HEIGHT);
+      addWallSegment(xCenter, cursor, this.shaftExtent.bottom);
     };
 
     buildWallColumn(leftWallX);
@@ -518,7 +572,7 @@ export class ElevatorScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     // Depth 1.7: above shaft back wall (0) / rails / beams (1) / shaft doors (1.5),
     // below the elevator cab graphics (2) and platform (3).
-    this.shaftCable = this.add.tileSprite(cx, 0, 4, 1, 'elevator_cable')
+    this.shaftCable = this.add.tileSprite(cx, this.shaftExtent.top, 4, 1, 'elevator_cable')
       .setOrigin(0.5, 0)
       .setDepth(1.7);
     this.updateShaftCable();
@@ -528,7 +582,7 @@ export class ElevatorScene extends Phaser.Scene {
     if (!this.shaftCable || !this.elevatorCtrl) return;
     // Approximate cab top: platform Y minus the cab height (see Elevator.CAB_H=172).
     const cabTop = this.elevatorCtrl.elevator.getY() - 172;
-    const h = Math.max(0, cabTop);
+    const h = Math.max(0, cabTop - this.shaftExtent.top);
     this.shaftCable.setSize(4, h);
   }
 
@@ -631,14 +685,33 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   /* ---- helpers ---- */
+  /**
+   * Absolute Y (in world coordinates) of the TOP of each floor's tile slab.
+   * Values are chosen so floors are evenly spaced with the lobby at the bottom
+   * and executive at the top; see {@link computeShaftExtent} for how these
+   * derive the visible shaft range.
+   */
   private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: ElevatorScene.WORLD_HEIGHT - 350,
-      [FLOORS.PLATFORM_TEAM]: ElevatorScene.WORLD_HEIGHT - 880,
-      [FLOORS.PRODUCTS]: ElevatorScene.WORLD_HEIGHT - 1410,
-      [FLOORS.BUSINESS]: ElevatorScene.WORLD_HEIGHT - 1940,
-      [FLOORS.EXECUTIVE]: ElevatorScene.WORLD_HEIGHT - 2470,
+      [FLOORS.LOBBY]: 2410,
+      [FLOORS.PLATFORM_TEAM]: 1880,
+      [FLOORS.PRODUCTS]: 1350,
+      [FLOORS.BUSINESS]: 820,
+      [FLOORS.EXECUTIVE]: 290,
     };
+  }
+
+  /**
+   * Compute the visible shaft extent from the floor positions: the shaft
+   * starts at the top edge of the executive floor slab (ceiling) and ends at
+   * the bottom edge of the lobby floor slab (pit).
+   */
+  private computeShaftExtent(): { top: number; bottom: number; height: number } {
+    const positions = this.getFloorYPositions();
+    const floorH = ElevatorScene.FLOOR_H;
+    const top = Math.min(...Object.values(positions));
+    const bottom = Math.max(...Object.values(positions)) + floorH;
+    return { top, bottom, height: bottom - top };
   }
 
   /**
