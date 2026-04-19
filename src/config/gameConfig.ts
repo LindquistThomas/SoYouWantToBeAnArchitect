@@ -4,11 +4,11 @@ export const GAME_HEIGHT = 960;
 /** Base tile size for 128×128 pixel-art style. */
 export const TILE_SIZE = 128;
 
-export const PLAYER_SPEED = 280;
+export const PLAYER_SPEED = 320;
 export const PLAYER_JUMP_VELOCITY = -520;
 export const PLAYER_GRAVITY = 900;
 
-export const ELEVATOR_SPEED = 560;
+export const ELEVATOR_SPEED = 760;
 
 // Colour tokens live in `src/style/theme.ts`; re-exported here under the
 // historical `COLORS` name to keep older call sites working until the
