@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
-import { ENEMIES } from './enemies';
+import { enemiesForGroundY } from './enemies';
 
 /**
  * Floor 1 — Platform room (left side of the Platform Team floor).
@@ -183,7 +183,7 @@ export class PlatformTeamScene extends LevelScene {
         },
       ],
 
-      enemies: ENEMIES(G),
+      enemies: enemiesForGroundY(G),
     };
   }
 }

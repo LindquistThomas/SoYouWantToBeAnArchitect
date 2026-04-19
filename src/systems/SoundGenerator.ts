@@ -18,7 +18,8 @@ import {
 /**
  * Composition root for runtime audio generation.
  *
- * Every SFX is built procedurally so the game ships with zero audio files.
+ * Every SFX is built procedurally so the game ships with zero SFX
+ * files (music is still streamed from MP3/OGG in BootScene).
  * Individual generators live under `./sounds/`; this file wires them up
  * for BootScene.
  */
