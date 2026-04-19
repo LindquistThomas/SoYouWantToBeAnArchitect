@@ -61,6 +61,11 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly FLOOR_TILE_ROWS = 2;
   /** Pixel height of one floor slab. */
   private static readonly FLOOR_H = ElevatorScene.FLOOR_TILE_ROWS * TILE_SIZE;
+  /**
+   * Depth (px) of the shaft pit below the lobby walking surface. Controls how
+   * much of the shaft bottom is visible when the camera clamps at the lobby.
+   */
+  private static readonly PIT_DEPTH = 280;
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -244,7 +249,11 @@ export class ElevatorScene extends Phaser.Scene {
     const positions = this.getFloorYPositions();
     const floorH = ElevatorScene.FLOOR_H;
     const top = Math.min(...Object.values(positions));
-    const bottom = Math.max(...Object.values(positions)) + floorH;
+    // Extend the shaft below the lobby walking surface by PIT_DEPTH so the
+    // player can see the bottom of the shaft (pit floor) while standing on
+    // the ground floor — without it, the camera clamps flush with the lobby
+    // and the pit cap renders just out of view.
+    const bottom = Math.max(...Object.values(positions)) + floorH + ElevatorScene.PIT_DEPTH;
     return { top, bottom, height: bottom - top };
   }
 
