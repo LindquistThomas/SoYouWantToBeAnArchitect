@@ -34,6 +34,13 @@ export class ElevatorSceneLayout {
   readonly platforms: Phaser.Physics.Arcade.StaticGroup;
   readonly shaftDoors: ElevatorShaftDoors[] = [];
   private shaftCable?: Phaser.GameObjects.TileSprite;
+  /**
+   * Y coordinate at which the cable anchors (bottom tangent of the pulley
+   * wheel inside the machine room). Initialised in `createMachineRoom()`
+   * before `createShaftCable()` runs. Falls back to the shaft top if the
+   * machine room isn't built for some reason.
+   */
+  private pulleyAnchorY = 0;
   private floorLEDs = new Map<number, {
     gfx: Phaser.GameObjects.Graphics; x: number; y: number; dockY: number;
   }>();
@@ -44,8 +51,11 @@ export class ElevatorSceneLayout {
 
   /** Build the entire elevator-scene visual scaffolding in order. */
   build(): void {
+    this.pulleyAnchorY = this.deps.shaftExtent.top;
     this.createShaftBackground();
     this.createShaftCaps();
+    this.createRooftop();
+    this.createMachineRoom();
     this.createPlatforms();
     this.createLobbyDecorations();
     this.createBelowLobbyFoundation();
@@ -59,7 +69,7 @@ export class ElevatorSceneLayout {
     if (!this.shaftCable || !controller) return;
     // Approximate cab top: platform Y minus the cab height (see Elevator.CAB_H=172).
     const cabTop = controller.elevator.getY() - 172;
-    const h = Math.max(0, cabTop - this.deps.shaftExtent.top);
+    const h = Math.max(0, cabTop - this.pulleyAnchorY);
     this.shaftCable.setSize(4, h);
   }
 
@@ -271,6 +281,316 @@ export class ElevatorSceneLayout {
     // "sealed shaft" read along the edges where the ceiling cap has a twin.
     g.fillStyle(0x1a1a22, 1);
     g.fillRect(leftEdge - 12, bottom - 2, capW, 2);
+  }
+
+  /**
+   * Building rooftop drawn to the LEFT and RIGHT of the shaft, in the band
+   * above the F4 floor slab (y < shaftExtent.top). Gives the top floor a
+   * believable "top of the building" look with parapets and rooftop props
+   * (HVAC vent, exhaust pipes, antenna, satellite dish).
+   */
+  private createRooftop(): void {
+    const scene = this.deps.scene;
+    const cx = GAME_WIDTH / 2;
+    const sw = this.deps.shaftWidth;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
+    const roofY = this.deps.shaftExtent.top;
+
+    const g = scene.add.graphics().setDepth(3);
+
+    const drawDeck = (x0: number, x1: number): void => {
+      // Darker seam line right at the top of the roof (the "edge" the
+      // parapet sits on).
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(x0, roofY - 4, x1 - x0, 4);
+      // Tar deck surface — only needs to be a few px tall since the F4
+      // floor slab starts at roofY and covers everything below.
+      g.fillStyle(0x2a2a34, 1);
+      g.fillRect(x0, roofY, x1 - x0, 6);
+      // Gravel speckle for texture.
+      g.fillStyle(0x4a4a55, 1);
+      for (let i = 0; i < 40; i++) {
+        const sx = x0 + ((i * 41) % Math.max(1, x1 - x0));
+        g.fillRect(sx, roofY - 3 + (i % 4), 1, 1);
+      }
+    };
+    drawDeck(0, leftEdge);
+    drawDeck(rightEdge, GAME_WIDTH);
+
+    // Outer parapets at the far edges so the rooftop reads as enclosed.
+    g.fillStyle(0x333344, 1);
+    g.fillRect(0, roofY - 18, 12, 18);
+    g.fillRect(GAME_WIDTH - 12, roofY - 18, 12, 18);
+    g.fillStyle(0x55556a, 1);
+    g.fillRect(0, roofY - 18, 12, 2);
+    g.fillRect(GAME_WIDTH - 12, roofY - 18, 12, 2);
+
+    // Short parapets adjacent to the shaft lintel.
+    g.fillStyle(0x2a2a36, 1);
+    g.fillRect(leftEdge - 36, roofY - 12, 24, 12);
+    g.fillRect(rightEdge + 12, roofY - 12, 24, 12);
+    g.fillStyle(0x55556a, 1);
+    g.fillRect(leftEdge - 36, roofY - 12, 24, 2);
+    g.fillRect(rightEdge + 12, roofY - 12, 24, 2);
+
+    // Props — left side
+    this.drawHvacVent(g, 140, roofY);
+    this.drawExhaustPipes(g, 320, roofY);
+    // Props — right side
+    this.drawAntenna(g, rightEdge + 120, roofY);
+    this.drawSatelliteDish(g, rightEdge + 280, roofY);
+  }
+
+  private drawHvacVent(g: Phaser.GameObjects.Graphics, x: number, roofY: number): void {
+    // Base plinth on the roof deck.
+    g.fillStyle(0x22222c, 1);
+    g.fillRect(x, roofY - 6, 96, 6);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(x, roofY - 6, 96, 2);
+    // Main box body.
+    g.fillStyle(0x6a6a78, 1);
+    g.fillRect(x + 4, roofY - 46, 88, 40);
+    g.fillStyle(0x88889a, 1);
+    g.fillRect(x + 4, roofY - 46, 88, 2);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(x + 4, roofY - 8, 88, 2);
+    // Louvers.
+    g.fillStyle(0x1a1a22, 1);
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(x + 12, roofY - 40 + i * 7, 72, 3);
+    }
+    // Top cowling.
+    g.fillStyle(0x55556a, 1);
+    g.fillRect(x, roofY - 56, 96, 10);
+    g.fillStyle(0x88899a, 1);
+    g.fillRect(x, roofY - 56, 96, 2);
+    // Small exhaust stack on top.
+    g.fillStyle(0x33333f, 1);
+    g.fillRect(x + 40, roofY - 70, 16, 14);
+    g.fillStyle(0x55556a, 1);
+    g.fillRect(x + 40, roofY - 70, 16, 2);
+    // Warning label (orange band).
+    g.fillStyle(0xffcc33, 0.85);
+    g.fillRect(x + 12, roofY - 18, 20, 4);
+  }
+
+  private drawExhaustPipes(g: Phaser.GameObjects.Graphics, x: number, roofY: number): void {
+    // Shared pipe bank base.
+    g.fillStyle(0x22222c, 1);
+    g.fillRect(x - 4, roofY - 6, 60, 6);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(x - 4, roofY - 6, 60, 2);
+
+    const heights = [62, 86, 46, 70];
+    for (let i = 0; i < heights.length; i++) {
+      const px = x + i * 14;
+      const ph = heights[i];
+      // Pipe body.
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(px, roofY - ph, 8, ph);
+      g.fillStyle(0x55556a, 1);
+      g.fillRect(px + 1, roofY - ph, 2, ph);
+      g.fillStyle(0x33333f, 1);
+      g.fillRect(px + 6, roofY - ph, 1, ph);
+      // Cap.
+      g.fillStyle(0x3a3a46, 1);
+      g.fillRect(px - 1, roofY - ph - 4, 10, 4);
+      g.fillStyle(0x88909c, 1);
+      g.fillRect(px - 1, roofY - ph - 4, 10, 1);
+      // Connecting band near the base.
+      if (i < heights.length - 1) {
+        g.fillStyle(0x55556a, 1);
+        g.fillRect(px + 7, roofY - 14, 7, 2);
+      }
+    }
+  }
+
+  private drawAntenna(g: Phaser.GameObjects.Graphics, x: number, roofY: number): void {
+    // Base plate.
+    g.fillStyle(0x22222c, 1);
+    g.fillRect(x - 12, roofY - 4, 28, 4);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(x - 12, roofY - 4, 28, 1);
+    // Main mast.
+    g.fillStyle(0x88909c, 1);
+    g.fillRect(x + 1, roofY - 110, 2, 106);
+    g.fillStyle(0x55606e, 1);
+    g.fillRect(x + 3, roofY - 110, 1, 106);
+    // Tripod supports.
+    g.lineStyle(1, 0x55606e, 1);
+    g.beginPath();
+    g.moveTo(x - 10, roofY - 4); g.lineTo(x + 2, roofY - 32);
+    g.moveTo(x + 14, roofY - 4); g.lineTo(x + 2, roofY - 32);
+    g.strokePath();
+    // Dipole cross-bars, decreasing in length toward the top.
+    const bars: Array<[number, number]> = [
+      [roofY - 40, 18],
+      [roofY - 56, 14],
+      [roofY - 72, 10],
+      [roofY - 88, 6],
+    ];
+    g.fillStyle(0x88909c, 1);
+    for (const [by, half] of bars) {
+      g.fillRect(x + 2 - half, by, half * 2, 1);
+    }
+    // Red aviation warning light.
+    g.fillStyle(0xff8888, 0.5);
+    g.fillCircle(x + 2, roofY - 112, 5);
+    g.fillStyle(0xff3333, 1);
+    g.fillCircle(x + 2, roofY - 112, 2);
+  }
+
+  private drawSatelliteDish(g: Phaser.GameObjects.Graphics, x: number, roofY: number): void {
+    // Base sled.
+    g.fillStyle(0x22222c, 1);
+    g.fillRect(x - 18, roofY - 4, 38, 4);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(x - 18, roofY - 4, 38, 1);
+    // Tripod legs.
+    g.lineStyle(2, 0x55606e, 1);
+    g.beginPath();
+    g.moveTo(x - 12, roofY - 4); g.lineTo(x + 1, roofY - 30);
+    g.moveTo(x + 12, roofY - 4); g.lineTo(x + 1, roofY - 30);
+    g.strokePath();
+    // Pedestal neck.
+    g.fillStyle(0x55606e, 1);
+    g.fillRect(x - 3, roofY - 38, 6, 14);
+    g.fillStyle(0x88909c, 1);
+    g.fillRect(x - 3, roofY - 38, 6, 1);
+    // Dish (off-axis ellipse giving it a tilted look).
+    g.fillStyle(0xbfbfcf, 1);
+    g.fillEllipse(x + 10, roofY - 50, 44, 36);
+    g.fillStyle(0x88909c, 1);
+    g.fillEllipse(x + 12, roofY - 50, 36, 30);
+    g.fillStyle(0x55606e, 1);
+    g.fillEllipse(x + 14, roofY - 50, 28, 22);
+    // Feed arm + LNB.
+    g.lineStyle(2, 0x55606e, 1);
+    g.beginPath();
+    g.moveTo(x + 14, roofY - 50); g.lineTo(x + 32, roofY - 68);
+    g.strokePath();
+    g.fillStyle(0x33333f, 1);
+    g.fillRect(x + 30, roofY - 72, 7, 7);
+    g.fillStyle(0x88909c, 1);
+    g.fillRect(x + 30, roofY - 72, 7, 1);
+  }
+
+  /**
+   * Machine room directly above the shaft ceiling cap. Houses the pulley
+   * and motor that the elevator cable wraps over, so the cable has a
+   * visible anchor instead of disappearing into a blank ceiling.
+   * Publishes {@link pulleyAnchorY} for {@link createShaftCable}.
+   */
+  private createMachineRoom(): void {
+    const scene = this.deps.scene;
+    const cx = GAME_WIDTH / 2;
+    const sw = this.deps.shaftWidth;
+    const top = this.deps.shaftExtent.top;
+    const capTop = top - 24;            // top edge of existing ceiling cap
+    const roomH = 92;
+    const roomW = sw + 40;
+    const roomLeft = cx - roomW / 2;
+    const roomTop = capTop - roomH;
+    const wallT = 4;
+
+    // Interior + walls — depth 1 so the cable (1.7) renders in front.
+    const bg = scene.add.graphics().setDepth(1);
+    bg.fillStyle(0x16161c, 1);
+    bg.fillRect(roomLeft, roomTop, roomW, roomH);
+    bg.fillStyle(0x2a2a34, 1);
+    bg.fillRect(roomLeft, roomTop, roomW, wallT);                     // ceiling
+    bg.fillRect(roomLeft, roomTop, wallT, roomH);                     // left wall
+    bg.fillRect(roomLeft + roomW - wallT, roomTop, wallT, roomH);     // right wall
+    bg.fillStyle(0x55556a, 1);
+    bg.fillRect(roomLeft, roomTop, roomW, 1);                         // top highlight
+    bg.fillStyle(0x1a1a22, 1);
+    bg.fillRect(roomLeft, roomTop + wallT - 1, roomW, 1);             // ceiling shadow
+
+    // External vent louvers on the room's left & right walls.
+    bg.fillStyle(0x33333f, 1);
+    for (let i = 0; i < 4; i++) {
+      bg.fillRect(roomLeft + 8, roomTop + 18 + i * 12, 18, 3);
+      bg.fillRect(roomLeft + roomW - 26, roomTop + 18 + i * 12, 18, 3);
+    }
+
+    // Hazard chevron along the inside bottom of the room (above the cap).
+    const chevY = roomTop + roomH - 6;
+    bg.fillStyle(0x111114, 1);
+    bg.fillRect(roomLeft + wallT, chevY, roomW - 2 * wallT, 4);
+    bg.fillStyle(0xffcc33, 1);
+    for (let xx = roomLeft + wallT; xx < roomLeft + roomW - wallT; xx += 12) {
+      bg.fillTriangle(xx, chevY, xx + 6, chevY, xx + 3, chevY + 4);
+    }
+
+    // Motor housing to the left of the pulley.
+    const motorX = cx - 64;
+    const motorY = roomTop + 34;
+    bg.fillStyle(0x3a3a48, 1);
+    bg.fillRect(motorX, motorY, 44, 44);
+    bg.fillStyle(0x55556a, 1);
+    bg.fillRect(motorX, motorY, 44, 3);
+    bg.fillStyle(0x1a1a22, 1);
+    bg.fillRect(motorX, motorY + 41, 44, 3);
+    // Cooling fins.
+    bg.fillStyle(0x22222a, 1);
+    for (let i = 0; i < 6; i++) bg.fillRect(motorX + 4 + i * 6, motorY + 8, 2, 28);
+    // Status LED.
+    bg.fillStyle(0x00ff66, 0.35);
+    bg.fillCircle(motorX + 38, motorY + 10, 4);
+    bg.fillStyle(0x00ff66, 1);
+    bg.fillCircle(motorX + 38, motorY + 10, 2);
+    // Mount bolts.
+    bg.fillStyle(0x88909c, 1);
+    bg.fillRect(motorX + 2, motorY + 2, 2, 2);
+    bg.fillRect(motorX + 40, motorY + 2, 2, 2);
+    bg.fillRect(motorX + 2, motorY + 40, 2, 2);
+    bg.fillRect(motorX + 40, motorY + 40, 2, 2);
+
+    // Drive belt from motor to pulley hub.
+    const pulleyR = 18;
+    const pulleyX = cx;
+    const pulleyY = roomTop + 54;
+    bg.fillStyle(0x111114, 1);
+    bg.fillRect(motorX + 44, pulleyY - 2, pulleyX - (motorX + 44), 4);
+    bg.fillStyle(0x33333f, 1);
+    bg.fillRect(motorX + 44, pulleyY - 2, pulleyX - (motorX + 44), 1);
+
+    // Pulley mount bracket bolted to the ceiling.
+    bg.fillStyle(0x33333f, 1);
+    bg.fillRect(pulleyX - 14, roomTop + wallT, 28, 10);
+    bg.fillStyle(0x55556a, 1);
+    bg.fillRect(pulleyX - 14, roomTop + wallT, 28, 2);
+    bg.fillStyle(0x88909c, 1);
+    bg.fillCircle(pulleyX - 10, roomTop + wallT + 5, 1);
+    bg.fillCircle(pulleyX + 10, roomTop + wallT + 5, 1);
+
+    // Pulley wheel — depth 2 so the cable (1.7) passes BEHIND it,
+    // reading as wrapped under the wheel.
+    const pulley = scene.add.graphics().setDepth(2);
+    pulley.fillStyle(0x1a1a22, 1);
+    pulley.fillCircle(pulleyX, pulleyY, pulleyR);
+    pulley.fillStyle(0x55606e, 1);
+    pulley.fillCircle(pulleyX, pulleyY, pulleyR - 3);
+    pulley.fillStyle(0x2a2a32, 1);
+    pulley.fillCircle(pulleyX, pulleyY, 6);
+    pulley.fillStyle(0x88909c, 1);
+    pulley.fillCircle(pulleyX, pulleyY, 2);
+    // Spokes.
+    pulley.lineStyle(2, 0x33333f, 1);
+    pulley.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 4;
+      pulley.moveTo(pulleyX + Math.cos(a) * 5, pulleyY + Math.sin(a) * 5);
+      pulley.lineTo(pulleyX + Math.cos(a) * (pulleyR - 4), pulleyY + Math.sin(a) * (pulleyR - 4));
+    }
+    pulley.strokePath();
+    // Groove ring.
+    pulley.lineStyle(1, 0x1a1a22, 1);
+    pulley.strokeCircle(pulleyX, pulleyY, pulleyR - 6);
+
+    // The cable anchors at the pulley's bottom tangent.
+    this.pulleyAnchorY = pulleyY + pulleyR - 1;
   }
 
   private createPlatforms(): void {
@@ -570,9 +890,12 @@ export class ElevatorSceneLayout {
   private createShaftCable(): void {
     const scene = this.deps.scene;
     const cx = GAME_WIDTH / 2;
-    // Depth 1.7: above shaft back wall / rails / beams / shaft doors,
-    // below the cab graphics (2) and platform (3).
-    this.shaftCable = scene.add.tileSprite(cx, this.deps.shaftExtent.top, 4, 1, 'elevator_cable')
+    // Depth 1.7: above shaft back wall / rails / beams / shaft doors and
+    // machine-room interior (1), below the pulley wheel (2), the cab
+    // graphics (2) and the platform (3). Origin Y is the pulley's bottom
+    // tangent so the cable visibly emerges from under the wheel instead of
+    // appearing at the top of the shaft.
+    this.shaftCable = scene.add.tileSprite(cx, this.pulleyAnchorY, 4, 1, 'elevator_cable')
       .setOrigin(0.5, 0)
       .setDepth(1.7);
   }
