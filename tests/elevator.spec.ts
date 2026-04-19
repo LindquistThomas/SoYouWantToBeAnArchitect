@@ -153,8 +153,8 @@ test.describe('Elevator scene', () => {
 
       const left = toDecor('f1-left-');
       const right = toDecor('f1-right-');
-      const leftStaticDecor = left.filter((d) => !d.name.includes('monitor'));
-      const rightStaticDecor = right.filter((d) => !d.name.includes('cursor') && !d.name.includes('highlight'));
+      const leftStaticDecor = left.filter((d) => !d.hasTween);
+      const rightStaticDecor = right.filter((d) => !d.hasTween);
 
       const intersects = (a: Bounds, b: Bounds): boolean =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;

@@ -881,7 +881,7 @@ export class ElevatorSceneLayout {
     scene.add.image(290, f1Bottom - 36, 'desk_monitor')
       .setDepth(3)
       .setName('f1-left-desk-monitor');
-    const monitor = scene.add.image(400, f1Bottom - 22, 'monitor_dash')
+    const dashMonitor = scene.add.image(400, f1Bottom - 22, 'monitor_dash')
       .setDepth(3)
       .setName('f1-left-monitor-dash');
     scene.add.image(480, f1Bottom - 10, 'router')
@@ -889,7 +889,7 @@ export class ElevatorSceneLayout {
       .setName('f1-left-router');
 
     scene.tweens.add({
-      targets: monitor,
+      targets: dashMonitor,
       alpha: 0.65,
       duration: 420,
       yoyo: true,
