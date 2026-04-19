@@ -11,7 +11,6 @@ import {
   CustomerSuccessScene,
   ExecutiveSuiteScene,
 } from './features/floors';
-import { ProductsHallScene } from './features/products/hall/ProductsHallScene';
 import { ProductIsyProjectControlsScene } from './features/products/rooms/ProductIsyProjectControlsScene';
 import { ProductIsyBeskrivelseScene } from './features/products/rooms/ProductIsyBeskrivelseScene';
 import { ProductIsyRoadScene } from './features/products/rooms/ProductIsyRoadScene';
@@ -65,7 +64,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, ElevatorScene, PlatformTeamScene, ArchitectureTeamScene, ProductsHallScene, FinanceTeamScene, ProductLeadershipScene, CustomerSuccessScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
+  scene: [BootScene, MenuScene, ElevatorScene, PlatformTeamScene, ArchitectureTeamScene, FinanceTeamScene, ProductLeadershipScene, CustomerSuccessScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
     scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
             { key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },

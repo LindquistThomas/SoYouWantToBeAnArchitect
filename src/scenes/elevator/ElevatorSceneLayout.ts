@@ -882,11 +882,11 @@ export class ElevatorSceneLayout {
     this.createF1PlatformDecorations(f1Bottom);
     this.createF1ArchitectureDecorations(f1Bottom, rightEdge);
 
-    // PRODUCTS — left-side ambience (doors are rendered by ProductDoorManager).
+    // PRODUCTS — doors are rendered by ProductDoorManager across both sides
+    // of the shaft, so keep ambient dressing minimal to avoid visual clash.
     const fProductsBottom = positions[FLOORS.PRODUCTS] + FLOOR_H;
     scene.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
-    scene.add.image(rightEdge + 100, fProductsBottom - 40, 'plant_tall').setDepth(3);
-    scene.add.image(rightEdge + 240, fProductsBottom - 32, 'plant_small').setDepth(11);
+    scene.add.image(rightEdge + 440, fProductsBottom - 40, 'plant_tall').setDepth(3);
 
     // F3 — Business
     const f3Bottom = positions[FLOORS.BUSINESS] + FLOOR_H;

@@ -83,7 +83,9 @@ export class FinanceTeamScene extends LevelScene {
       this.player.sprite.x, this.player.sprite.y,
       this.exitDoor.x, this.exitDoor.y,
     );
-    if (d < 90) {
+    const near = d < 90;
+    this.setExitDoorOpen(near);
+    if (near) {
       this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Executive Suite`).setPosition(
         this.exitDoor.x - 80, this.exitDoor.y - 90,
       ).setVisible(true);

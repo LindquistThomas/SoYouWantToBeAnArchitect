@@ -91,8 +91,11 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   [FLOORS.PRODUCTS]: {
     id: FLOORS.PRODUCTS,
     name: 'Products',
-    description: 'A long hall with a door for every ISY product.',
-    sceneKey: 'ProductsHallScene',
+    description: 'The PRODUCTS floor of the elevator shaft — one door per ISY product.',
+    // Rendered by ElevatorScene/ProductDoorManager directly, not a standalone
+    // scene. Kept as a symbolic label so levelData stays complete and the
+    // floor sceneKey uniqueness test still holds.
+    sceneKey: 'ProductsFloor',
     auRequired: 8,
     auLabel: 'Product AU',
     totalAU: 0,

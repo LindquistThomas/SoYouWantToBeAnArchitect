@@ -18,7 +18,6 @@ export const SCENE_MUSIC: Record<string, string> = {
   ElevatorScene:     'music_elevator_jazz',
   PlatformTeamScene:       'music_floor1',
   ArchitectureTeamScene:   'music_floor1',
-  ProductsHallScene:       'music_floor2',
   FinanceTeamScene:        'music_floor2',
   ProductLeadershipScene:  'music_floor2',
   CustomerSuccessScene:    'music_floor2',

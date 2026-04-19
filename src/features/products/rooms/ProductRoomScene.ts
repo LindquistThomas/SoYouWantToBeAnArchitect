@@ -15,7 +15,7 @@ export interface ProductRoomDecoration {
 export interface ProductRoomConfig {
   /** Phaser scene key ΓÇö must be unique. */
   sceneKey: string;
-  /** Info content ID — also used as the door identifier in ProductsHallScene. */
+  /** Info content ID — also used as the door identifier in ProductDoorManager. */
   contentId: string;
   /** Big title shown on the room signpost. */
   title: string;
@@ -29,8 +29,9 @@ export interface ProductRoomConfig {
 
 /**
  * A self-contained room dedicated to a single product. Reached from
- * the Products hall (`ProductsHallScene`) by walking through the
- * matching door and pressing Enter (or tapping the door).
+ * the PRODUCTS floor of the elevator shaft (rendered by
+ * {@link ProductDoorManager}) by walking through the matching door and
+ * pressing Enter (or tapping the door).
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token
  * collection state is shared but no rooms define tokens, so there is
@@ -117,8 +118,10 @@ export class ProductRoomScene extends LevelScene {
       this.player.sprite.x, this.player.sprite.y,
       this.exitDoor.x, this.exitDoor.y,
     );
-    if (d < 90) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Hall`).setPosition(
+    const near = d < 90;
+    this.setExitDoorOpen(near);
+    if (near) {
+      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Floor`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();

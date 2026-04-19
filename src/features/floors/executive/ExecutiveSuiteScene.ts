@@ -4,6 +4,7 @@ import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
+import { InteractiveDoor } from '../../../ui/InteractiveDoor';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -21,6 +22,9 @@ export class ExecutiveSuiteScene extends LevelScene {
   private static readonly DOORS: Array<{ x: number; label: string; doorId: string; sceneKey: string }> = [
     { x: 1080, label: 'Finance', doorId: FinanceTeamScene.DOOR_ID, sceneKey: 'FinanceTeamScene' },
   ];
+
+  /** Track each door's sprite so we can swap it to the open texture on approach. */
+  private doorSprites: Array<{ cfg: (typeof ExecutiveSuiteScene.DOORS)[number]; sprite: InteractiveDoor }> = [];
 
   /** Position of Geir Harald on the ground — left side of the suite. */
   private static readonly GEIR_X = 200;
@@ -133,15 +137,16 @@ export class ExecutiveSuiteScene extends LevelScene {
     });
 
     // Doors leading into content-only suite rooms (Finance, …).
+    this.doorSprites = [];
     for (const door of ExecutiveSuiteScene.DOORS) {
-      const img = this.add.image(door.x, G - 56, 'door_unlocked').setDepth(3);
-      img.setInteractive({ useHandCursor: true });
-      img.on('pointerdown', () => this.enterSuiteRoom(door));
+      const sprite = new InteractiveDoor(this, door.x, G - 56, 'door_unlocked', 'door_open')
+        .onPointerDown(() => this.enterSuiteRoom(door));
       this.add.text(door.x, G - 130, door.label, {
         fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textPale,
         fontStyle: 'bold', align: 'center',
         backgroundColor: theme.color.css.bgPanel, padding: { x: 6, y: 3 },
       }).setOrigin(0.5).setDepth(4);
+      this.doorSprites.push({ cfg: door, sprite });
     }
   }
 
@@ -210,18 +215,22 @@ export class ExecutiveSuiteScene extends LevelScene {
     const px = this.player.sprite.x;
     const G = GAME_HEIGHT - TILE_SIZE;
     const playerOnGround = this.player.sprite.y > G - 200;
-    if (!playerOnGround) return;
 
-    for (const door of ExecutiveSuiteScene.DOORS) {
-      if (Math.abs(px - door.x) < 60) {
-        this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${door.label}`).setPosition(
-          door.x - 100, G - 180,
-        ).setVisible(true);
-        if (this.inputs.justPressed('Interact')) {
-          this.enterSuiteRoom(door);
-        }
-        return;
-      }
+    // Find the door the player is currently close to (if any) so we can
+    // swap its sprite to the open texture and show the prompt.
+    const near = playerOnGround
+      ? ExecutiveSuiteScene.DOORS.find((d) => Math.abs(px - d.x) < 60)
+      : undefined;
+
+    for (const d of this.doorSprites) d.sprite.setOpen(d.cfg === near);
+
+    if (!near) return;
+
+    this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${near.label}`).setPosition(
+      near.x - 100, G - 180,
+    ).setVisible(true);
+    if (this.inputs.justPressed('Interact')) {
+      this.enterSuiteRoom(near);
     }
   }
 
