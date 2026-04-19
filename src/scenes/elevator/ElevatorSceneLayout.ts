@@ -42,7 +42,8 @@ export class ElevatorSceneLayout {
    */
   private pulleyAnchorY = 0;
   private floorLEDs = new Map<number, {
-    gfx: Phaser.GameObjects.Graphics; x: number; y: number; dockY: number;
+    clusters: { gfx: Phaser.GameObjects.Graphics; x: number; y: number }[];
+    dockY: number;
   }>();
 
   constructor(private readonly deps: ElevatorSceneLayoutDeps) {
@@ -81,19 +82,21 @@ export class ElevatorSceneLayout {
   updateFloorLEDs(controller: ElevatorController | undefined): void {
     if (!controller) return;
     const cabY = controller.elevator.getY();
-    for (const { gfx, x, y, dockY } of this.floorLEDs.values()) {
+    for (const { clusters, dockY } of this.floorLEDs.values()) {
       const lit = Math.abs(cabY - dockY) <= 12;
       const color = lit ? 0x00ff66 : 0x335533;
-      gfx.clear();
-      gfx.fillStyle(0x111118, 1);
-      gfx.fillRect(x - 1, y - 1, 12, 6);
-      gfx.fillStyle(color, 1);
-      gfx.fillCircle(x + 2, y + 2, 2);
-      gfx.fillCircle(x + 8, y + 2, 2);
-      if (lit) {
-        gfx.fillStyle(0x00ff66, 0.35);
-        gfx.fillCircle(x + 2, y + 2, 4);
-        gfx.fillCircle(x + 8, y + 2, 4);
+      for (const { gfx, x, y } of clusters) {
+        gfx.clear();
+        gfx.fillStyle(0x111118, 1);
+        gfx.fillRect(x - 1, y - 1, 12, 6);
+        gfx.fillStyle(color, 1);
+        gfx.fillCircle(x + 2, y + 2, 2);
+        gfx.fillCircle(x + 8, y + 2, 2);
+        if (lit) {
+          gfx.fillStyle(0x00ff66, 0.35);
+          gfx.fillCircle(x + 2, y + 2, 4);
+          gfx.fillCircle(x + 8, y + 2, 4);
+        }
       }
     }
   }
@@ -620,8 +623,13 @@ export class ElevatorSceneLayout {
 
       for (let row = 0; row < FLOOR_TILE_ROWS; row++) {
         const tileY = y + row * TILE_SIZE + TILE_SIZE / 2;
-        for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
-          scene.add.image(tileLeft + TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
+        // Tile the LEFT hallway outward from the shaft wall (mirror of the
+        // right-side loop below) so the tile row meets the shaft flush on
+        // both sides. Any partial tile past x=0 gets clipped by the scene
+        // edge, not by the shaft edge — this keeps the two door openings
+        // visually the same width.
+        for (let tileRight = leftEdge; tileRight > 0; tileRight -= TILE_SIZE) {
+          scene.add.image(tileRight - TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
         }
         for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
           scene.add.image(tileLeft + TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
@@ -659,7 +667,10 @@ export class ElevatorSceneLayout {
       // render one plaque above each walkway. Otherwise a single plaque
       // on the left walkway names the whole floor.
       const fNumber = labels[fId] ?? `F${fId}`;
-      const plaqueY = walkY - 90;
+      // Anchored near the top of the floor's open air (just below the
+      // ceiling slab of the floor above) so the plaques read as signage
+      // rather than floating mid-room.
+      const plaqueY = walkY - 240;
       const leftPlaqueX = leftRw / 2;
       const rightPlaqueX = (elevRight - WALK_OVERLAP + GAME_WIDTH) / 2;
       if (fd?.rooms) {
@@ -923,17 +934,31 @@ export class ElevatorSceneLayout {
     const positions = this.deps.floorYPositions;
     const cx = GAME_WIDTH / 2;
     const sw = this.deps.shaftWidth;
+    const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
 
     for (const [idStr, yTop] of Object.entries(positions)) {
       const id = Number(idStr);
       const walkY = yTop + FLOOR_H;
       const dockY = walkY + 8;
-      const ledX = rightEdge - 12;
+      // Mirror the LED cluster on both shaft walls. The cluster is 10px
+      // wide (two 2px-radius circles at +2 and +8, inside a 12px backplate
+      // drawn at x-1..x+11). Position right cluster 2px inside the inner
+      // wall (original offset) and mirror the left cluster symmetrically.
+      const rightLedX = rightEdge - 12;
+      const leftLedX = leftEdge + 2;
       const ledY = walkY - 148;
-      const gfx = scene.add.graphics();
-      gfx.setDepth(5);
-      this.floorLEDs.set(id, { gfx, x: ledX, y: ledY, dockY });
+      const rightGfx = scene.add.graphics();
+      rightGfx.setDepth(5);
+      const leftGfx = scene.add.graphics();
+      leftGfx.setDepth(5);
+      this.floorLEDs.set(id, {
+        clusters: [
+          { gfx: leftGfx, x: leftLedX, y: ledY },
+          { gfx: rightGfx, x: rightLedX, y: ledY },
+        ],
+        dockY,
+      });
     }
   }
 }
