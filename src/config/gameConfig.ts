@@ -10,19 +10,10 @@ export const PLAYER_GRAVITY = 900;
 
 export const ELEVATOR_SPEED = 560;
 
-export const COLORS = {
-  background: 0x1a1a2e,
-  elevatorShaft: 0x16213e,
-  elevatorPlatform: 0x0f3460,
-  floorUnlocked: 0x53a653,
-  floorLocked: 0x8b0000,
-  /** AU tokens are gold */
-  token: 0xffd700,
-  hudBackground: 0x000000,
-  hudText: '#e0e0e0',
-  titleText: '#00d4ff',
-  menuText: '#ffffff',
-};
+// Colour tokens live in `src/style/theme.ts`; re-exported here under the
+// historical `COLORS` name to keep older call sites working until the
+// migration finishes. New code should import from `../style/theme`.
+export { COLORS } from '../style/theme';
 
 export const FLOORS = {
   LOBBY: 0,
