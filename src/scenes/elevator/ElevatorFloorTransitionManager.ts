@@ -27,6 +27,12 @@ export interface FloorTransitionDeps {
    * side of the shaft they stepped off (used by floor split rules).
    */
   onEnterFloor: (floorId: FloorId, side: 'left' | 'right') => void;
+  /**
+   * Optional predicate: returning true suppresses auto-transition for that
+   * floor/side. Used to keep the player in the elevator scene when they're
+   * standing in an NPC proximity zone (e.g. Geir Harald on F4).
+   */
+  isFloorEntryBlocked?: (floorId: FloorId, side: 'left' | 'right') => boolean;
 }
 
 /**
@@ -97,6 +103,7 @@ export class ElevatorFloorTransitionManager {
       const walkingSurface = floorY + this.deps.floorHeight;
       if (Math.abs(bodyBottom - walkingSurface) < FLOOR_DETECTION_TOLERANCE) {
         if (this.deps.progression.isFloorUnlocked(fId)) {
+          if (this.deps.isFloorEntryBlocked?.(fId, side)) return;
           this.deps.onEnterFloor(fId, side);
           return;
         }

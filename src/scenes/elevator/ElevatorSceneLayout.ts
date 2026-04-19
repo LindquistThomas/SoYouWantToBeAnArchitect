@@ -45,6 +45,12 @@ export class ElevatorSceneLayout {
     clusters: { gfx: Phaser.GameObjects.Graphics; x: number; y: number }[];
     dockY: number;
   }>();
+  /**
+   * World-space bounds of the F4 walkway area where Geir Harald paces, for
+   * the elevator scene's proximity zone. Populated when Geir is drawn in
+   * {@link createFloorDecorations}.
+   */
+  private geirBounds?: { x: number; y: number; width: number; height: number };
 
   constructor(private readonly deps: ElevatorSceneLayoutDeps) {
     this.platforms = deps.scene.physics.add.staticGroup();
@@ -77,6 +83,15 @@ export class ElevatorSceneLayout {
   /** Y coordinate at which the shaft cable and twin cab cables anchor. */
   getPulleyAnchorY(): number {
     return this.pulleyAnchorY;
+  }
+
+  /**
+   * World-space bounds of Geir Harald's pacing area on the F4 walkway in
+   * the elevator scene. Used by {@link ElevatorZones} to register a
+   * proximity zone the player can reach by stepping off the cab at F4.
+   */
+  getGeirBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    return this.geirBounds;
   }
 
   updateFloorLEDs(controller: ElevatorController | undefined): void {
@@ -902,13 +917,15 @@ export class ElevatorSceneLayout {
     scene.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
     // Geir Harald — pacing the walkway in the F4 shaft preview. Sprite origin
     // is bottom-center so his feet sit on the walkable surface.
+    const GEIR_MIN_X = 150;
+    const GEIR_MAX_X = 260;
     const geir = scene.add.sprite(200, f4Bottom, 'npc_geir', 0)
       .setOrigin(0.5, 1)
       .setDepth(3);
     geir.play('geir_walk');
     scene.tweens.add({
       targets: geir,
-      x: { from: 150, to: 260 },
+      x: { from: GEIR_MIN_X, to: GEIR_MAX_X },
       duration: 2400,
       yoyo: true,
       repeat: -1,
@@ -927,6 +944,15 @@ export class ElevatorSceneLayout {
     scene.events.on(Phaser.Scenes.Events.UPDATE, () => {
       label.x = geir.x;
     });
+    // Padded bounds around his pacing range — player proximity opens the
+    // OKR dialog via ElevatorZones.
+    const pad = 50;
+    this.geirBounds = {
+      x: GEIR_MIN_X - pad,
+      y: f4Bottom - 140,
+      width: (GEIR_MAX_X - GEIR_MIN_X) + pad * 2,
+      height: 150,
+    };
     scene.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(rightEdge + 280, f4Bottom - 36, 'desk_monitor').setDepth(3);
     scene.add.image(GAME_WIDTH - 100, f4Bottom - 40, 'plant_tall').setDepth(11);

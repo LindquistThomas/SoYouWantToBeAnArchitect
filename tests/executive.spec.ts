@@ -126,4 +126,101 @@ test.describe('Executive Suite — Geir Harald', () => {
 
     errors.assertClean();
   });
+
+  test('Geir F4 proximity zone activates in elevator scene and blocks auto-transition', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+
+    // Teleport the player into Geir's walkway rect on F4 — off the cab,
+    // standing on the F4 walking surface — and verify (a) the active zone
+    // is Geir, and (b) ElevatorFloorTransitionManager refuses to hand off
+    // to ExecutiveSuiteScene while the zone is active.
+    const result = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+          layout: { getGeirBounds: () => { x: number; y: number; width: number; height: number } | undefined };
+          player: { sprite: { x: number; y: number; body: { blocked: { down: boolean }; bottom: number } } };
+          elevatorCtrl: unknown;
+          zoneManager: { update: () => void; getActiveZone: () => string | null };
+          transitions: { checkFloorEntry: () => void };
+        };
+      const bounds = scene.layout.getGeirBounds();
+      if (!bounds) throw new Error('Geir bounds missing');
+      // Step off the cab.
+      (scene.elevatorCtrl as unknown as { playerOnElevator: boolean }).playerOnElevator = false;
+      // Center the player in Geir's rect at walkway height.
+      scene.player.sprite.x = bounds.x + bounds.width / 2;
+      scene.player.sprite.y = bounds.y + bounds.height - 1;
+      // Simulate the body being grounded on the F4 walking surface so the
+      // transition manager's grounded check passes.
+      scene.player.sprite.body.blocked.down = true;
+      (scene.player.sprite.body as unknown as { bottom: number }).bottom =
+        bounds.y + bounds.height;
+      scene.zoneManager.update();
+      const activeZone = scene.zoneManager.getActiveZone();
+      scene.transitions.checkFloorEntry();
+      const stillElevator = g.scene.isActive('ElevatorScene')
+        && !g.scene.isActive('ExecutiveSuiteScene');
+      return { activeZone, stillElevator };
+    });
+
+    expect(result.activeZone).toBe('exec-geir-harald');
+    expect(result.stillElevator).toBe(true);
+
+    errors.assertClean();
+  });
+
+  test('Geir OKR dialog opens from elevator scene proximity zone', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      const dialogs = scene['dialogs'] as { open: (id: string) => void };
+      dialogs.open('exec-geir-harald');
+    });
+    await waitForDialogOpen(page, 'ElevatorScene');
+
+    const texts = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+          children?: { list: unknown[] };
+        };
+      const out: string[] = [];
+      const visit = (obj: unknown): void => {
+        if (!obj || typeof obj !== 'object') return;
+        const o = obj as Record<string, unknown>;
+        if (typeof o['text'] === 'string') out.push(o['text'] as string);
+        if (Array.isArray(o['list'])) (o['list'] as unknown[]).forEach(visit);
+      };
+      scene.children?.list.forEach(visit);
+      return out;
+    });
+
+    const joined = texts.join('\n');
+    expect(joined).toContain('Geir Harald');
+    expect(joined).toContain('OKR 1:');
+    expect(joined).toContain('OKR 5:');
+
+    errors.assertClean();
+  });
 });

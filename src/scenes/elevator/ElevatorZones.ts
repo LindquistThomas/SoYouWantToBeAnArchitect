@@ -11,6 +11,7 @@ import type { DebugZone } from '../../features/floors/_shared/LevelZoneSetup';
 
 export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
+export const GEIR_F4_ID = 'exec-geir-harald';
 
 const BOARD_RADIUS = 120;
 /**
@@ -34,6 +35,12 @@ export interface ElevatorZonesOptions {
   boardX: number;
   /** World-space y of the info board center. */
   boardY: number;
+  /**
+   * Optional proximity rect for Geir Harald's walkway area on the F4 shaft
+   * preview. Absent if the layout hasn't drawn him yet (older saves or
+   * scene variants).
+   */
+  geirBounds?: { x: number; y: number; width: number; height: number };
 }
 
 /**
@@ -51,6 +58,8 @@ export class ElevatorZones {
   elevatorInfoIcon?: InfoIcon;
   /** Info icon for the lobby welcome board. */
   lobbyBoardIcon?: InfoIcon;
+  /** Info icon for Geir Harald on F4. */
+  geirInfoIcon?: InfoIcon;
 
   private readonly opts: ElevatorZonesOptions;
 
@@ -62,6 +71,18 @@ export class ElevatorZones {
 
   private register(): void {
     const { scene, zoneManager, dialogs, player } = this.opts;
+
+    // --- Geir Harald zone — active when player walks into his pacing area
+    //     on the F4 walkway preview. Registered FIRST so getActiveZone()
+    //     prefers Geir over the lobby welcome board when overlapping.
+    if (this.opts.geirBounds) {
+      const gb = this.opts.geirBounds;
+      const rect = new Phaser.Geom.Rectangle(gb.x, gb.y, gb.width, gb.height);
+      zoneManager.register(GEIR_F4_ID, () =>
+        !this.opts.isPlayerOnElevator()
+          && Phaser.Geom.Rectangle.Contains(rect, player.sprite.x, player.sprite.y),
+      );
+    }
 
     // --- Elevator zone — active while player is standing on the cab ---
     zoneManager.register(ELEVATOR_INFO_ID, () => this.opts.isPlayerOnElevator());
@@ -82,6 +103,16 @@ export class ElevatorZones {
     );
     this.lobbyBoardIcon.setVisible(false);
 
+    if (this.opts.geirBounds) {
+      this.geirInfoIcon = new InfoIcon(
+        scene,
+        INFO_ICON_X, INFO_ICON_Y,
+        () => dialogs.open(GEIR_F4_ID),
+        GEIR_F4_ID,
+      );
+      this.geirInfoIcon.setVisible(false);
+    }
+
     const lifecycle = createSceneLifecycle(scene);
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
@@ -89,6 +120,8 @@ export class ElevatorZones {
         this.elevatorInfoIcon?.setVisible(true);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
+      } else if (zoneId === GEIR_F4_ID) {
+        this.geirInfoIcon?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -97,6 +130,8 @@ export class ElevatorZones {
         this.elevatorInfoIcon?.setVisible(false);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(false);
+      } else if (zoneId === GEIR_F4_ID) {
+        this.geirInfoIcon?.setVisible(false);
       }
     });
   }
@@ -116,14 +151,14 @@ export class ElevatorZones {
   }
 
   /**
-   * Spatial shapes for debug overlay. Only the welcome-board zone is truly
-   * spatial; the elevator zone is predicate-driven (player-on-cab) and isn't
-   * drawn as a rectangle in the world.
+   * Spatial shapes for debug overlay: the welcome-board circle in the lobby
+   * and Geir's walkway rect on F4. The elevator zone is predicate-driven
+   * (player-on-cab) and has no spatial extent.
    */
   getDebugZones(): DebugZone[] {
     const { zoneManager, boardX, boardY } = this.opts;
     const activeId = zoneManager.getActiveZone();
-    return [
+    const out: DebugZone[] = [
       {
         id: WELCOME_BOARD_ID,
         shape: 'circle',
@@ -133,5 +168,18 @@ export class ElevatorZones {
         active: activeId === WELCOME_BOARD_ID,
       },
     ];
+    if (this.opts.geirBounds) {
+      const gb = this.opts.geirBounds;
+      out.push({
+        id: GEIR_F4_ID,
+        shape: 'rect',
+        x: gb.x,
+        y: gb.y,
+        width: gb.width,
+        height: gb.height,
+        active: activeId === GEIR_F4_ID,
+      });
+    }
+    return out;
   }
 }
