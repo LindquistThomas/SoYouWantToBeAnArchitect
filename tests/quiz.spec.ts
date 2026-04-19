@@ -57,14 +57,20 @@ async function enterFloor1(page: import('@playwright/test').Page): Promise<void>
 }
 
 async function openQuiz(page: import('@playwright/test').Page, infoId: string): Promise<void> {
-  await page.evaluate(async (id) => {
-    const mod = await import('/src/ui/QuizDialog.ts');
+  await page.evaluate((id) => {
+    // `__testHooks` is populated in src/main.ts for both dev and preview
+    // builds. Previously this used `import('/src/ui/QuizDialog.ts')`, which
+    // only works against the Vite dev server — CI now targets the built
+    // bundle via `vite preview`, so that path resolves to a 404.
+    const hooks = (window as unknown as {
+      __testHooks?: { QuizDialog: new (s: unknown, o: unknown) => QuizDialogLike };
+    }).__testHooks;
+    if (!hooks) throw new Error('__testHooks missing — main.ts must expose QuizDialog');
     const scene = window.__game!.scene
       .getScenes(true)
       .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as Record<string, unknown>;
     if (!scene) throw new Error('PlatformTeamScene not active');
-    const QD = (mod as { QuizDialog: new (s: unknown, o: unknown) => QuizDialogLike }).QuizDialog;
-    window.__quiz = new QD(scene, {
+    window.__quiz = new hooks.QuizDialog(scene, {
       infoId: id,
       floorId: 1,
       progression: scene['progression'],
@@ -181,10 +187,16 @@ test.describe('Quiz flows', () => {
     expect(record.lastAttemptTime).toBeLessThanOrEqual(now + 1_000);
 
     // Verify via the QuizManager API itself — single source of truth for
-    // cooldown semantics (threshold lives in quizData.ts).
-    const canRetry = await page.evaluate(async (id) => {
-      const mod = await import('/src/systems/QuizManager.ts');
-      return (mod as { canRetryQuiz: (i: string) => boolean }).canRetryQuiz(id);
+    // cooldown semantics (threshold lives in quizData.ts). Reaches the
+    // function through the `__testHooks` global exposed by src/main.ts
+    // so the path works against both the Vite dev server and the built
+    // bundle served by `vite preview` on CI.
+    const canRetry = await page.evaluate((id) => {
+      const hooks = (window as unknown as {
+        __testHooks?: { canRetryQuiz: (i: string) => boolean };
+      }).__testHooks;
+      if (!hooks) throw new Error('__testHooks missing — main.ts must expose canRetryQuiz');
+      return hooks.canRetryQuiz(id);
     }, INFO_ID);
     expect(canRetry).toBe(false);
 

@@ -47,10 +47,16 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
+    // On CI we serve the built bundle via `vite preview` — dramatically
+    // faster and more stable than `npm run dev`, because Vite in dev mode
+    // does on-demand TypeScript transforms per request, and under parallel
+    // Playwright workers that would frequently push per-test time past
+    // the 60s timeout. Locally we keep `npm run dev` so hot-reload works
+    // while iterating on tests.
+    command: process.env.CI ? 'npm run build && npm run preview -- --port 3000 --strictPort' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',
   },
