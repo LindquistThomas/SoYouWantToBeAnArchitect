@@ -29,8 +29,8 @@ export interface FloorTransitionDeps {
 /**
  * Encapsulates the "player steps off the cab onto a floor" rule set,
  * including the left/right split on F1 (Platform/Architecture) and F3
- * (Finance/Product Leadership). Also computes the initial player spawn
- * given a NavigationContext hint (fromFloor + spawnSide).
+ * (Finance/Product Leadership), and resolves the scene key for a
+ * floor/side combination.
  */
 export class ElevatorFloorTransitionManager {
   /** Suppress immediate re-entry of the floor the player just returned from. */

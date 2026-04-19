@@ -1,4 +1,4 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { eventBus, type GameEventHandler, type GameEventName } from './EventBus';
 import type { GameAction } from '../input';
 

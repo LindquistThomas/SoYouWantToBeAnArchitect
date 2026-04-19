@@ -42,7 +42,7 @@ export class QuizDialog extends ModalBase {
     this.alreadyPassed = isQuizPassed(options.infoId);
     this.questions = this.selectQuestions(options.infoId);
 
-    this.nav = new ModalKeyboardNavigator(scene, this.container);
+    this.nav = new ModalKeyboardNavigator(scene);
     this.registerKeyboardBindings();
     this.showQuestion();
     this.fadeIn();
@@ -183,7 +183,6 @@ export class QuizDialog extends ModalBase {
     this.container.add(xBtn);
     this.nav.add(makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
 
-    this.nav.attachArrowTo(this.container);
     this.nav.setFocus(0);
   }
 
@@ -416,7 +415,6 @@ export class QuizDialog extends ModalBase {
     this.container.add(xBtn);
     this.nav.add(makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
 
-    this.nav.attachArrowTo(this.container);
     this.nav.setFocus(0);
   }
 

@@ -20,18 +20,27 @@ export interface ModalFocusable {
  * any object conforming to {@link ModalFocusable}. The navigator simply
  * binds NavigateUp/Down/Confirm and delegates. Additional key bindings
  * (e.g. quiz A–D quick-answer) can be attached via {@link bind}.
+ *
+ * The focus arrow is deliberately NOT added to the caller's container,
+ * so that `container.removeAt(...)`-style panel rebuilds (common in the
+ * quiz flow between question/feedback/results screens) can't destroy it
+ * out from under the navigator. The arrow gets its depth and scrollFactor
+ * set directly so it still sits above the modal backdrop.
  */
 export class ModalKeyboardNavigator {
   private focusables: ModalFocusable[] = [];
   private focusIndex = -1;
-  private focusArrow?: Phaser.GameObjects.Text;
+  private focusArrow: Phaser.GameObjects.Text;
   private handlers: Array<{ action: GameAction; handler: () => void }> = [];
 
-  constructor(private readonly scene: Phaser.Scene, container: Phaser.GameObjects.Container) {
+  constructor(private readonly scene: Phaser.Scene) {
     this.focusArrow = scene.add.text(0, 0, '\u25b6', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffd700', fontStyle: 'bold',
-    }).setOrigin(0.5, 0.5).setVisible(false);
-    container.add(this.focusArrow);
+    })
+      .setOrigin(0.5, 0.5)
+      .setScrollFactor(0)
+      .setDepth(201)
+      .setVisible(false);
   }
 
   /** Register a focusable and return its index. */
@@ -40,21 +49,24 @@ export class ModalKeyboardNavigator {
     return this.focusables.length - 1;
   }
 
-  /** Insert a focusable at a specific index (used when the quiz button promotes from cooldown). */
+  /**
+   * Insert a focusable at a specific index (used when the quiz button
+   * promotes from cooldown). Shifts the current focus index if needed so
+   * the previously-focused element stays focused after the insert.
+   */
   insert(index: number, f: ModalFocusable): void {
     this.focusables.splice(index, 0, f);
+    if (this.focusIndex >= index) {
+      this.focusIndex++;
+      this.refreshArrow();
+    }
   }
 
   /** Clear all focusables (e.g. when re-rendering the quiz screen). */
   reset(): void {
     this.focusables = [];
     this.focusIndex = -1;
-    if (this.focusArrow) this.focusArrow.setVisible(false);
-  }
-
-  /** Reparent the focus arrow after a container rebuild. */
-  attachArrowTo(container: Phaser.GameObjects.Container): void {
-    if (this.focusArrow) container.add(this.focusArrow);
+    this.focusArrow.setVisible(false);
   }
 
   size(): number {
@@ -97,12 +109,12 @@ export class ModalKeyboardNavigator {
 
   /** Hide the focus arrow (caller decides when — e.g. scrolled off-viewport). */
   hideArrow(): void {
-    this.focusArrow?.setVisible(false);
+    this.focusArrow.setVisible(false);
   }
 
   /** Move arrow to the current focusable's bounds. */
   refreshArrow(): void {
-    if (!this.focusArrow || this.focusIndex < 0) return;
+    if (this.focusIndex < 0) return;
     const cur = this.focusables[this.focusIndex];
     if (!cur) return;
     const b = cur.bounds();
@@ -116,12 +128,13 @@ export class ModalKeyboardNavigator {
     this.handlers.push({ action, handler });
   }
 
-  /** Clear all input listeners. Call from onBeforeClose. */
+  /** Clear all input listeners and destroy the arrow. Call from onBeforeClose. */
   destroy(): void {
     for (const { action, handler } of this.handlers) {
       this.scene.inputs.off(action, handler);
     }
     this.handlers = [];
+    this.focusArrow.destroy();
   }
 }
 

@@ -134,7 +134,6 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   closeBtn.on('pointerdown', () => onClose());
   container.add(closeBtn);
 
-  navigator.attachArrowTo(container);
   navigator.add(makeTextFocusable(closeBtn, '#00d4ff', '#88ddff'));
   navigator.setFocus(0);
 }

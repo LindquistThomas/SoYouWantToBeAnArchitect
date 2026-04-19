@@ -61,7 +61,7 @@ export class InfoDialog extends ModalBase {
     super(scene);
     this.onCloseCallback = onClose;
 
-    this.nav = new ModalKeyboardNavigator(scene, this.container);
+    this.nav = new ModalKeyboardNavigator(scene);
     this.buildPanel(content, options);
     this.registerKeyboardNav();
     this.registerWheelScroll();
