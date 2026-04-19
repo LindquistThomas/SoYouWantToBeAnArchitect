@@ -13,7 +13,7 @@ export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
 export const GEIR_F4_ID = 'exec-geir-harald';
 
-const BOARD_RADIUS = 120;
+const BOARD_RADIUS = 70;
 /**
  * Info icons live in the HUD top bar (top bar is 44 px tall, center y = 22).
  * Placed left of the title and right of the AU counter.

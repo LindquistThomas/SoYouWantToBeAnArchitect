@@ -165,7 +165,9 @@ export class ElevatorScene extends Phaser.Scene {
       gameState: this.gameState,
       elevatorButtons: () => this.elevatorButtons,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
-      boardX: 300,
+      // Matches the info_board sprite placed in ElevatorSceneLayout at
+      // (355, floorBottom - 60). Keep these in sync if the sprite moves.
+      boardX: 355,
       boardY: lobbyY + ElevatorScene.FLOOR_H - 60,
       geirBounds: this.layout.getGeirBounds(),
     });
