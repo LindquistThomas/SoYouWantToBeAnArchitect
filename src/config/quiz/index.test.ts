@@ -136,7 +136,7 @@ describe('architecture quiz module organization', () => {
     const lineCount = architectureQuizSource.split('\n').length;
     expect(
       lineCount,
-      'architecture/quiz.ts crossed 2,000 lines; split it into topic modules (integration/cloud/patterns/soa + index.ts).',
+      'src/features/floors/architecture/quiz.ts crossed 2,000 lines; split it into topic modules (integration/cloud/patterns/soa + index.ts).',
     ).toBeLessThanOrEqual(2000);
   });
 });
