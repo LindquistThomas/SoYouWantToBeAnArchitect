@@ -60,7 +60,7 @@ Scripts from `package.json`:
 | `npm test` | `test:unit && test:e2e`. |
 | `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — the pre-PR gate. |
 
-**Before declaring work done:** run `npm run test:all`. For pure-docs changes, `npm run lint && npm run typecheck` is sufficient.
+**Before declaring work done:** run `npm run typecheck && npm run lint && npm run test:unit`. **Do not run `npm run test:e2e` or `npm run test:all` without asking the user first** — the Playwright suite is slow and should be opt-in. For pure-docs changes, `npm run lint && npm run typecheck` is sufficient.
 
 ## Architecture pointers
 
@@ -162,17 +162,26 @@ Short list of recurring mistakes. Check here first when something breaks inexpli
 - **Elevator boundary clamp** must only zero velocity when moving *out* of bounds (`src/entities/Elevator.ts`). Clamping unconditionally at the start position blocks upward movement.
 - **Platform Y = tile TOP, not tile center.** `LevelScene` adds `TILE_SIZE/2` when placing tiles.
 - **Info icons start hidden**; a `zone:enter` is what reveals them. Do not set them visible in `create()`.
-- **Local branches use `git worktree`**, not `git checkout -b`. Switching the primary checkout clobbers shared `node_modules`/`dist`/`playwright-report` and breaks concurrent sessions. See `.github/skills/git-worktree.md`.
+- **Local branches use `git worktree`**, not `git checkout -b`. This applies to docs-only and one-line changes too — no size-based exemptions. Switching the primary checkout clobbers shared `node_modules`/`dist`/`playwright-report` and breaks concurrent sessions. See `.github/skills/git-worktree.md`.
 
-## Git branching
+## Git branching — MANDATORY worktree-first workflow
 
-For any local branch, use a sibling git worktree at `C:\code\SoYouWantToBeAnArchitect-<slug>` with a kebab-case, type-prefixed branch name (`fix/…`, `feat/…`, `chore/…`). The primary checkout stays on `main`. Full workflow and integration steps live in `.github/skills/git-worktree.md`.
+**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree at `C:\code\SoYouWantToBeAnArchitect-<slug>` on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. The primary checkout at `C:\code\SoYouWantToBeAnArchitect` stays on `main` and is **read-only for edits** during a session.
 
-If the user explicitly asks to work on the current checkout (no worktree), honour that.
+This applies to **every** task, including:
+- Documentation-only changes (yes, even a one-line README tweak).
+- "Trivial" or "tiny" edits — size is not an exemption.
+- Updates to `.github/copilot-instructions.md` or `CLAUDE.md` themselves.
+
+Do not rationalize skipping the worktree ("it's just docs", "it's one line", "I'll move it later"). If you catch yourself about to edit a file in `C:\code\SoYouWantToBeAnArchitect` that isn't in the session worktree, **stop and create the worktree first**.
+
+The only exception: the user explicitly says to work on the current checkout / on `main` / without a worktree. Treat anything less explicit than that as "use a worktree".
+
+Full workflow and integration steps live in `.github/skills/git-worktree.md`.
 
 ### Session workflow
 
-1. **Start of session**: create a worktree branch for the session's work before making any code changes. Ask the user for a short topic if it isn't obvious from the first request.
+1. **Start of session**: create a worktree branch for the session's work **before** touching any file. Ask the user for a short topic if it isn't obvious from the first request.
 2. **During the session**: commit to that branch as normal. If a second unrelated task comes up, spin up an additional worktree rather than mixing concerns.
 3. **End of session / work complete**: prompt the user to merge the branch into `main` (PR or local merge — let the user choose). **Keep the worktree and branch alive after merging** so the user can continue or revisit it. Only delete a worktree when the user explicitly asks.
 
@@ -184,4 +193,4 @@ When responding to feature requests or design ideas:
 - **Offer options for non-trivial decisions.** Present at least two approaches with brief pros/cons; let the user choose.
 - **Resist over-engineering.** If a 10-line change beats a new abstraction, say so.
 - **Question assumptions.** "Do we actually need this?" is a valid question.
-- **One change at a time.** Keep diffs small and reviewable; run `npm run test:all` (or the narrower script relevant to the change) before declaring done.
+- **One change at a time.** Keep diffs small and reviewable; run the narrowest relevant checks (typecheck, lint, unit) before declaring done. **Ask the user before running `npm run test:e2e` or `npm run test:all`** — the Playwright suite is slow and should be opt-in.
