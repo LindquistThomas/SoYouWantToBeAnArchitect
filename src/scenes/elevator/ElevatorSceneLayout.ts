@@ -636,31 +636,33 @@ export class ElevatorSceneLayout {
         }
       }
 
-      const ledgeColor = 0x3a3a55;
-      const ledgeGapL = elevLeft - leftEdge;
-      const ledgeGapR = rightEdge - elevRight;
-      if (ledgeGapL > 0) {
-        scene.add.rectangle(leftEdge + ledgeGapL / 2, y + floorH + WALK_H / 2,
-          ledgeGapL, WALK_H, ledgeColor, 1).setDepth(2);
-      }
-      if (ledgeGapR > 0) {
-        scene.add.rectangle(elevRight + ledgeGapR / 2, y + floorH + WALK_H / 2,
-          ledgeGapR, WALK_H, ledgeColor, 1).setDepth(2);
-      }
-
-      // Walking surfaces: 4 px overlap into the cab zone closes the seam
-      // when the cab is docked.
+      // Walking surfaces. Visible strip stays in the hallway (colour
+      // 0x444466 overlapping the shaft interior would look like purple
+      // bleeding onto the concrete shaft). Physics body is a separate
+      // invisible rectangle that spans into the cab zone (WALK_OVERLAP = 4
+      // closes the seam with the cab when docked) so the player can walk
+      // across the shaft gap onto the cab.
       const walkY = y + floorH;
       const WALK_OVERLAP = 4;
-      const addWalkSurface = (rx: number, rw: number) => {
-        const rect = scene.add.rectangle(rx, walkY + WALK_H / 2, rw, WALK_H, 0x444466, 1).setDepth(2);
-        scene.physics.add.existing(rect, true);
-        this.platforms.add(rect);
+      const addWalkStrip = (visibleX: number, visibleW: number, collX: number, collW: number) => {
+        if (visibleW > 0) {
+          scene.add.rectangle(visibleX, walkY + WALK_H / 2, visibleW, WALK_H, 0x444466, 1).setDepth(2);
+        }
+        const coll = scene.add.rectangle(collX, walkY + WALK_H / 2, collW, WALK_H, 0, 0);
+        scene.physics.add.existing(coll, true);
+        this.platforms.add(coll);
       };
-      const leftRw = elevLeft + WALK_OVERLAP;
-      const rightRw = GAME_WIDTH - (elevRight - WALK_OVERLAP);
-      addWalkSurface(leftRw / 2, leftRw);
-      addWalkSurface((elevRight - WALK_OVERLAP + GAME_WIDTH) / 2, rightRw);
+      const leftVisibleW = leftEdge;
+      const leftCollW = elevLeft + WALK_OVERLAP;
+      addWalkStrip(leftVisibleW / 2, leftVisibleW, leftCollW / 2, leftCollW);
+      const rightVisibleW = GAME_WIDTH - rightEdge;
+      const rightCollW = GAME_WIDTH - (elevRight - WALK_OVERLAP);
+      addWalkStrip(
+        rightEdge + rightVisibleW / 2,
+        rightVisibleW,
+        (elevRight - WALK_OVERLAP + GAME_WIDTH) / 2,
+        rightCollW,
+      );
 
       // Floor signage plaques on the outer walkways (outside the shaft).
       // If the floor hosts two distinct rooms (rooms.left / rooms.right),
@@ -671,7 +673,7 @@ export class ElevatorSceneLayout {
       // ceiling slab of the floor above) so the plaques read as signage
       // rather than floating mid-room.
       const plaqueY = walkY - 240;
-      const leftPlaqueX = leftRw / 2;
+      const leftPlaqueX = leftCollW / 2;
       const rightPlaqueX = (elevRight - WALK_OVERLAP + GAME_WIDTH) / 2;
       if (fd?.rooms) {
         this.placeFloorPlaque(leftPlaqueX, plaqueY, fNumber, fd.rooms.left, unlocked);
