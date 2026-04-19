@@ -21,12 +21,12 @@ export default defineConfig({
         'src/systems/sounds/**',
         'src/systems/MusicGenerator.ts',
         'src/ui/**',
-        'src/entities/**',
         'src/input/phaser-augment.d.ts',
       ],
       thresholds: {
         'src/systems/**': { lines: 60, branches: 60, functions: 60, statements: 60 },
         'src/input/**': { lines: 60, branches: 60, functions: 60, statements: 60 },
+        'src/entities/**': { lines: 60, branches: 60, functions: 60, statements: 60 },
       },
     },
   },
