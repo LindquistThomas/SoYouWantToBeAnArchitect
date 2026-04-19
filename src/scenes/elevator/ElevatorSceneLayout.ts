@@ -128,7 +128,12 @@ export class ElevatorSceneLayout {
     walls.fillStyle(0x33333f, 1);
     walls.fillRect(leftEdge - 12, top, 2, shaftH);
     walls.fillRect(rightEdge + 10, top, 2, shaftH);
-    walls.setDepth(1);
+    // Depth 2.1: above the hallway floor tiles (depth 2) so the dark
+    // outer shaft pillars stay visible at every floor row (otherwise
+    // purple hallway tiles cover them and the shaft's outer edge appears
+    // to "notch inward" at each floor). Still below the shaft doors
+    // (depth 2.5) so the doorway visually cuts through the pillar.
+    walls.setDepth(2.1);
 
     const rails = scene.add.graphics();
     const railOffsets = [-sw / 2 + 18, sw / 2 - 18];
@@ -890,6 +895,18 @@ export class ElevatorSceneLayout {
     const f4Bottom = positions[FLOORS.EXECUTIVE] + FLOOR_H;
     scene.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
+    // Geir Harald — visible in the shaft preview on the left side, mirroring
+    // his position inside the ExecutiveSuiteScene room. Sprite origin is
+    // bottom-center so his feet sit on the walkable surface.
+    scene.add.sprite(200, f4Bottom, 'npc_geir', 0).setOrigin(0.5, 1).setDepth(3);
+    scene.add.text(200, f4Bottom - 172, 'Geir Harald', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: theme.color.css.textPale,
+      fontStyle: 'bold',
+      backgroundColor: theme.color.css.bgPanel,
+      padding: { x: 6, y: 2 },
+    }).setOrigin(0.5).setDepth(4);
     scene.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(rightEdge + 280, f4Bottom - 36, 'desk_monitor').setDepth(3);
     scene.add.image(GAME_WIDTH - 100, f4Bottom - 40, 'plant_tall').setDepth(11);
