@@ -18,8 +18,8 @@ src/
 │   └── quiz/                 Barrel — merges per-floor quizzes into QUIZ_DATA.
 │       ├── index.ts          Re-export barrel + `getQuizFor(floorId)`.
 │       └── types.ts          `QuizDefinition` + scoring constants.
-├── features/                 Per-feature trees (feature = floor, for now).
-│   └── floors/               One directory per floor — scene + content co-located.
+├── features/                 Per-feature trees (floors + products).
+│   ├── floors/               One directory per floor — scene + content co-located.
 │       ├── index.ts          Barrel that re-exports every floor scene.
 │       ├── _shared/          Base class + manager collaborators used by every floor.
 │       │   ├── LevelScene.ts           Shared base scene (composition root).
@@ -33,6 +33,15 @@ src/
 │       ├── finance/          Finance — Business floor, left room.
 │       ├── product/          Product Leadership — Business floor, right room.
 │       └── executive/        ExecutiveSuiteScene.ts (penthouse).
+│   └── products/
+│       ├── hall/
+│       │   └── ProductsHallScene.ts  Floor 5 hall — one door per ISY product.
+│       └── rooms/            Individual product rooms reached from the hall.
+│           ├── ProductRoomScene.ts            Shared base for product rooms below.
+│           ├── ProductIsyProjectControlsScene.ts
+│           ├── ProductIsyBeskrivelseScene.ts
+│           ├── ProductIsyRoadScene.ts
+│           └── ProductAdminLisensScene.ts
 ├── entities/                 Gameplay objects owned by scenes.
 │   ├── Player.ts             Side-view sprite, movement, footstep/jump cues.
 │   ├── Elevator.ts           Cab physics, floor docking, ride cues.
@@ -63,14 +72,6 @@ src/
 │   │   ├── ElevatorShaftDoors.ts          Side-view landing doors that open on dock.
 │   │   ├── ElevatorZones.ts               Lobby zones, info icons, first-ride intro.
 │   │   └── ProductDoorManager.ts          Per-product door state on the products floor.
-│   ├── hall/
-│   │   └── ProductsHallScene.ts  Floor 5 hall — one door per ISY product.
-│   └── products/             Individual product rooms reached from the hall.
-│       ├── ProductRoomScene.ts            Shared base for product rooms below.
-│       ├── ProductIsyProjectControlsScene.ts
-│       ├── ProductIsyBeskrivelseScene.ts
-│       ├── ProductIsyRoadScene.ts
-│       └── ProductAdminLisensScene.ts
 ├── style/                    Design tokens.
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
@@ -121,7 +122,7 @@ Use this to find the right file to edit for a given feature.
 | Architecture Team room              | `features/floors/architecture/{ArchitectureTeamScene,info,quiz}.ts`                    |
 | Finance room                        | `features/floors/finance/{FinanceTeamScene,info,quiz}.ts`                              |
 | Product Leadership                  | `features/floors/product/{ProductLeadershipScene,info,quiz}.ts`                        |
-| Products hall + product rooms       | `scenes/hall/ProductsHallScene.ts`, `scenes/products/Product*Scene.ts`                 |
+| Products hall + product rooms       | `features/products/hall/ProductsHallScene.ts`, `features/products/rooms/Product*Scene.ts` |
 | Executive Suite                     | `features/floors/executive/{ExecutiveSuiteScene,info,quiz}.ts`                         |
 | Shared floor base / managers        | `features/floors/_shared/*.ts`                                                         |
 | Elevator shaft + transitions        | `scenes/elevator/*.ts`                                                                 |
@@ -153,7 +154,7 @@ BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floor
 the central shaft; rides transition into the floor scenes in
 `features/floors/<floor>/` (each a thin wrapper around the shared
 `LevelScene`). The Products hall exits into individual product rooms
-under `scenes/products/`.
+under `features/products/rooms/`.
 
 ### Scene hand-off
 

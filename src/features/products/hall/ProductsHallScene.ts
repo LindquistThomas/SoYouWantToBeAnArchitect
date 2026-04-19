@@ -1,7 +1,7 @@
-import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { allKeyLabels } from '../../input';
-import { LevelScene, LevelConfig } from '../../features/floors/_shared/LevelScene';
-import { theme } from '../../style/theme';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { allKeyLabels } from '../../../input';
+import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
+import { theme } from '../../../style/theme';
 
 interface ProductDoor {
   x: number;
@@ -126,4 +126,3 @@ export class ProductsHallScene extends LevelScene {
     this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
   }
 }
-

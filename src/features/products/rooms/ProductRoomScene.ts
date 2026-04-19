@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../../features/floors/_shared/LevelScene';
-import { allKeyLabels } from '../../input';
-import type { NavigationContext } from '../NavigationContext';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
+import { allKeyLabels } from '../../../input';
+import type { NavigationContext } from '../../../scenes/NavigationContext';
 
 export interface ProductRoomDecoration {
   x: number;
