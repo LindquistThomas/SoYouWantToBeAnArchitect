@@ -14,9 +14,14 @@ export default defineConfig({
   // and intended as a local dev tool. Skip them in CI to keep the pipeline green.
   testIgnore: process.env.CI ? ['**/visual.spec.ts'] : [],
   fullyParallel: true,
-  // CI runners (ubuntu-latest) have 4 vCPU, so we max out parallelism there.
-  // Locally, use half of the available cores to leave headroom for other work.
-  workers: process.env.CI ? 4 : '50%',
+  // CI runners (ubuntu-latest) have 4 vCPU. 4 workers over-subscribes once the
+  // Vite dev server, node test host, and OS are accounted for, which starves
+  // Phaser's render loop and produces 60s timeouts. 3 workers keeps most of
+  // the parallelism win without pinning every core.
+  workers: process.env.CI ? 3 : '50%',
+  // One retry on CI absorbs rare flake (worker eviction, cold cache miss)
+  // without hiding bugs locally where retries stay at 0.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   timeout: 60_000,
   expect: { timeout: 10_000 },
