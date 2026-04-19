@@ -27,7 +27,7 @@ src/
 │       │   ├── LevelTokenManager.ts    Spawns AU tokens + handles pickup.
 │       │   ├── LevelZoneSetup.ts       Registers proximity zones for info points.
 │       │   └── LevelDialogBindings.ts  Wires dialog triggers to zones.
-│       ├── lobby/            LobbyScene.ts + info.ts + quiz.ts (tutorial content).
+│       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
 │       ├── finance/          Finance — Business floor, left room.
@@ -117,7 +117,7 @@ Use this to find the right file to edit for a given feature.
 
 | Feature area                        | Primary files                                                                          |
 |-------------------------------------|----------------------------------------------------------------------------------------|
-| Lobby / tutorial                    | `features/floors/lobby/{LobbyScene,info,quiz}.ts`                                      |
+| Lobby / tutorial content            | `features/floors/lobby/{info,quiz}.ts` (rendered inside `ElevatorScene`)                |
 | Platform Team room                  | `features/floors/platform/{PlatformTeamScene,info,quiz,enemies}.ts`                    |
 | Architecture Team room              | `features/floors/architecture/{ArchitectureTeamScene,info,quiz}.ts`                    |
 | Finance room                        | `features/floors/finance/{FinanceTeamScene,info,quiz}.ts`                              |

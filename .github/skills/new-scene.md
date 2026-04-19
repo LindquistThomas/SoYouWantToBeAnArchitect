@@ -9,7 +9,7 @@ For a playable **floor** (platforming level with tokens, enemies, info points), 
 ## Convention
 
 - Infrastructure scenes live in `src/scenes/`; product content scenes live in `src/features/products/{hall,rooms}/`.
-- Filename = exported class name in PascalCase, suffixed with `Scene` (e.g. `LobbyScene.ts`).
+- Filename = exported class name in PascalCase, suffixed with `Scene` (e.g. `MenuScene.ts`).
 - The string passed to `super(...)` is the scene **key** and must be unique. By convention it matches the class name.
 
 ## Template

@@ -88,31 +88,6 @@ test.describe('Elevator scene', () => {
     errors.assertClean();
   });
 
-  test('floor 0 placeholder scene opens and returns to the elevator', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
-
-    // LobbyScene is the floor-0 placeholder. ElevatorScene doesn't route to
-    // it via enterFloor() today, so start it directly — this is exactly what
-    // the scene registration exposes.
-    await page.evaluate(() => {
-      window.__game!.scene.start('LobbyScene');
-    });
-    await waitForScene(page, 'LobbyScene');
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/03-floor0-test-scene.png` });
-
-    // Enter is bound to "Confirm" which returns to ElevatorScene.
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
-    errors.assertClean();
-  });
-
   test('F1 decor is side-specific, non-overlapping, and animated on both sides', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 

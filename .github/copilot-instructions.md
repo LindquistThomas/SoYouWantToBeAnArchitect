@@ -24,7 +24,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator
 │   ├── input/                # Typed action bindings (actions.ts, bindings.ts, InputService)
 │   ├── plugins/              # MusicPlugin, DebugPlugin (Phaser ScenePlugins)
-│   ├── scenes/               # BootScene, MenuScene, ElevatorScene, LobbyScene, …TeamScene, products/
+│   ├── scenes/               # BootScene, MenuScene, ElevatorScene, …TeamScene, products/
 │   ├── systems/              # ProgressionSystem, EventBus, ZoneManager, AudioManager,
 │   │                         # QuizManager, InfoDialogManager, SaveManager,
 │   │                         # SpriteGenerator, SoundGenerator, MusicGenerator

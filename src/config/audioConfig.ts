@@ -16,7 +16,6 @@ type SfxEventName = Extract<GameEventName, `sfx:${string}`>;
 export const SCENE_MUSIC: Record<string, string> = {
   MenuScene:    'music_menu',
   ElevatorScene:     'music_elevator_jazz',
-  LobbyScene:              'music_floor1',
   PlatformTeamScene:       'music_floor1',
   ArchitectureTeamScene:   'music_floor1',
   ProductsHallScene:       'music_floor2',
