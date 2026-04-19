@@ -20,6 +20,8 @@ import { ProductAdminLisensScene } from './features/products/rooms/ProductAdminL
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 import { InputService } from './input';
+import { QuizDialog } from './ui/QuizDialog';
+import { canRetryQuiz } from './systems/QuizManager';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -74,8 +76,21 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
-// In dev mode, expose the game instance on `window` so E2E tests
-// (Playwright) can drive scene transitions and capture screenshots.
-if (import.meta.env.DEV) {
-  (window as unknown as { __game?: Phaser.Game }).__game = game;
-}
+// Expose the game instance on `window.__game` so E2E tests (Playwright)
+// can drive scene transitions and capture screenshots. Kept enabled in
+// production/preview builds too — the E2E suite targets the built bundle
+// on CI for stable compile-free startup, and Phaser already exposes its
+// full surface via `window` in any build, so this adds no meaningful
+// attack surface. `__testHooks` exposes a tiny set of internals the E2E
+// suite constructs directly (the QuizDialog class); it replaces a Vite
+// dev-only `import('/src/ui/QuizDialog.ts')` that did not survive the
+// production bundle.
+const gameWindow = window as unknown as {
+  __game?: Phaser.Game;
+  __testHooks?: {
+    QuizDialog: typeof QuizDialog;
+    canRetryQuiz: typeof canRetryQuiz;
+  };
+};
+gameWindow.__game = game;
+gameWindow.__testHooks = { QuizDialog, canRetryQuiz };

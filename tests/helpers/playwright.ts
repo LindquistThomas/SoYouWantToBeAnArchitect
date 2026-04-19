@@ -11,7 +11,13 @@ import { Page, expect } from '@playwright/test';
 export const SCREENSHOT_DIR = 'tests/screenshots';
 
 export interface PhaserSceneLike {
-  sys: { settings: { key: string; status?: number } };
+  sys: {
+    settings: { key: string; status?: number };
+    // `game.loop.frame` is Phaser's own rAF counter — it increments once per
+    // committed frame while the loop is running. `waitForScene` uses it to
+    // prove the Phaser loop (not just the browser rAF) has advanced.
+    game?: { loop?: { frame?: number } };
+  };
 }
 
 export interface PhaserLike {
@@ -61,14 +67,36 @@ export async function waitForScene(page: Page, sceneKey: string): Promise<void> 
     { key: sceneKey, running: SCENE_STATUS_RUNNING },
     { timeout: 30_000 },
   );
-  // Wait two animation frames so Phaser has rendered the scene at least
-  // once. Two rAF is a well-known idiom for "let the browser commit a
-  // frame"; on 60 fps this costs ~33ms vs the old 800ms fixed sleep.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
+  // Wait for Phaser's own loop to advance by at least two frames after the
+  // scene reached RUNNING. This is strictly better than a raw `rAF` promise
+  // inside `page.evaluate`: the promise has no timeout, so under CPU
+  // starvation (noisy CI runner) it can sit until the 60s test timeout
+  // fires — surfacing as an unreadable "page.evaluate timed out".
+  // `waitForFunction` here is bounded at 5s and reads `game.loop.frame`,
+  // which is Phaser's committed-frame counter, so a stalled game loop shows
+  // up as a clear error rather than a mystery timeout.
+  await page.waitForFunction(
+    (key) => {
+      const g = window.__game;
+      if (!g) return false;
+      const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === key);
+      const frame = scene?.sys.game?.loop?.frame;
+      if (typeof frame !== 'number') return false;
+      const w = window as unknown as { __sceneBaseFrame?: Record<string, number> };
+      w.__sceneBaseFrame ??= {};
+      const base = w.__sceneBaseFrame[key];
+      if (base === undefined) {
+        w.__sceneBaseFrame[key] = frame;
+        return false;
+      }
+      if (frame - base >= 2) {
+        delete w.__sceneBaseFrame[key];
+        return true;
+      }
+      return false;
+    },
+    sceneKey,
+    { timeout: 5_000 },
   );
 }
 

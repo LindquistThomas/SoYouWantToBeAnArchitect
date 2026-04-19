@@ -14,11 +14,22 @@ export default defineConfig({
   // and intended as a local dev tool. Skip them in CI to keep the pipeline green.
   testIgnore: process.env.CI ? ['**/visual.spec.ts'] : [],
   fullyParallel: true,
-  // CI runners (ubuntu-latest) have 4 vCPU, so we max out parallelism there.
-  // Locally, use half of the available cores to leave headroom for other work.
-  workers: process.env.CI ? 4 : '50%',
+  // CI runners (ubuntu-latest) have 4 vCPU. 4 workers over-subscribes once the
+  // Vite dev server, node test host, and OS are accounted for, which starves
+  // Phaser's render loop and produces 60s timeouts. 3 workers keeps most of
+  // the parallelism win without pinning every core.
+  workers: process.env.CI ? 3 : '50%',
+  // One retry on CI absorbs rare flake (worker eviction, cold cache miss)
+  // without hiding bugs locally where retries stay at 0.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  timeout: 60_000,
+  // 60s is comfortable locally (most tests finish in 5-12s), but CI
+  // runners (ubuntu-latest, 4 hyperthreaded vCPU) clock in ~3-5x slower
+  // per test — several passing tests come within a few seconds of the
+  // 60s ceiling, which makes the suite brittle to any additional jitter.
+  // A 120s ceiling on CI keeps fast-path local iteration honest while
+  // absorbing the legitimate compute gap on the runner.
+  timeout: process.env.CI ? 120_000 : 60_000,
   expect: { timeout: 10_000 },
 
   use: {
@@ -42,10 +53,16 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
+    // On CI we serve the built bundle via `vite preview` — dramatically
+    // faster and more stable than `npm run dev`, because Vite in dev mode
+    // does on-demand TypeScript transforms per request, and under parallel
+    // Playwright workers that would frequently push per-test time past
+    // the 60s timeout. Locally we keep `npm run dev` so hot-reload works
+    // while iterating on tests.
+    command: process.env.CI ? 'npm run build && npm run preview -- --port 3000 --strictPort' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',
   },
