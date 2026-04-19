@@ -1,220 +1,360 @@
-# Architecture & Structure Review
+# Architecture & Structure Review — April 2026
 
-> A critical review of the repository, focused on **parallel-collaboration
-> friction** and **readability**. Ordered by impact vs. effort so the team
-> can pick up a subset.
+> A fresh, thorough review of the repository. The previous pass
+> (landed in the Tier A/B/C refactors) retired the original god files
+> and wired a proper composition root. This review measures the
+> result, confirms which recommendations shipped, and identifies the
+> remaining debt.
 
 ## Context
 
-The project is a Phaser 3 / TypeScript / Vite educational platformer
-(~14K LOC). It has strong fundamentals (strict TS, event bus, pluggable
-storage, CI with lint/type/unit/E2E, procedural assets) and good docs
-(`docs/architecture.md`, `CONTRIBUTING.md`). The critical barriers to
-scaling to a team are not missing features — they are:
+The project is a Phaser 3 / TypeScript / Vite educational platformer,
+now at ~14.6K LOC. Since the previous review it has:
 
-1. A handful of **god files** that are merge-conflict magnets.
-2. **Implicit scene hand-off** via the Phaser scene registry.
-3. **Scattered per-floor content** (each floor touches five+ folders).
-4. **Naming and organisation drift** (English/Norwegian, `AU`/`token`/
-   `points`, flat `scenes/` directory).
+- Split `config/quizData.ts` (2,794 lines) into per-floor files.
+- Split `config/infoContent.ts` (576 lines) the same way.
+- Grouped `src/scenes/` by feature (`core/`, `elevator/`, `hall/`,
+  `products/`) and moved the six floor scenes into
+  `src/features/floors/<floor>/` alongside their quiz + info data.
+- Shrunk `ElevatorScene.ts` from 896 → 343 lines by extracting
+  `ElevatorController`, `ElevatorSceneLayout`,
+  `ElevatorFloorTransitionManager`, `ProductDoorManager`,
+  `ElevatorShaftDoors`, and `ElevatorZones`.
+- Replaced the `scene.registry` spawn hand-off with a typed
+  `NavigationContext`.
+- Extracted `ModalKeyboardNavigator` + `QuizResultsScreen` out of the
+  dialogs.
+- Introduced a `sceneLifecycle` helper for deterministic teardown.
+- Shipped a `GameStateManager` composition root that wraps
+  `ProgressionSystem`, `SaveManager`, `QuizManager`, and
+  `InfoDialogManager` behind a single injectable facade.
+- Centralised colours + spacing under `src/style/theme.ts`.
+- Split `SoundGenerator.ts` (358 lines) into a 42-line composition
+  root plus per-family modules under `src/systems/sounds/`.
 
-This document identifies the concrete changes that will make the
-codebase easier for multiple people to work on in parallel.
+The team can now work on floors in parallel without touching a shared
+god file. The review lens is still the same: **parallel-collaboration
+friction** and **readability**.
 
 ---
 
-## 1. Findings
+## 1. What changed since the previous review
 
-### 1a. God files (measured)
-
-| File | Lines | Why it hurts parallel work |
+| Recommendation | Status | Evidence |
 |---|---|---|
-| `src/config/quizData.ts` | **2,794** | Every quiz edit touches the same file |
-| `src/scenes/ElevatorScene.ts` | **896** | Orchestrates shaft, transitions, product doors, HUD, dialogs |
-| `src/scenes/LevelScene.ts` | **683** | Base class with 40+ protected methods used by 6 floor subclasses |
-| `src/ui/QuizDialog.ts` | **656** | Question flow + shuffle + feedback + scoring + results screen |
-| `src/config/infoContent.ts` | **576** | All educational copy in one file |
-| `src/ui/InfoDialog.ts` | **510** | Scrolling + keyboard nav + links + quiz trigger |
-| `src/entities/Elevator.ts` | **495** | Physics + docking + ride loop + music cues |
-| `src/entities/Player.ts` | **408** | Movement + animation + invulnerability + dust + walk FPS |
-| `src/scenes/MenuScene.ts` | **398** | Title rendering, nav, save-slot logic all inline |
-| `src/systems/SoundGenerator.ts` | **358** | All SFX synthesis in one file |
-| `src/scenes/ArchitectureTeamScene.ts` | **342** | Floor-specific content bloats a scene class |
-| `src/ui/InfoIcon.ts` | **327** | Sprite + animation + badge + interactivity |
+| A1. Split `quizData.ts` by floor | ✅ | Per-floor files at `src/features/floors/<floor>/quiz.ts`; barrel at `src/config/quiz/index.ts` |
+| A2. Split `infoContent.ts` by floor | ✅ | `src/features/floors/<floor>/info.ts`; barrel at `src/config/info/index.ts` |
+| A3. Refresh `docs/architecture.md` | ⚠ Stale again | See §3a below |
+| A4. Naming convention in `CONTRIBUTING.md` | ⚠ Stale again | See §3a below |
+| A5. Group `scenes/` by feature | ✅ (with caveat) | `core/`, `elevator/`, `hall/`, `products/` — but floors now live under `features/floors/` instead of `scenes/floors/`; the split is inconsistent (§3c) |
+| B6. `NavigationContext` for scene transitions | ✅ | `src/scenes/NavigationContext.ts` (71 lines); registry spawn hacks gone |
+| B7. Extract managers out of `LevelScene` | ✅ | `src/features/floors/_shared/LevelScene.ts` (473), `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelDialogBindings` |
+| B8. Extract managers out of `ElevatorScene` | ✅ | `src/scenes/elevator/` — 6 collaborators, scene itself at 343 lines |
+| B9. Split `QuizDialog` and `InfoDialog` | ✅ | `ModalKeyboardNavigator` + `QuizResultsScreen` shared by both |
+| B10. Standardise scene shutdown | ⚠ Partial | `src/systems/sceneLifecycle.ts` exists and is unit-tested, but only 6 adoption sites (§3f) |
+| C11. `GameStateManager` facade with DI | ✅ | `src/systems/GameStateManager.ts`; wired via registry in `BootScene`; unit-tested |
+| C12. `ThemeService` / `src/style/theme.ts` | ✅ (adoption partial) | Token tree exists (§3b); 373 hex literals still scattered |
+| C13. Feature folders for floors | ✅ | `src/features/floors/<floor>/{Scene,info,quiz[,enemies]}.ts` |
+| C14. Raise unit-test coverage thresholds | ❌ | Still 60% for `systems/` + `input/`; `ui/`, `scenes/`, `features/floors/` excluded |
+| C15. Split `SoundGenerator.ts` | ✅ | 42-line composition root + `src/systems/sounds/*` |
 
-### 1b. Structural issues
-
-- **Outdated architecture doc.** `docs/architecture.md` still references
-  `Floor2Scene.ts` and lists `InputManager.ts` under `systems/`, but the
-  code has moved to `src/input/InputService.ts` and the floors have been
-  renamed (`PlatformTeamScene`, `ArchitectureTeamScene`,
-  `FinanceTeamScene`, `ProductLeadershipScene`, `ExecutiveSuiteScene`).
-  Stale docs are a parallel-work tax — newcomers read the wrong map.
-- **Flat `scenes/` folder** with 14 top-level files covering boot, menu,
-  elevator, 6 floors, hall, and exec suite. Two sub-folders (`elevator/`,
-  `products/`) show the pattern started but wasn't applied uniformly.
-- **Mixed naming.** Norwegian (`ProductIsyRoad`, `ProductAdminLisens`)
-  mixed with English team names; file case inconsistent (`Player.ts`,
-  `infoContent.ts`, `LevelScene.ts`).
-- **Terminology drift.** "AU", "token", and "points" are used
-  interchangeably in code and user-facing strings.
-- **Implicit scene hand-off.** `ElevatorScene` writes spawn context to
-  `this.registry`; `LevelScene` and floor subclasses read it back — no
-  type, no schema, no single owner.
-- **Hard-coded singleton wiring.** `ProgressionSystem`, `QuizManager`,
-  `InfoDialogManager`, and `SaveManager` are imported directly by scenes
-  and UI; nothing is injected. This is why scenes and UI are excluded
-  from the unit-test coverage target — they're not testable in
-  isolation.
-- **Event listener cleanup is ad-hoc.** ~54 `eventBus` call sites across
-  the tree; scenes subscribe in `create()` but teardown in `shutdown` is
-  inconsistent — memory-leak / double-subscribe risk on scene restart.
-- **Hardcoded theme values.** Colors and spacing live as magic numbers
-  inside scene graphics calls plus a few constants in `gameConfig.ts`;
-  no centralised `theme.ts` token layer.
-
-### 1c. What's working well (do not regress)
-
-- **`src/systems/EventBus.ts`.** Typed `GameEvents` catalog is the spine
-  of cross-module communication. Keep.
-- **`src/input/`.** Semantic-action layer with context stack and
-  `index.ts` facade is a model the rest of the codebase should follow.
-- **`src/systems/SaveManager.ts`.** Pluggable `KVStorage` is the only
-  system with proper DI — the template for fixing other singletons.
-- **`docs/architecture.md`.** The structure is right; the content needs
-  an update.
-- **Procedural assets.** Zero image/audio deps, fast builds. Keep.
+**Summary:** 12/15 recommendations landed. One (docs refresh) has
+drifted back and is the focus of the follow-up PR. Two (B10 lifecycle
+adoption, C14 coverage) are partially done.
 
 ---
 
-## 2. Recommendations, prioritised
+## 2. Current file-size ranking (>250 lines)
 
-### Tier A — high impact, low effort (do first) — ✅ completed
+No code god files remain. The largest file is now pure quiz content,
+not logic.
 
-1. **Split `quizData.ts` by floor.** ✅ Done — see `src/config/quiz/`.
-   - Layout: `src/config/quiz/index.ts` + `quiz-lobby.ts`,
-     `quiz-platform.ts`, `quiz-architecture.ts`, `quiz-finance.ts`,
-     `quiz-product.ts`, `quiz-exec.ts`.
-   - `index.ts` re-exports `QUIZ_DATA` and `getQuizFor(floorId)`;
-     existing callers kept the same import surface.
-2. **Split `infoContent.ts` the same way.** ✅ Done — see `src/config/info/`.
-3. **Refresh `docs/architecture.md`.** ✅ Done — scene names corrected,
-   `InputService` documented, module map updated.
-4. **Adopt a naming convention in `CONTRIBUTING.md`.** ✅ Done — file,
-   terminology, and class naming rules added.
-5. **Group `scenes/` by feature.** ✅ Done — `scenes/core/`,
-   `scenes/elevator/`, `scenes/floors/`, `scenes/hall/`,
-   `scenes/products/`.
+| File | Lines | Category |
+|---|---|---|
+| `src/features/floors/architecture/quiz.ts` | **1,568** | Content (question data) |
+| `src/features/floors/platform/quiz.ts` | **799** | Content |
+| `src/entities/Elevator.ts` | **495** | Entity logic |
+| `src/ui/InfoDialog.ts` | **479** | UI (scroll + nav + links) |
+| `src/ui/QuizDialog.ts` | **473** | UI (question flow) |
+| `src/features/floors/_shared/LevelScene.ts` | **473** | Shared base scene |
+| `src/scenes/elevator/ElevatorSceneLayout.ts` | **422** | Shaft visuals |
+| `src/entities/Player.ts` | **408** | Entity logic |
+| `src/scenes/core/MenuScene.ts` | **391** | Scene |
+| `src/features/floors/lobby/quiz.ts` | **384** | Content |
+| `src/systems/sprites/player.ts` | **353** | Procedural sprite |
+| `src/scenes/elevator/ElevatorScene.ts` | **343** | Scene (was 896) |
+| `src/features/floors/architecture/ArchitectureTeamScene.ts` | **343** | Scene |
+| `src/ui/InfoIcon.ts` | **328** | UI widget |
+| `src/features/floors/architecture/info.ts` | **240** | Content |
 
-### Tier B — medium impact, medium effort (2–3 days each) — ✅ completed
+Compare to the prior review: `quizData.ts` (2,794) and
+`ElevatorScene.ts` (896) are gone from the top; the only files left
+over 450 lines are legitimate logic (`Elevator`, `InfoDialog`,
+`QuizDialog`, `LevelScene`) or a shared shaft-layout module
+(`ElevatorSceneLayout`). Everything else has been carved down.
 
-6. **Introduce `NavigationContext` for scene transitions.** ✅ Done —
-   see `src/scenes/NavigationContext.ts`. `scene.start(key, ctx)` is
-   now the single hand-off path; registry-based spawn state is gone.
-7. **Extract managers out of `LevelScene`.** ✅ Done —
-   `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, and
-   `createLevelDialogs` under `src/scenes/floors/`. `LevelScene` is a
-   thin composition root.
-8. **Extract managers out of `ElevatorScene`.** ✅ Done —
-   `ElevatorFloorTransitionManager`, `ProductDoorManager`, and
-   `ElevatorSceneLayout` under `src/scenes/elevator/`.
-9. **Split `QuizDialog` and `InfoDialog`.** ✅ Done — extracted
-   `ModalKeyboardNavigator` and `QuizResultsScreen` into `src/ui/`;
-   both dialogs share the navigator.
-10. **Standardise scene shutdown.** ✅ Done — `src/systems/sceneLifecycle.ts`
-    exposes `createSceneLifecycle(scene)` with `add / bindEventBus /
-    bindInput / dispose`. Disposers fire on both `shutdown` and
-    `destroy`. Applied in `LevelZoneSetup`, `ElevatorZones`, `HUD`,
-    `LobbyScene`, and `MenuScene`.
+---
 
-### Tier C — higher effort, strategic (1–2 weeks)
+## 3. Findings
 
-11. **`GameStateManager` facade with DI.** Wraps `ProgressionSystem`,
-    `SaveManager`, `QuizManager`, `InfoDialogManager`. Constructed once
-    in `main.ts`, passed into scenes via `scene.launch(key, { state })`
-    or a lightweight DI container. Unlocks real unit tests for scenes
-    (replace the store with an in-memory fake — same pattern as
-    `KVStorage`).
-12. **`ThemeService` / `src/style/theme.ts`.** Centralise color tokens
-    (`color.bg.default`, `color.floor.platform.platform`,
-    `text.primary`, …) and spacing. Scenes pull from tokens rather than
-    inlining hex values. Enables dark mode / colour-blind palette later
-    with zero file-hunting.
-13. **Feature folders for floors.**
-    ```
-    src/features/floors/platform/
-      PlatformTeamScene.ts
-      info.ts       (slice of infoContent)
-      quiz.ts       (slice of quizData)
-      enemies.ts    (floor-specific enemy config)
-    ```
-    Truly isolates a floor to one folder → perfect for parallel
-    branches and clean code ownership.
-14. **Raise unit-test coverage thresholds** to 80% for `systems/` and
-    `input/`, and add 60% for `ui/` and scenes once the
-    `GameStateManager` DI lands (scenes become testable).
-15. **Split `SoundGenerator.ts`** into `sounds/footsteps.ts`,
-    `sounds/ui.ts`, `sounds/combat.ts`, `sounds/quiz.ts` with a thin
-    composition root — mirrors the clean `systems/sprites/` pattern
-    that already exists.
+### 3a. Docs have drifted back to stale (the blocker)
+
+`docs/architecture.md` still describes the pre-split tree:
+
+- Lists six floor scenes (`LobbyScene`, `PlatformTeamScene`,
+  `ArchitectureTeamScene`, `FinanceTeamScene`,
+  `ProductLeadershipScene`, `ExecutiveSuiteScene`) under
+  `src/scenes/` — they now live under `src/features/floors/<floor>/`.
+- Shows `config/info/` and `config/quiz/` as the owners of per-floor
+  content — those directories are now just re-export barrels; the
+  authored files live in `features/floors/<floor>/`.
+- Has no entry for `src/style/theme.ts`, `src/systems/sounds/`,
+  `src/systems/GameStateManager.ts`, `src/scenes/NavigationContext.ts`,
+  or `src/systems/sceneLifecycle.ts`.
+- The event catalog lists ~9 events; `GameEvents` now has 19
+  (music push/pop, audio mute toggles, hit/stomp/drop/recover SFX).
+
+`CONTRIBUTING.md`:
+
+- Project Conventions table points newcomers at `src/config/` for all
+  floor content and `src/scenes/` for all scenes.
+- Naming-conventions table still references `config/info/` and
+  `config/quiz/` rows; has no per-floor feature-folder row.
+- The `*Service` suffix example calls `GameStateManager` "future from
+  Tier C" — it has shipped.
+
+Stale docs are the single biggest onboarding tax left in the tree.
+The supporting PR in this series fixes them.
+
+### 3b. Theme-token adoption is partial
+
+`src/style/theme.ts` (95 lines) centralises 5 palettes, 7 UI tints, 5
+status colours, 12 CSS text colours, and a 5-step spacing scale.
+Adoption is incomplete: 373 hex literals remain across 30 files.
+Concentrations:
+
+| File | Hex literals |
+|---|---|
+| `src/ui/QuizDialog.ts` | 40 |
+| `src/entities/Elevator.ts` | 34 |
+| `src/scenes/core/MenuScene.ts` | 33 |
+| `src/ui/InfoDialog.ts` | 31 |
+| `src/scenes/elevator/ElevatorSceneLayout.ts` | 24 |
+| `src/systems/sprites/player.ts` | 20 |
+| `src/systems/sprites/enemies.ts` | 19 |
+| `src/systems/sprites/elevator.ts` | 18 |
+
+Most are procedural sprite palettes (fine — those are asset-local)
+but the scene + UI counts indicate token adoption is still a
+file-by-file job.
+
+### 3c. Scene placement is inconsistent
+
+Scenes are split across two trees:
+
+```
+src/scenes/core/       BootScene, MenuScene
+src/scenes/elevator/   ElevatorScene + 6 collaborators
+src/scenes/hall/       ProductsHallScene
+src/scenes/products/   4 product-room scenes + ProductRoomScene base
+src/features/floors/   6 floor scenes (co-located with info + quiz)
+```
+
+The split started as "feature-based scenes live under `features/`,
+infrastructure scenes stay under `scenes/`." That reading holds for
+`core/` and `elevator/`, but the products hall and product rooms are
+feature content that could move to `src/features/products/` — the
+`ProductIsy*` rooms each ship their own room layout, music cue, and
+door back to the hall.
+
+This is a Tier-D cleanup, not urgent.
+
+### 3d. One large content file (not logic)
+
+`src/features/floors/architecture/quiz.ts` at 1,568 lines is the
+biggest single file in `src/`. Because the split is by floor, it is
+only edited by the architecture-floor owner and does not cause
+merge conflicts the way the original `quizData.ts` did. However:
+
+- If a second author wants to add questions for the *same* floor, the
+  file is again a bottleneck.
+- Reading the file top-to-bottom to find a specific question is slow.
+
+A future split by topic (integration, cloud, patterns, SOA, …) would
+keep the co-location pattern intact: `features/floors/architecture/
+quiz/<topic>.ts` plus a barrel at `features/floors/architecture/
+quiz/index.ts`. Not urgent; watch for the 2,000-line line.
+
+### 3e. Coverage thresholds are stalled at 60%
+
+`vitest.config.ts`:
+
+- Thresholds enforced: `src/systems/**` and `src/input/**` at 60%.
+- Entirely excluded from coverage: `src/scenes/**`,
+  `src/features/floors/**`, `src/ui/**`, `src/entities/**`,
+  `src/plugins/**`, sprite + sound generators.
+
+With `GameStateManager` shipped, UI and scene code is now injectable —
+the original justification for excluding them ("not testable in
+isolation") no longer applies. The next useful step is:
+
+1. Raise `systems/` + `input/` to 80% (both already near that in
+   practice).
+2. Add a 60% floor for `src/ui/**` and pick 1–2 scenes to unit-test
+   through `GameStateManager` to prove the pattern.
+
+### 3f. `sceneLifecycle` adoption is partial
+
+`createSceneLifecycle(scene)` exists in `src/systems/sceneLifecycle.ts`
+and is unit-tested. Call sites today: `LevelZoneSetup`, `ElevatorZones`,
+`HUD`, `LobbyScene`, `MenuScene`, and its own test — six total.
+
+`ElevatorScene`, `ElevatorSceneLayout`, and the five other floor
+scenes still manage `scene.events.once('shutdown', …)` teardown by
+hand. The collaborators they wrap do use the helper, so the
+leak-risk is contained, but the pattern is not uniform — exactly the
+failure mode the Tier B item was meant to prevent.
+
+### 3g. New "monitor, don't refactor" items
+
+- `src/scenes/elevator/ElevatorSceneLayout.ts` (422 lines) owns
+  shaft visuals + floor labels + unlock-state rendering. If a future
+  feature adds more shaft chrome, split it into
+  `shaftVisuals.ts` + `floorLabels.ts`. Not needed today.
+- `src/ui/InfoIcon.ts` (328 lines) has been unchanged for a while;
+  the sprite/badge/interactivity combo is acceptable. Note but don't
+  touch.
+
+### 3h. What's working well (do not regress)
+
+- **`EventBus.ts` typed catalog.** 19 events, 86 call sites, zero
+  silent typos — `GameEventName` keeps the compiler honest. Up from
+  ~54 call sites at the last review with no loss of hygiene.
+- **`GameStateManager` injection pattern.** One facade wraps four
+  stores; tests swap a fake `KVStorage` once and all four modules
+  behave.
+- **Feature folders.** One floor = one directory. Scene + info +
+  quiz + optional enemies live together. Ownership is visible.
+- **Procedural assets.** Still zero image deps; `BootScene` generates
+  everything once.
+- **Zero TODO/FIXME/HACK hotspots.** A clean grep across `src/` —
+  rare enough to call out.
+- **`input/` facade + `sceneLifecycle` shape.** Both follow the
+  "one barrel file, composition inside" pattern the rest of the
+  tree should aim for.
+
+---
+
+## 4. Recommendations, prioritised
+
+### Tier D — doc refresh (do first; this PR)
+
+D1. **Update `docs/architecture.md`** to match the current tree:
+add `features/floors/`, `style/`, `systems/sounds/`,
+`GameStateManager`, `NavigationContext`, `sceneLifecycle`; refresh
+the ownership table to point floor rows at
+`features/floors/<floor>/`; expand the event catalog to the full 19
+entries.
+
+D2. **Update `CONTRIBUTING.md`** to match: add a `features/floors/`
+row + a `Theme tokens` row to the Project Conventions; drop the
+stale `config/info/` and `config/quiz/` rows from the
+naming-conventions table and add a `Per-floor feature folder` row;
+move `GameStateManager` from "future" to "shipped" under the
+`*Service` suffix.
+
+### Tier C — remainders
+
+C14. **Raise unit-test coverage thresholds.** Bump `systems/` +
+`input/` to 80%. Add a 60% floor for `src/ui/**` — start by
+writing one unit test each against `HUD` and `DialogController`
+using a fake `GameStateManager` (the pattern is already proven by
+`sceneLifecycle.test.ts`). Once green, expand to scenes.
+
+B10-follow-up. **Universal `sceneLifecycle` adoption.** Migrate
+`ElevatorScene`, `ElevatorSceneLayout`, and the six floor scenes to
+use `createSceneLifecycle`. Mechanical change; prevents future
+listener-cleanup bugs.
+
+### Tier E — follow-ons (not urgent)
+
+E1. **Theme-token pass-through** in the four hex-heavy files
+(`QuizDialog`, `InfoDialog`, `Elevator`, `MenuScene`). Replace each
+hex literal with the corresponding `theme.color.*` token; leave
+procedural-sprite palettes alone (asset-local).
+
+E2. **Consolidate scenes under `src/features/`.** Move
+`scenes/hall/` + `scenes/products/` to
+`src/features/products/{hall,rooms}` to match the pattern already
+set by `features/floors/`. Keep `scenes/core/` and `scenes/elevator/`
+where they are (infrastructure).
+
+E3. **Topic-sub-split `architecture/quiz.ts`** only if it crosses
+~2,000 lines; earlier is premature.
+
+E4. **Coverage for `entities/`** — re-include `src/entities/**` and
+set a 60% floor. `Player`, `Elevator`, and `Token` already have unit
+tests; the threshold ratchets the existing coverage.
 
 ### Not recommended
 
-- **No route-based scene loader / URL deep-linking.** Not useful for a
-  Phaser game; would add complexity without value.
-- **No switch to Redux/Zustand/etc.** EventBus + typed catalog already
-  does the job; introducing a store would duplicate responsibility.
-- **No monorepo / package split.** 14K LOC is premature.
+- **No route-based scene loader / URL deep-linking.** Unchanged
+  since last review.
+- **No Redux/Zustand.** `EventBus` + `GameStateManager` already
+  cover state.
+- **No monorepo split.** 14.6K LOC is still premature.
 
 ---
 
-## 3. Suggested implementation order
+## 5. Suggested implementation order
 
-1. Tier A items 1–5 as a short PR series (each item is one PR, 1–3
-   hours). Lowest risk, biggest merge-conflict relief. ✅ landed.
-2. Tier B item 6 (`NavigationContext`) before 7 and 8 — the manager
-   extractions depend on a clean transition contract. ✅ landed.
-3. Tier B items 7 and 8 in parallel (different files, different
-   reviewers). ✅ landed.
-4. Tier B items 9 and 10 any time. ✅ landed.
-5. Tier C items only after A+B land and the team is sold on the
-   direction.
+1. Tier D (this PR). Docs catch up to code. One reviewer, one
+   morning. Lowest risk.
+2. Tier C14 + B10-follow-up in parallel. Both mechanical. One PR
+   each, one day each.
+3. Tier E1 (theme tokens) file-by-file, one PR per file.
+4. Tier E2 (scene consolidation). Last; requires updating `main.ts`
+   imports and does not belong with the doc refresh.
 
 ---
 
-## 4. Critical files by topic
+## 6. Critical files by topic
 
-- **Merge-hotspot splits:** `src/config/quizData.ts`,
-  `src/config/infoContent.ts`, `src/config/levelData.ts`.
-- **Scene refactors:** `src/scenes/ElevatorScene.ts`,
-  `src/scenes/LevelScene.ts`, `src/scenes/MenuScene.ts`.
-- **UI refactors:** `src/ui/QuizDialog.ts`, `src/ui/InfoDialog.ts`,
-  `src/ui/InfoIcon.ts`, `src/ui/HUD.ts`.
-- **Entity refactors:** `src/entities/Player.ts`,
-  `src/entities/Elevator.ts`.
-- **Docs updates:** `docs/architecture.md`, `CONTRIBUTING.md`.
-- **Patterns to reuse (don't reinvent):** `src/systems/EventBus.ts`
-  (typed pub/sub), `src/systems/SaveManager.ts` (KVStorage DI),
-  `src/input/index.ts` (facade pattern), `src/systems/sprites/`
-  (composition-root pattern).
+- **Docs to update (this PR):** `docs/architecture-review.md`,
+  `docs/architecture.md`, `CONTRIBUTING.md`.
+- **Composition roots / patterns to extend:**
+  `src/systems/GameStateManager.ts`,
+  `src/systems/sceneLifecycle.ts`, `src/scenes/NavigationContext.ts`,
+  `src/style/theme.ts`, `src/input/index.ts`.
+- **Event contract:** `src/systems/EventBus.ts`.
+- **Per-floor work lives here now:** `src/features/floors/<floor>/`.
+- **Remaining infrastructure scenes:** `src/scenes/core/`,
+  `src/scenes/elevator/`, `src/scenes/hall/`, `src/scenes/products/`.
+- **Test thresholds:** `vitest.config.ts`.
+- **Watch list (do not regress):** `src/ui/InfoDialog.ts` (479),
+  `src/ui/QuizDialog.ts` (473),
+  `src/scenes/elevator/ElevatorSceneLayout.ts` (422),
+  `src/entities/Elevator.ts` (495), `src/entities/Player.ts` (408).
 
 ---
 
-## 5. Verifying any refactor
+## 7. Verifying any refactor
 
-Because the recommended changes are either (a) pure file moves/splits
-with unchanged public surface, or (b) refactors behind the same API,
-the existing tests are the primary safety net:
+Because the recommendations are either pure doc updates (Tier D) or
+behind-the-API refactors (C14, B10-follow-up, E1, E2), the existing
+test stack is the safety net:
 
 - `npm run lint` — no new violations.
-- `npm run build` — `tsc` passes with strict mode.
-- `npm run test:unit` — all existing Vitest suites pass; add a focused
-  `*.test.ts` next to any new manager that is extracted.
-- `npm test` — Playwright E2E (`menu`, `elevator`, `floors`, `tokens`,
-  `quiz`, `progression`, `visual`) all pass unchanged.
-- For the `quizData` / `infoContent` splits specifically, the existing
-  `config/quizData.test.ts` and `config/infoContent.test.ts` validate
-  structural integrity — run them after each split to catch any dropped
-  entries.
-- Manually run `npm run dev` and complete one full elevator ride + one
-  quiz on each floor before merging any scene refactor.
+- `npm run build` — `tsc` strict passes.
+- `npm run test:unit` — all Vitest suites pass; add a focused test
+  next to each new adopter of `sceneLifecycle` or `GameStateManager`.
+- `npm test` — Playwright E2E (`menu`, `elevator`, `floors`,
+  `tokens`, `quiz`, `progression`, `visual`) passes unchanged.
+
+For the doc updates specifically, path-check every reference: every
+file path quoted in `docs/architecture.md`, `docs/architecture-review.md`,
+and `CONTRIBUTING.md` must resolve in `src/`. A dead path is a
+regression.
+
+Manually run `npm run dev` and complete one full elevator ride + one
+quiz on each floor before merging any scene or UI refactor.
