@@ -153,8 +153,8 @@ test.describe('Elevator scene', () => {
 
       const left = toDecor('f1-left-');
       const right = toDecor('f1-right-');
-      const leftSolids = left.filter((d) => !d.name.includes('monitor'));
-      const rightSolids = right.filter((d) => !d.name.includes('cursor') && !d.name.includes('highlight'));
+      const leftStaticDecor = left.filter((d) => !d.name.includes('monitor'));
+      const rightStaticDecor = right.filter((d) => !d.name.includes('cursor') && !d.name.includes('highlight'));
 
       const intersects = (a: Bounds, b: Bounds): boolean =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -180,10 +180,10 @@ test.describe('Elevator scene', () => {
       return {
         leftCount: left.length,
         rightCount: right.length,
-        leftOverlaps: findOverlaps(leftSolids),
-        rightOverlaps: findOverlaps(rightSolids),
-        leftOutOfSide: leftSolids.filter((d) => d.bounds.right > leftEdge).map((d) => d.name),
-        rightOutOfSide: rightSolids.filter((d) => d.bounds.left < rightEdge).map((d) => d.name),
+        leftOverlaps: findOverlaps(leftStaticDecor),
+        rightOverlaps: findOverlaps(rightStaticDecor),
+        leftOutOfSide: leftStaticDecor.filter((d) => d.bounds.right > leftEdge).map((d) => d.name),
+        rightOutOfSide: rightStaticDecor.filter((d) => d.bounds.left < rightEdge).map((d) => d.name),
         leftAnimated: left.filter((d) => d.hasTween).map((d) => d.name),
         rightAnimated: right.filter((d) => d.hasTween).map((d) => d.name),
       };
