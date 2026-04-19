@@ -153,9 +153,9 @@ test.describe('Elevator scene', () => {
 
       const left = toDecor('f1-left-');
       const right = toDecor('f1-right-');
-      const excludedSpatialDecor = new Set(['f1-right-adr-cursor', 'f1-right-slice-highlight']);
-      const leftSpatialDecor = left.filter((d) => !excludedSpatialDecor.has(d.name));
-      const rightSpatialDecor = right.filter((d) => !excludedSpatialDecor.has(d.name));
+      const overlayExclusions = new Set(['f1-right-adr-cursor', 'f1-right-slice-highlight']);
+      const leftSpatialDecor = left.filter((d) => !overlayExclusions.has(d.name));
+      const rightSpatialDecor = right.filter((d) => !overlayExclusions.has(d.name));
 
       const intersects = (a: Bounds, b: Bounds): boolean =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
