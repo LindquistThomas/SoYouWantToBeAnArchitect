@@ -26,7 +26,7 @@ export class ElevatorShaftDoors {
   private openAmount = 0;
   private target = 0;
 
-  private static readonly OPENING_WIDTH = 48;
+  private static readonly OPENING_WIDTH = 36;
   private static readonly OPENING_HEIGHT = 132;
   /** Cab must be within this Y distance of dock to open. */
   private static readonly PROXIMITY = 28;
@@ -92,14 +92,14 @@ export class ElevatorShaftDoors {
     const yTop = this.openingTop;
     const yBot = this.openingBottom;
 
-    // 1) The passage cavity (visible when the panel is retracted). Tinted
-    //    slightly darker than the hallway background so the opening reads
-    //    as "hallway interior behind the shaft wall" — a subtle depth cue
-    //    rather than a near-black hole. Clip so it doesn't spill outside
-    //    the shaft/hallway boundaries (the GAME_WIDTH edges).
+    // 1) The passage cavity (visible when the panel is retracted). Uses
+    //    the regular hallway background colour so the opening reads as
+    //    "look through into the hallway behind" rather than a black hole.
+    //    Clip so it doesn't spill outside the shaft/hallway boundaries
+    //    (the GAME_WIDTH edges).
     const cavityX = Math.max(0, x);
     const cavityRight = Math.min(GAME_WIDTH, x + w);
-    g.fillStyle(0x12121f, 1);
+    g.fillStyle(0x1a1a2e, 1);
     g.fillRect(cavityX, yTop, cavityRight - cavityX, h);
 
     // 2) Header slot above the opening (where the door retracts into).
