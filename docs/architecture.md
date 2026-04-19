@@ -223,7 +223,8 @@ adding an event there type-checks every call site automatically.
 | `sfx:info_open`      | —                  | DialogController             | AudioManager  |
 | `sfx:link_click`     | —                  | InfoDialog                   | AudioManager  |
 | `sfx:jump`           | —                  | Player                       | AudioManager  |
-| `sfx:footstep_a/b`   | —                  | Player                       | AudioManager  |
+| `sfx:footstep_a`     | —                  | Player                       | AudioManager  |
+| `sfx:footstep_b`     | —                  | Player                       | AudioManager  |
 | `sfx:quiz_correct`   | —                  | QuizDialog                   | AudioManager  |
 | `sfx:quiz_wrong`     | —                  | QuizDialog                   | AudioManager  |
 | `sfx:quiz_success`   | —                  | QuizDialog                   | AudioManager  |

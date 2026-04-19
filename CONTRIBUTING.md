@@ -141,12 +141,16 @@ contributor doesn't invent a third synonym.
 3. Cross-system communication goes through the typed event bus in
    `src/systems/EventBus.ts` — the `GameEvents` map is the catalog of
    every event name and its payload.
-4. Persistent game state goes through `GameStateManager`
+4. Persistent game state should go through `GameStateManager`
    (`src/systems/GameStateManager.ts`), retrieved from
-   `scene.registry.get('gameState')`. Do not import the underlying
-   stores (`SaveManager`, `QuizManager`, `InfoDialogManager`,
-   `ProgressionSystem`) directly from scenes or UI — the facade keeps
-   tests injectable.
+   `scene.registry.get('gameState')`. For new scene/UI code, prefer
+   this facade over importing the underlying stores (`SaveManager`,
+   `QuizManager`, `InfoDialogManager`, `ProgressionSystem`) directly
+   — the facade keeps tests injectable via a single `KVStorage` fake.
+   A handful of existing UI modules (e.g. `ui/QuizDialog`,
+   `ui/QuizResultsScreen`, `ui/DialogController`) still import those
+   stores directly; treat them as a migration target rather than a
+   pattern to copy.
 5. Scene transitions go through `scenes/NavigationContext.ts`. Pass
    a typed context to `scene.scene.start(key, ctx)` rather than
    stashing spawn hints on `scene.registry`.
@@ -194,10 +198,12 @@ the data-flow overview.
 - Do not inline colour or spacing magic numbers in scenes or UI. Pull
   from `src/style/theme.ts`. Procedural sprite palettes inside
   `systems/sprites/*` are the allowed exception — they are asset-local.
-- Do not import `SaveManager`, `QuizManager`, `InfoDialogManager`, or
-  `ProgressionSystem` directly from scenes or UI. Go through
-  `GameStateManager` (`scene.registry.get('gameState')`). This keeps
-  tests able to inject a fake `KVStorage` in one place.
+- Avoid adding new direct imports of `SaveManager`, `QuizManager`,
+  `InfoDialogManager`, or `ProgressionSystem` from scenes or UI;
+  prefer `GameStateManager` (`scene.registry.get('gameState')`) so
+  tests can inject a fake `KVStorage` in one place. Some existing
+  UI modules still import these stores directly — those are legacy
+  and should migrate, not be duplicated.
 - Do not stash spawn state on `scene.registry` for hand-off between
   scenes. Use `NavigationContext` and the typed `scene.scene.start(key,
   ctx)` form.

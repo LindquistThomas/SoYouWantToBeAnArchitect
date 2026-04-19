@@ -67,29 +67,31 @@ adoption, C14 coverage) are partially done.
 ## 2. Current file-size ranking (>250 lines)
 
 No code god files remain. The largest file is now pure quiz content,
-not logic.
+not logic. Sizes below are approximate (`wc -l` at the time of
+writing) — they drift by a handful of lines per commit, so rely on
+the ordering more than the exact numbers.
 
-| File | Lines | Category |
+| File | ~Lines | Category |
 |---|---|---|
-| `src/features/floors/architecture/quiz.ts` | **1,568** | Content (question data) |
-| `src/features/floors/platform/quiz.ts` | **799** | Content |
-| `src/entities/Elevator.ts` | **495** | Entity logic |
-| `src/ui/InfoDialog.ts` | **479** | UI (scroll + nav + links) |
-| `src/ui/QuizDialog.ts` | **473** | UI (question flow) |
-| `src/features/floors/_shared/LevelScene.ts` | **473** | Shared base scene |
-| `src/scenes/elevator/ElevatorSceneLayout.ts` | **422** | Shaft visuals |
-| `src/entities/Player.ts` | **408** | Entity logic |
-| `src/scenes/core/MenuScene.ts` | **391** | Scene |
-| `src/features/floors/lobby/quiz.ts` | **384** | Content |
-| `src/systems/sprites/player.ts` | **353** | Procedural sprite |
-| `src/scenes/elevator/ElevatorScene.ts` | **343** | Scene (was 896) |
-| `src/features/floors/architecture/ArchitectureTeamScene.ts` | **343** | Scene |
-| `src/ui/InfoIcon.ts` | **328** | UI widget |
-| `src/features/floors/architecture/info.ts` | **240** | Content |
+| `src/features/floors/architecture/quiz.ts` | ~1,570 | Content (question data) |
+| `src/features/floors/platform/quiz.ts` | ~800 | Content |
+| `src/entities/Elevator.ts` | ~495 | Entity logic |
+| `src/ui/InfoDialog.ts` | ~480 | UI (scroll + nav + links) |
+| `src/ui/QuizDialog.ts` | ~475 | UI (question flow) |
+| `src/features/floors/_shared/LevelScene.ts` | ~475 | Shared base scene |
+| `src/scenes/elevator/ElevatorSceneLayout.ts` | ~420 | Shaft visuals |
+| `src/entities/Player.ts` | ~410 | Entity logic |
+| `src/scenes/core/MenuScene.ts` | ~390 | Scene |
+| `src/features/floors/lobby/quiz.ts` | ~385 | Content |
+| `src/systems/sprites/player.ts` | ~355 | Procedural sprite |
+| `src/scenes/elevator/ElevatorScene.ts` | ~345 | Scene (was ~900) |
+| `src/features/floors/architecture/ArchitectureTeamScene.ts` | ~345 | Scene |
+| `src/ui/InfoIcon.ts` | ~330 | UI widget |
+| `src/features/floors/architecture/info.ts` | ~240 | Content |
 
-Compare to the prior review: `quizData.ts` (2,794) and
-`ElevatorScene.ts` (896) are gone from the top; the only files left
-over 450 lines are legitimate logic (`Elevator`, `InfoDialog`,
+Compare to the prior review: `quizData.ts` (~2,800) and
+`ElevatorScene.ts` (~900) are gone from the top; the only files left
+over ~450 lines are legitimate logic (`Elevator`, `InfoDialog`,
 `QuizDialog`, `LevelScene`) or a shared shaft-layout module
 (`ElevatorSceneLayout`). Everything else has been carved down.
 
@@ -111,7 +113,7 @@ over 450 lines are legitimate logic (`Elevator`, `InfoDialog`,
 - Has no entry for `src/style/theme.ts`, `src/systems/sounds/`,
   `src/systems/GameStateManager.ts`, `src/scenes/NavigationContext.ts`,
   or `src/systems/sceneLifecycle.ts`.
-- The event catalog lists ~9 events; `GameEvents` now has 19
+- The event catalog lists ~9 events; `GameEvents` now has 21
   (music push/pop, audio mute toggles, hit/stomp/drop/recover SFX).
 
 `CONTRIBUTING.md`:
@@ -227,9 +229,11 @@ failure mode the Tier B item was meant to prevent.
 
 ### 3h. What's working well (do not regress)
 
-- **`EventBus.ts` typed catalog.** 19 events, 86 call sites, zero
-  silent typos — `GameEventName` keeps the compiler honest. Up from
-  ~54 call sites at the last review with no loss of hygiene.
+- **`EventBus.ts` typed catalog.** 21 typed events, ~86 call sites,
+  zero silent typos — `GameEventName` keeps the compiler honest. Up
+  from ~54 call sites at the last review with no loss of hygiene.
+  (See `docs/architecture.md` for the full catalog; check
+  `src/systems/EventBus.ts` for the authoritative count.)
 - **`GameStateManager` injection pattern.** One facade wraps four
   stores; tests swap a fake `KVStorage` once and all four modules
   behave.
