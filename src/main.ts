@@ -11,11 +11,11 @@ import {
   ProductLeadershipScene,
   ExecutiveSuiteScene,
 } from './features/floors';
-import { ProductsHallScene } from './scenes/hall/ProductsHallScene';
-import { ProductIsyProjectControlsScene } from './scenes/products/ProductIsyProjectControlsScene';
-import { ProductIsyBeskrivelseScene } from './scenes/products/ProductIsyBeskrivelseScene';
-import { ProductIsyRoadScene } from './scenes/products/ProductIsyRoadScene';
-import { ProductAdminLisensScene } from './scenes/products/ProductAdminLisensScene';
+import { ProductsHallScene } from './features/products/hall/ProductsHallScene';
+import { ProductIsyProjectControlsScene } from './features/products/rooms/ProductIsyProjectControlsScene';
+import { ProductIsyBeskrivelseScene } from './features/products/rooms/ProductIsyBeskrivelseScene';
+import { ProductIsyRoadScene } from './features/products/rooms/ProductIsyRoadScene';
+import { ProductAdminLisensScene } from './features/products/rooms/ProductAdminLisensScene';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 import { InputService } from './input';

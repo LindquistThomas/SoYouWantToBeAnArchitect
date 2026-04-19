@@ -1,7 +1,7 @@
-import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { allKeyLabels } from '../../input';
-import { LevelScene, LevelConfig } from '../../features/floors/_shared/LevelScene';
-import { theme } from '../../style/theme';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { allKeyLabels } from '../../../input';
+import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
+import { theme } from '../../../style/theme';
 
 interface ProductDoor {
   x: number;
@@ -16,7 +16,7 @@ interface ProductDoor {
  * Products floor — a long hall lined with a door for each ISY product.
  *
  * Each door opens into a dedicated product room scene. Walk up to a
- * door. Walk up to a door and press Enter — or tap/click it — to enter;
+ * door and press Enter — or tap/click it — to enter;
  * the room's exit door returns the player
  * to this hall, respawning next to the door they came through.
  */
@@ -126,4 +126,3 @@ export class ProductsHallScene extends LevelScene {
     this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
   }
 }
-
