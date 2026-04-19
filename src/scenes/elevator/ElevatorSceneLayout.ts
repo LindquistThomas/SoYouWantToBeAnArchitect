@@ -903,13 +903,10 @@ export class ElevatorSceneLayout {
     scene.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
     scene.add.image(rightEdge + 440, fProductsBottom - 40, 'plant_tall').setDepth(3);
 
-    // F3 — Business
+    // F3 — Business (Product Leadership on the left, Customer Success on the right)
     const f3Bottom = positions[FLOORS.BUSINESS] + FLOOR_H;
-    scene.add.image(150, f3Bottom - 36, 'desk_monitor').setDepth(3);
-    scene.add.image(310, f3Bottom - 22, 'monitor_dash').setDepth(3);
-    scene.add.image(rightEdge + 120, f3Bottom - 36, 'desk_monitor').setDepth(3);
-    scene.add.image(rightEdge + 280, f3Bottom - 22, 'monitor_dash').setDepth(11);
-    scene.add.image(rightEdge + 440, f3Bottom - 40, 'plant_tall').setDepth(3);
+    this.createF3ProductLeadershipDecorations(f3Bottom);
+    this.createF3CustomerSuccessDecorations(f3Bottom, rightEdge);
 
     // F4 — Executive Suite
     const f4Bottom = positions[FLOORS.EXECUTIVE] + FLOOR_H;
@@ -1044,6 +1041,191 @@ export class ElevatorSceneLayout {
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
+  }
+
+  private createF3ProductLeadershipDecorations(f3Bottom: number): void {
+    const scene = this.deps.scene;
+
+    // Roadmap / OKR board — three swim lanes with milestone pegs and an
+    // animated "now" marker sweeping across the quarters.
+    const boardX = 160;
+    const boardY = f3Bottom - 58;
+    const board = scene.add.rectangle(boardX, boardY, 220, 110, 0xf4ecd8, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x8a6a3a, 1)
+      .setName('f3-left-roadmap-board');
+    scene.add.text(board.x, board.y - 44, 'ROADMAP', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#5a3a1a',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+
+    // Three swim lanes
+    const laneColors = [0xc98b5b, 0x5e8d6e, 0x5b7ac9];
+    for (let i = 0; i < 3; i++) {
+      const laneY = board.y - 18 + i * 18;
+      scene.add.rectangle(board.x, laneY, 200, 12, laneColors[i], 0.35)
+        .setDepth(4)
+        .setName(`f3-left-roadmap-lane-${i}`);
+      // Milestone pegs per lane
+      for (let j = 0; j < 4; j++) {
+        const pegX = board.x - 80 + j * 54;
+        scene.add.circle(pegX, laneY, 3, laneColors[i], 1).setDepth(5);
+      }
+    }
+
+    // Animated "now" marker — vertical bar sweeping left→right.
+    const nowMarker = scene.add.rectangle(board.x - 96, board.y - 10, 2, 66, 0xd23a3a, 0.9)
+      .setDepth(6)
+      .setName('f3-left-roadmap-now-marker');
+    scene.tweens.add({
+      targets: nowMarker,
+      x: board.x + 96,
+      duration: 4800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Customer-outcomes post-it wall — small coloured squares in a grid.
+    const wallX = 360;
+    const wallY = f3Bottom - 58;
+    const wallBg = scene.add.rectangle(wallX, wallY, 120, 100, 0x2d2520, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x4a3b2a, 1)
+      .setName('f3-left-outcomes-wall');
+    scene.add.text(wallBg.x, wallBg.y - 38, 'OUTCOMES', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#e8d4a8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    const postitColors = [0xffe066, 0xff9f66, 0x9be37a, 0x66c3ff, 0xffa8d0, 0xffe066];
+    for (let i = 0; i < 6; i++) {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      scene.add.rectangle(
+        wallBg.x - 32 + col * 32,
+        wallBg.y - 10 + row * 24,
+        22,
+        18,
+        postitColors[i],
+        0.95,
+      ).setDepth(4).setName(`f3-left-outcomes-postit-${i}`);
+    }
+
+    // Plant for warmth.
+    scene.add.image(480, f3Bottom - 40, 'plant_tall')
+      .setDepth(3)
+      .setName('f3-left-plant');
+  }
+
+  private createF3CustomerSuccessDecorations(f3Bottom: number, rightEdge: number): void {
+    const scene = this.deps.scene;
+
+    // NPS gauge with oscillating needle.
+    const gaugeX = rightEdge + 90;
+    const gaugeY = f3Bottom - 60;
+    const gaugeBody = scene.add.rectangle(gaugeX, gaugeY, 120, 96, 0x1a2a3a, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x3a6a9a, 1)
+      .setName('f3-right-nps-gauge');
+    scene.add.text(gaugeBody.x, gaugeBody.y - 34, 'NPS', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#e8f1ff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    // Gauge arc — three-segment colored band.
+    scene.add.rectangle(gaugeBody.x - 28, gaugeBody.y - 6, 24, 8, 0xd23a3a, 1).setDepth(4);
+    scene.add.rectangle(gaugeBody.x, gaugeBody.y - 6, 24, 8, 0xe8c23a, 1).setDepth(4);
+    scene.add.rectangle(gaugeBody.x + 28, gaugeBody.y - 6, 24, 8, 0x3aa85e, 1).setDepth(4);
+    // Needle — pivot at bottom of gauge face, swing across segments.
+    const needle = scene.add.rectangle(gaugeBody.x, gaugeBody.y - 6, 2, 34, 0xffffff, 1)
+      .setOrigin(0.5, 1)
+      .setDepth(5)
+      .setName('f3-right-nps-needle');
+    scene.tweens.add({
+      targets: needle,
+      angle: { from: -55, to: 55 },
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    scene.add.text(gaugeBody.x, gaugeBody.y + 30, '+42', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: '#9be37a',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+
+    // Scrolling ticket-queue panel (mirrors F1 ADR kiosk idiom).
+    const queueX = rightEdge + 250;
+    const queueY = f3Bottom - 60;
+    const queueBody = scene.add.rectangle(queueX, queueY, 120, 96, 0x0f1a22, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x2a5a7a, 1)
+      .setName('f3-right-ticket-queue');
+    scene.add.text(queueBody.x, queueBody.y - 34, 'TICKETS', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#6ec6ff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    // Rows representing open tickets; one highlighted as "active".
+    const rowColors = [0x2a3a4a, 0x2a3a4a, 0x2a3a4a, 0x2a3a4a];
+    rowColors.forEach((color, i) => {
+      scene.add.rectangle(queueBody.x, queueBody.y - 12 + i * 14, 100, 10, color, 1).setDepth(4);
+    });
+    const activeRow = scene.add.rectangle(queueBody.x, queueBody.y - 12, 100, 10, 0x6ec6ff, 0.35)
+      .setDepth(5)
+      .setName('f3-right-ticket-active-row');
+    scene.tweens.add({
+      targets: activeRow,
+      y: queueBody.y + 30,
+      duration: 2200,
+      repeat: -1,
+      ease: 'Linear',
+      onRepeat: () => { activeRow.y = queueBody.y - 12; },
+    });
+
+    // SLA dashboard tile — pulsing green indicator.
+    const slaX = rightEdge + 410;
+    const slaY = f3Bottom - 60;
+    const slaBody = scene.add.rectangle(slaX, slaY, 120, 96, 0x15221a, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x3aa85e, 1)
+      .setName('f3-right-sla-tile');
+    scene.add.text(slaBody.x, slaBody.y - 34, 'SLA', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#9be37a',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    scene.add.text(slaBody.x, slaBody.y - 2, '99.9%', {
+      fontFamily: 'monospace',
+      fontSize: '16px',
+      color: '#c8ffb0',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    const pulse = scene.add.circle(slaBody.x + 44, slaBody.y - 34, 4, 0x3aff6a, 1)
+      .setDepth(5)
+      .setName('f3-right-sla-pulse');
+    scene.tweens.add({
+      targets: pulse,
+      alpha: 0.25,
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Plant to balance the space.
+    scene.add.image(rightEdge + 500, f3Bottom - 40, 'plant_tall')
+      .setDepth(3)
+      .setName('f3-right-plant');
   }
 
   private createShaftDoors(): void {

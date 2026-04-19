@@ -30,7 +30,16 @@ export class ProgressionSystem {
         [FLOORS.EXECUTIVE]: 0,
         [FLOORS.PRODUCTS]: 0,
       },
-      unlockedFloors: new Set([FLOORS.LOBBY, FLOORS.PLATFORM_TEAM]),
+      // TODO(progression): re-enable floor-unlock gating once the full
+      // AU economy is tuned. For now every floor is unlocked from the
+      // start so players can explore the building freely.
+      unlockedFloors: new Set([
+        FLOORS.LOBBY,
+        FLOORS.PLATFORM_TEAM,
+        FLOORS.BUSINESS,
+        FLOORS.EXECUTIVE,
+        FLOORS.PRODUCTS,
+      ]),
       currentFloor: FLOORS.LOBBY,
       collectedTokens: {
         [FLOORS.LOBBY]: new Set(),
@@ -138,7 +147,13 @@ export class ProgressionSystem {
     this.state = {
       totalAU: data.totalAU,
       floorAU: data.floorAU as Record<FloorId, number>,
-      unlockedFloors: new Set(data.unlockedFloors as FloorId[]),
+      // Merge saved unlocks with the current default set so existing saves
+      // inherit any floors that are now unlocked by default (e.g. when
+      // progression gating is temporarily disabled).
+      unlockedFloors: new Set<FloorId>([
+        ...this.defaultState().unlockedFloors,
+        ...(data.unlockedFloors as FloorId[]),
+      ]),
       currentFloor: data.currentFloor as FloorId,
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
