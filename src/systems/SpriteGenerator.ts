@@ -10,6 +10,7 @@ import { generatePlantSprites } from './sprites/plants';
 import { generateInfoBoardSprite } from './sprites/infoBoard';
 import { generateInfraSprites } from './sprites/infra';
 import { generateEnemySprites } from './sprites/enemies';
+import { generateGeirSprite } from './sprites/npcGeir';
 
 /**
  * Composition root for runtime sprite generation.
@@ -30,4 +31,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateInfoBoardSprite(scene);
   generateInfraSprites(scene);
   generateEnemySprites(scene);
+  generateGeirSprite(scene);
 }

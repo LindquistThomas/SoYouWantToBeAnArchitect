@@ -22,6 +22,9 @@ export class ExecutiveSuiteScene extends LevelScene {
     { x: 1080, label: 'Finance', doorId: FinanceTeamScene.DOOR_ID, sceneKey: 'FinanceTeamScene' },
   ];
 
+  /** Position of Geir Harald on the ground — left side of the suite. */
+  private static readonly GEIR_X = 200;
+
   /** Set when arriving from a suite room — used to spawn next to that door. */
   private spawnNearDoor?: string;
 
@@ -77,15 +80,47 @@ export class ExecutiveSuiteScene extends LevelScene {
 
     this.addAmbientPlants([
       { x: 110, kind: 'tall' },
-      { x: 220, kind: 'small' },
+      { x: 320, kind: 'small' },
       { x: 1180, kind: 'tall' },
     ]);
 
-    this.addSignpost({ x: 380, label: 'EXECUTIVE\n   SUITE', color: '#ffd700' });
+    this.addSignpost({ x: 420, label: 'EXECUTIVE\n   SUITE', color: '#ffd700' });
 
     // Strategy desk in the centre.
     this.add.image(720, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(880, G - 22, 'monitor_dash').setDepth(3);
+
+    // Geir Harald — standing on the ground near the left signpost.
+    // 160 px tall sprite with origin 0.5,1 so his feet sit on the floor.
+    const geir = this.add.sprite(ExecutiveSuiteScene.GEIR_X, G, 'npc_geir', 0)
+      .setOrigin(0.5, 1)
+      .setDepth(4);
+    // Face the approaching player — the player usually enters from the
+    // right of Geir (elevator exit is at x=80), so flip him to face right-
+    // only when the player appears to his left. For now he faces right
+    // (default art), toward the rest of the suite.
+    geir.setFlipX(false);
+
+    // Floating name label with a gentle yoyo bob.
+    const labelY = G - 180;
+    const nameLabel = this.add.text(ExecutiveSuiteScene.GEIR_X, labelY, 'Geir Harald', {
+      fontFamily: 'monospace',
+      fontSize: '14px',
+      color: theme.color.css.textPale,
+      fontStyle: 'bold',
+      align: 'center',
+      backgroundColor: theme.color.css.bgPanel,
+      padding: { x: 8, y: 3 },
+    }).setOrigin(0.5).setDepth(5);
+
+    this.tweens.add({
+      targets: nameLabel,
+      y: labelY - 6,
+      duration: 1600,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
 
     // Doors leading into content-only suite rooms (Finance, …).
     for (const door of ExecutiveSuiteScene.DOORS) {
@@ -105,7 +140,9 @@ export class ExecutiveSuiteScene extends LevelScene {
     const T1 = G - 240;
 
     // Spawn next to the door the player just came back through, if any.
-    let spawnX = 150;
+    // Default spawn is nudged left of Geir's info zone so the player
+    // doesn't materialise inside it on scene entry.
+    let spawnX = 100;
     if (this.spawnNearDoor) {
       const door = ExecutiveSuiteScene.DOORS.find((d) => d.doorId === this.spawnNearDoor);
       if (door) spawnX = door.x - 70; // step out to the left of the door
@@ -141,6 +178,10 @@ export class ExecutiveSuiteScene extends LevelScene {
         {
           x: 380, y: G, contentId: 'executive-suite',
           zone: { shape: 'rect', width: 160, height: 220 },
+        },
+        {
+          x: ExecutiveSuiteScene.GEIR_X, y: G, contentId: 'exec-geir-harald',
+          zone: { shape: 'rect', width: 120, height: 220 },
         },
       ],
     };
