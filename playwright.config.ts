@@ -23,7 +23,13 @@ export default defineConfig({
   // without hiding bugs locally where retries stay at 0.
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  timeout: 60_000,
+  // 60s is comfortable locally (most tests finish in 5-12s), but CI
+  // runners (ubuntu-latest, 4 hyperthreaded vCPU) clock in ~3-5x slower
+  // per test — several passing tests come within a few seconds of the
+  // 60s ceiling, which makes the suite brittle to any additional jitter.
+  // A 120s ceiling on CI keeps fast-path local iteration honest while
+  // absorbing the legitimate compute gap on the runner.
+  timeout: process.env.CI ? 120_000 : 60_000,
   expect: { timeout: 10_000 },
 
   use: {
