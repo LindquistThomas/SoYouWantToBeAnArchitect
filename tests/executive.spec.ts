@@ -87,4 +87,50 @@ test.describe('Executive Suite — Geir Harald', () => {
 
     errors.assertClean();
   });
+
+  test('Geir Harald OKR dialog opens from ElevatorScene at floor 4', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      const dialogs = scene['dialogs'] as { open: (id: string) => void };
+      dialogs.open('exec-geir-harald');
+    });
+    await waitForDialogOpen(page, 'ElevatorScene');
+
+    const texts = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+          children?: { list: unknown[] };
+        };
+      const out: string[] = [];
+      const visit = (obj: unknown): void => {
+        if (!obj || typeof obj !== 'object') return;
+        const o = obj as Record<string, unknown>;
+        if (typeof o['text'] === 'string') out.push(o['text'] as string);
+        if (Array.isArray(o['list'])) (o['list'] as unknown[]).forEach(visit);
+      };
+      scene.children?.list.forEach(visit);
+      return out;
+    });
+
+    const joined = texts.join('\n');
+    expect(joined).toContain('Geir Harald');
+    expect(joined).toContain('OKR 1:');
+    expect(joined).toContain('OKR 5:');
+
+    errors.assertClean();
+  });
 });

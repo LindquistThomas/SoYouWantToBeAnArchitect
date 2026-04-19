@@ -10,6 +10,7 @@ import { InfoIcon } from '../../ui/InfoIcon';
 
 export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
+export const GEIR_F4_ID = 'exec-geir-harald';
 
 const BOARD_RADIUS = 120;
 /**
@@ -29,6 +30,8 @@ export interface ElevatorZonesOptions {
   elevatorButtons: () => ElevatorButtons | undefined;
   /** Returns true while the player is physically standing on the elevator cab. */
   isPlayerOnElevator: () => boolean;
+  /** Returns true when the elevator cab is docked at floor 4 (EXECUTIVE). */
+  isCabAtExecutive: () => boolean;
   /** World-space x of the info board in the lobby. */
   boardX: number;
   /** World-space y of the info board center. */
@@ -49,6 +52,8 @@ export class ElevatorZones {
   elevatorInfoIcon?: InfoIcon;
   /** Info icon for the lobby welcome board. */
   lobbyBoardIcon?: InfoIcon;
+  /** Info icon for Geir Harald on F4. */
+  geirInfoIcon?: InfoIcon;
 
   private readonly opts: ElevatorZonesOptions;
 
@@ -72,6 +77,11 @@ export class ElevatorZones {
       ) < BOARD_RADIUS,
     );
 
+    // --- Geir Harald zone — active when cab is docked at F4 and player is on it ---
+    zoneManager.register(GEIR_F4_ID, () =>
+      this.opts.isPlayerOnElevator() && this.opts.isCabAtExecutive(),
+    );
+
     this.lobbyBoardIcon = new InfoIcon(
       scene,
       INFO_ICON_X, INFO_ICON_Y,
@@ -80,6 +90,14 @@ export class ElevatorZones {
     );
     this.lobbyBoardIcon.setVisible(false);
 
+    this.geirInfoIcon = new InfoIcon(
+      scene,
+      INFO_ICON_X, INFO_ICON_Y,
+      () => dialogs.open(GEIR_F4_ID),
+      GEIR_F4_ID,
+    );
+    this.geirInfoIcon.setVisible(false);
+
     const lifecycle = createSceneLifecycle(scene);
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
@@ -87,6 +105,8 @@ export class ElevatorZones {
         this.elevatorInfoIcon?.setVisible(true);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
+      } else if (zoneId === GEIR_F4_ID) {
+        this.geirInfoIcon?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -95,6 +115,8 @@ export class ElevatorZones {
         this.elevatorInfoIcon?.setVisible(false);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(false);
+      } else if (zoneId === GEIR_F4_ID) {
+        this.geirInfoIcon?.setVisible(false);
       }
     });
   }
