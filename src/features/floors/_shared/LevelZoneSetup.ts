@@ -10,6 +10,11 @@ import type { LevelConfig } from './LevelScene';
 
 const DEFAULT_ZONE_RADIUS = 120;
 
+/** Spatial representation of a zone for debug overlay rendering. */
+export type DebugZone =
+  | { id: string; shape: 'rect'; x: number; y: number; width: number; height: number; active: boolean }
+  | { id: string; shape: 'circle'; x: number; y: number; radius: number; active: boolean };
+
 export interface ZoneSetupDeps {
   scene: Phaser.Scene;
   player: Player;
@@ -25,6 +30,8 @@ export interface ZoneSetupDeps {
 export class LevelZoneSetup {
   readonly zoneManager = new ZoneManager();
   readonly iconsByContentId = new Map<string, InfoIcon>();
+  /** Spatial shape per zone id — used by the debug overlay to draw bounds. */
+  private readonly debugShapes = new Map<string, DebugZone>();
 
   constructor(private readonly deps: ZoneSetupDeps) {}
 
@@ -51,6 +58,7 @@ export class LevelZoneSetup {
 
       const check = this.buildZoneCheck(ip);
       this.zoneManager.register(ip.contentId, check);
+      this.debugShapes.set(ip.contentId, this.buildDebugShape(ip));
     }
   }
 
@@ -61,10 +69,21 @@ export class LevelZoneSetup {
   clear(): void {
     this.zoneManager.clear();
     this.iconsByContentId.clear();
+    this.debugShapes.clear();
   }
 
   getActiveZone(): string | null {
     return this.zoneManager.getActiveZone();
+  }
+
+  /** Snapshot of zone shapes + active state for the debug overlay. */
+  getDebugZones(): DebugZone[] {
+    const activeId = this.zoneManager.getActiveZone();
+    const out: DebugZone[] = [];
+    for (const shape of this.debugShapes.values()) {
+      out.push({ ...shape, active: shape.id === activeId });
+    }
+    return out;
   }
 
   private buildZoneCheck(
@@ -87,5 +106,28 @@ export class LevelZoneSetup {
       ? ip.zone.radius
       : (ip.zoneRadius ?? DEFAULT_ZONE_RADIUS);
     return () => Phaser.Math.Distance.Between(body().x, body().y, ip.x, ip.y) < radius;
+  }
+
+  private buildDebugShape(
+    ip: NonNullable<LevelConfig['infoPoints']>[number],
+  ): DebugZone {
+    if (ip.zone?.shape === 'rect') {
+      const w = ip.zone.width;
+      const h = ip.zone.height;
+      const offsetY = ip.zone.offsetY ?? -h / 2;
+      return {
+        id: ip.contentId,
+        shape: 'rect',
+        x: ip.x - w / 2,
+        y: ip.y + offsetY - h / 2,
+        width: w,
+        height: h,
+        active: false,
+      };
+    }
+    const radius = ip.zone?.shape === 'circle'
+      ? ip.zone.radius
+      : (ip.zoneRadius ?? DEFAULT_ZONE_RADIUS);
+    return { id: ip.contentId, shape: 'circle', x: ip.x, y: ip.y, radius, active: false };
   }
 }

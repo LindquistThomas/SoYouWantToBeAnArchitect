@@ -338,6 +338,17 @@ export class LevelScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(5);
   }
 
+  /**
+   * Swap the exit door between the closed ({@code door_exit}) and open
+   * ({@code door_exit_open}) textures. Called by {@link checkExitProximity}
+   * and by subclass overrides so the door visually opens while the player
+   * is standing in the interaction zone.
+   */
+  protected setExitDoorOpen(open: boolean): void {
+    const key = open ? 'door_exit_open' : 'door_exit';
+    if (this.exitDoor.texture.key !== key) this.exitDoor.setTexture(key);
+  }
+
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getLevelConfig();
@@ -423,6 +434,11 @@ export class LevelScene extends Phaser.Scene {
     this.checkExitProximity();
   }
 
+  /** Debug overlay hook: expose spatial zones for DebugPlugin to render. */
+  getDebugZones(): import('./LevelZoneSetup').DebugZone[] {
+    return this.zones?.getDebugZones() ?? [];
+  }
+
   /* ---- ride in-room elevators ---- */
   private updateRoomElevators(): void {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
@@ -484,7 +500,9 @@ export class LevelScene extends Phaser.Scene {
       this.player.sprite.x, this.player.sprite.y,
       this.exitDoor.x, this.exitDoor.y,
     );
-    if (d < 90) {
+    const near = d < 90;
+    this.setExitDoorOpen(near);
+    if (near) {
       this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Elevator`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);

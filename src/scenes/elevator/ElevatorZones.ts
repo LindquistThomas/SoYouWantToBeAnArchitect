@@ -7,6 +7,7 @@ import { Player } from '../../entities/Player';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
 import { DialogController } from '../../ui/DialogController';
 import { InfoIcon } from '../../ui/InfoIcon';
+import type { DebugZone } from '../../features/floors/_shared/LevelZoneSetup';
 
 export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
@@ -144,6 +145,26 @@ export class ElevatorZones {
     if (QUIZ_DATA[ELEVATOR_INFO_ID]) {
       this.elevatorInfoIcon.setQuizBadge(scene, this.opts.gameState.isQuizPassed(ELEVATOR_INFO_ID));
     }
+  }
+
+  /**
+   * Spatial shapes for debug overlay. Only the welcome-board zone is truly
+   * spatial; elevator / Geir zones are predicate-driven and aren't drawn
+   * as rectangles in the world.
+   */
+  getDebugZones(): DebugZone[] {
+    const { zoneManager, boardX, boardY } = this.opts;
+    const activeId = zoneManager.getActiveZone();
+    return [
+      {
+        id: WELCOME_BOARD_ID,
+        shape: 'circle',
+        x: boardX,
+        y: boardY,
+        radius: BOARD_RADIUS,
+        active: activeId === WELCOME_BOARD_ID,
+      },
+    ];
   }
 }
 

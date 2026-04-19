@@ -110,9 +110,10 @@ export class ElevatorScene extends Phaser.Scene {
       floorYPositions: positions,
       floorHeight: ElevatorScene.FLOOR_H,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
+      getCabDockedFloor: () => this.elevatorCtrl.elevator.getFloorAtCurrentPosition(),
       onEnterFloor: (floorId, side) => this.enterFloor(floorId, side),
     });
-    this.transitions.setSkipFloorEntry(this.spawnAtFloor);
+    this.transitions.setSkipFloorEntry(this.spawnAtFloor, this.spawnAtFloorSide);
 
     this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator(positions));
 
@@ -296,6 +297,11 @@ export class ElevatorScene extends Phaser.Scene {
     const lines = [`Elevator floor: ${label(current)}`];
     if (stoppedAt === null) lines.push('  (between floors)');
     return lines;
+  }
+
+  /** Debug overlay hook: expose the scene's spatial content zones. */
+  getDebugZones(): import('../../features/floors/_shared/LevelZoneSetup').DebugZone[] {
+    return this.zones?.getDebugZones() ?? [];
   }
 
   /* ---- update loop ---- */

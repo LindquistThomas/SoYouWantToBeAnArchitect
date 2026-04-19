@@ -21,6 +21,8 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private gfx?: Phaser.GameObjects.Graphics;
   /** Screen-space graphics for HUD zone borders. */
   private hudGfx?: Phaser.GameObjects.Graphics;
+  /** Pool of zone-id text labels keyed by content id. */
+  private zoneLabels = new Map<string, Phaser.GameObjects.Text>();
 
   boot(): void {
     const events = this.systems!.events;
@@ -85,7 +87,10 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     this.legendText?.setVisible(this.active);
     this.gfx?.setVisible(this.active);
     this.hudGfx?.setVisible(this.active);
-    if (!this.active) this.gfx?.clear();
+    if (!this.active) {
+      this.gfx?.clear();
+      for (const label of this.zoneLabels.values()) label.setVisible(false);
+    }
   }
 
   private getWorld(): Phaser.Physics.Arcade.World | undefined {
@@ -232,6 +237,7 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
       'green=static  red=dynamic  magenta=world bounds',
       'cyan dot=sprite origin  yellow dot=body center',
       'orange X=disabled side  grey dashed=disabled body',
+      'blue=content zone  yellow=active zone',
     );
     this.legendText.setText(lines);
   }
@@ -251,7 +257,68 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private onUpdate(): void {
     if (this.active && this.game) {
       this.drawBodies();
+      this.drawContentZones();
     }
+  }
+
+  private drawContentZones(): void {
+    const g = this.gfx;
+    if (!g) return;
+    const scene = this.scene as unknown as {
+      getDebugZones?: () => Array<
+        | { id: string; shape: 'rect'; x: number; y: number; width: number; height: number; active: boolean }
+        | { id: string; shape: 'circle'; x: number; y: number; radius: number; active: boolean }
+      >;
+    } | undefined;
+    if (!scene || typeof scene.getDebugZones !== 'function') return;
+    let zones: Array<
+      | { id: string; shape: 'rect'; x: number; y: number; width: number; height: number; active: boolean }
+      | { id: string; shape: 'circle'; x: number; y: number; radius: number; active: boolean }
+    >;
+    try {
+      zones = scene.getDebugZones() ?? [];
+    } catch {
+      return;
+    }
+
+    for (const z of zones) {
+      const color = z.active ? 0xffff00 : 0x00aaff;
+      const alpha = z.active ? 0.95 : 0.7;
+      const fillAlpha = z.active ? 0.18 : 0.08;
+
+      g.fillStyle(color, fillAlpha);
+      g.lineStyle(2, color, alpha);
+      if (z.shape === 'rect') {
+        g.fillRect(z.x, z.y, z.width, z.height);
+        g.strokeRect(z.x, z.y, z.width, z.height);
+      } else {
+        g.fillCircle(z.x, z.y, z.radius);
+        g.strokeCircle(z.x, z.y, z.radius);
+      }
+
+      const lx = z.shape === 'rect' ? z.x + 4 : z.x - z.radius + 4;
+      const ly = z.shape === 'rect' ? z.y + 4 : z.y - z.radius + 4;
+      this.getOrCreateZoneLabel(z.id).setPosition(lx, ly).setText(z.id).setVisible(true);
+    }
+
+    const visibleIds = new Set(zones.map((z) => z.id));
+    for (const [id, label] of this.zoneLabels) {
+      if (!visibleIds.has(id)) label.setVisible(false);
+    }
+  }
+
+  private getOrCreateZoneLabel(id: string): Phaser.GameObjects.Text {
+    const existing = this.zoneLabels.get(id);
+    if (existing) return existing;
+    const label = this.scene!.add.text(0, 0, id, {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#ffffff',
+      backgroundColor: '#000000aa',
+      padding: { x: 3, y: 1 },
+    }).setDepth(999);
+    this.zoneLabels.set(id, label);
+    return label;
   }
 
   private onShutdown(): void {
@@ -266,6 +333,8 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     this.gfx = undefined;
     this.hudGfx?.destroy();
     this.hudGfx = undefined;
+    for (const label of this.zoneLabels.values()) label.destroy();
+    this.zoneLabels.clear();
   }
 
   private onSceneDestroy(): void {
