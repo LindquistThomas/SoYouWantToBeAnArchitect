@@ -865,21 +865,12 @@ export class ElevatorSceneLayout {
   private createFloorDecorations(): void {
     const scene = this.deps.scene;
     const positions = this.deps.floorYPositions;
-    const cx = GAME_WIDTH / 2;
-    const sw = this.deps.shaftWidth;
-    const rightEdge = cx + sw / 2;
+    const rightEdge = GAME_WIDTH / 2 + this.deps.shaftWidth / 2;
 
     // F1 — Platform Team
     const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + FLOOR_H;
-    scene.add.image(120, f1Bottom - 50, 'server_rack').setDepth(3);
-    scene.add.image(180, f1Bottom - 50, 'server_rack').setDepth(3);
-    scene.add.image(300, f1Bottom - 36, 'desk_monitor').setDepth(3);
-    scene.add.image(150, f1Bottom - 10, 'router').setDepth(3);
-    scene.add.image(120, f1Bottom - 10, 'cables').setDepth(1);
-    scene.add.image(rightEdge + 80, f1Bottom - 50, 'server_rack').setDepth(3);
-    scene.add.image(rightEdge + 200, f1Bottom - 36, 'desk_monitor').setDepth(11);
-    scene.add.image(rightEdge + 320, f1Bottom - 22, 'monitor_dash').setDepth(3);
-    scene.add.image(rightEdge + 440, f1Bottom - 10, 'router').setDepth(3);
+    this.createF1PlatformDecorations(f1Bottom);
+    this.createF1ArchitectureDecorations(f1Bottom, rightEdge);
 
     // PRODUCTS — left-side ambience (doors are rendered by ProductDoorManager).
     const fProductsBottom = positions[FLOORS.PRODUCTS] + FLOOR_H;
@@ -902,6 +893,94 @@ export class ElevatorSceneLayout {
     scene.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(rightEdge + 280, f4Bottom - 36, 'desk_monitor').setDepth(3);
     scene.add.image(GAME_WIDTH - 100, f4Bottom - 40, 'plant_tall').setDepth(11);
+  }
+
+  private createF1PlatformDecorations(f1Bottom: number): void {
+    const scene = this.deps.scene;
+
+    scene.add.image(100, f1Bottom - 50, 'server_rack')
+      .setDepth(3)
+      .setName('f1-left-server-rack-1');
+    scene.add.image(170, f1Bottom - 50, 'server_rack')
+      .setDepth(3)
+      .setName('f1-left-server-rack-2');
+    scene.add.image(290, f1Bottom - 36, 'desk_monitor')
+      .setDepth(3)
+      .setName('f1-left-desk-monitor');
+    const dashMonitor = scene.add.image(400, f1Bottom - 22, 'monitor_dash')
+      .setDepth(3)
+      .setName('f1-left-monitor-dash');
+    scene.add.image(480, f1Bottom - 10, 'router')
+      .setDepth(3)
+      .setName('f1-left-router');
+
+    scene.tweens.add({
+      targets: dashMonitor,
+      alpha: 0.65,
+      duration: 420,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private createF1ArchitectureDecorations(f1Bottom: number, rightEdge: number): void {
+    const scene = this.deps.scene;
+
+    const c4Board = scene.add.rectangle(rightEdge + 90, f1Bottom - 56, 120, 86, 0xf0eee2, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0xa8a79a, 1)
+      .setName('f1-right-c4-board');
+    scene.add.text(c4Board.x, c4Board.y - 30, 'C4 CONTEXT', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#3a4a66',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+
+    const adrBody = scene.add.rectangle(rightEdge + 250, f1Bottom - 58, 110, 92, 0x2a1e12, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x7a5e36, 1)
+      .setName('f1-right-adr-terminal');
+    scene.add.rectangle(adrBody.x, adrBody.y - 26, 90, 44, 0x08140a, 1).setDepth(4);
+    scene.add.text(adrBody.x, adrBody.y + 14, 'ADR LOG', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#f5c36a',
+    }).setOrigin(0.5).setDepth(4);
+    const cursor = scene.add.rectangle(adrBody.x + 34, adrBody.y - 6, 4, 10, 0xe0b860, 1)
+      .setDepth(5)
+      .setName('f1-right-adr-cursor');
+    scene.tweens.add({
+      targets: cursor,
+      alpha: 0.15,
+      duration: 260,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    const slicePanel = scene.add.rectangle(rightEdge + 410, f1Bottom - 58, 120, 94, 0x1a2238, 1)
+      .setDepth(3)
+      .setStrokeStyle(2, 0x3b5a8a, 1)
+      .setName('f1-right-slice-panel');
+    scene.add.text(slicePanel.x, slicePanel.y - 34, 'SLICES', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#e8f1ff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(4);
+    const highlight = scene.add.rectangle(slicePanel.x, slicePanel.y - 10, 96, 14, 0xfff2b0, 0.4)
+      .setDepth(5)
+      .setName('f1-right-slice-highlight');
+    scene.tweens.add({
+      targets: highlight,
+      y: highlight.y + 28,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   private createShaftDoors(): void {
