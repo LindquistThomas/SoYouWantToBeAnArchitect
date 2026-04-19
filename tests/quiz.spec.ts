@@ -45,7 +45,6 @@ async function enterFloor1(page: import('@playwright/test').Page): Promise<void>
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await waitForScene(page, 'ElevatorScene');
-  await page.waitForTimeout(400);
 
   await page.evaluate(() => {
     const g = window.__game!;
@@ -55,7 +54,6 @@ async function enterFloor1(page: import('@playwright/test').Page): Promise<void>
     (scene['enterFloor'] as (id: number) => void)(1);
   });
   await waitForScene(page, 'PlatformTeamScene');
-  await page.waitForTimeout(600);
 }
 
 async function openQuiz(page: import('@playwright/test').Page, infoId: string): Promise<void> {
@@ -72,7 +70,12 @@ async function openQuiz(page: import('@playwright/test').Page, infoId: string): 
       progression: scene['progression'],
     });
   }, infoId);
-  await page.waitForTimeout(200);
+  // Wait until the QuizDialog has rendered its first question screen.
+  await page.waitForFunction(
+    () => window.__quiz !== undefined && window.__quiz.screen === 'question',
+    undefined,
+    { timeout: 10_000 },
+  );
 }
 
 async function answerAll(
@@ -131,7 +134,7 @@ test.describe('Quiz flows', () => {
     const total = await answerAll(page, 'correct');
     expect(total).toBeGreaterThan(0);
 
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/09-quiz-pass.png` });
 
     const store = await readQuizStore(page);
@@ -162,7 +165,7 @@ test.describe('Quiz flows', () => {
     await openQuiz(page, INFO_ID);
     await answerAll(page, 'wrong');
 
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(100);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/10-quiz-fail.png` });
 
     const store = await readQuizStore(page);

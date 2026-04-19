@@ -4,6 +4,8 @@ import {
   attachErrorWatchers,
   clearStorage,
   seedFullProgressSave,
+  waitForDialogClosed,
+  waitForDialogOpen,
   waitForGame,
   waitForScene,
 } from './helpers/playwright';
@@ -30,7 +32,6 @@ test.describe('Floor 1 (Platform Team)', () => {
 
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
-    await page.waitForTimeout(600);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -41,7 +42,6 @@ test.describe('Floor 1 (Platform Team)', () => {
       (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'PlatformTeamScene');
-    await page.waitForTimeout(900);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
 
     // Walk right a bit for a representative screenshot, then open the info
@@ -51,7 +51,6 @@ test.describe('Floor 1 (Platform Team)', () => {
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(1200);
     await page.keyboard.up('ArrowRight');
-    await page.waitForTimeout(200);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -61,7 +60,7 @@ test.describe('Floor 1 (Platform Team)', () => {
       const dialogs = scene['dialogs'] as { open: (id: string) => void };
       dialogs.open('you-build-you-run');
     });
-    await page.waitForTimeout(500);
+    await waitForDialogOpen(page, 'PlatformTeamScene');
 
     // The dialog must actually be open before we test scrolling.
     const openBefore = await page.evaluate(() => {
@@ -103,9 +102,32 @@ test.describe('Floor 1 (Platform Team)', () => {
 
     const before = await collectContainerYs();
     await page.keyboard.press('PageDown');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(
+      (prev) => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as {
+            children?: { list: unknown[] };
+          };
+        const ys: number[] = [];
+        const visit = (obj: unknown): void => {
+          if (!obj || typeof obj !== 'object') return;
+          const o = obj as Record<string, unknown>;
+          if (typeof o['y'] === 'number' && Array.isArray(o['list'])) {
+            ys.push(o['y'] as number);
+            (o['list'] as unknown[]).forEach(visit);
+          }
+        };
+        scene.children?.list.forEach(visit);
+        // Any container y moved → scroll has taken effect.
+        return ys.length === prev.length && ys.some((y, i) => y !== prev[i]);
+      },
+      before,
+      { timeout: 5_000 },
+    );
     await page.keyboard.press('PageDown');
-    await page.waitForTimeout(300);
     const after = await collectContainerYs();
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05c-floor1-info-scrolled.png` });
 
@@ -113,7 +135,7 @@ test.describe('Floor 1 (Platform Team)', () => {
     expect(after).not.toEqual(before);
 
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
+    await waitForDialogClosed(page, 'PlatformTeamScene');
     errors.assertClean();
   });
 
@@ -126,7 +148,6 @@ test.describe('Floor 1 (Platform Team)', () => {
 
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
-    await page.waitForTimeout(600);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -136,7 +157,6 @@ test.describe('Floor 1 (Platform Team)', () => {
       (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'PlatformTeamScene');
-    await page.waitForTimeout(1000);
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/08-floor1-enemies.png` });
     errors.assertClean();

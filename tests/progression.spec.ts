@@ -21,7 +21,6 @@ test.describe('Progression / HUD', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
-    await page.waitForTimeout(400);
 
     // Preferred path: read AU straight off the ProgressionSystem attached to
     // ElevatorScene. This is what the HUD itself reads, so if it's right

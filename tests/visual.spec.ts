@@ -33,7 +33,6 @@ test.describe('Visual regression (static UI)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot('menu.png', SNAPSHOT_OPTS);
     errors.assertClean();
@@ -62,7 +61,6 @@ test.describe('Visual regression (static UI)', () => {
     await waitForScene(page, 'MenuScene');
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
-    await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot('hud-elevator.png', {
       ...SNAPSHOT_OPTS,
@@ -102,7 +100,6 @@ test.describe('Visual regression (static UI)', () => {
       const dialogs = scene['dialogs'] as { isOpen: boolean } | undefined;
       return !!dialogs && dialogs.isOpen === true;
     }, undefined, { timeout: 15_000 });
-    await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot('info-dialog-architecture-elevator.png', SNAPSHOT_OPTS);
     errors.assertClean();
@@ -142,7 +139,6 @@ test.describe('Visual regression (static UI)', () => {
       const dialogs = scene['dialogs'] as { isOpen: boolean } | undefined;
       return !!dialogs && dialogs.isOpen === true;
     }, undefined, { timeout: 15_000 });
-    await page.waitForTimeout(500);
 
     await expect(page).toHaveScreenshot('quiz-dialog-architecture-elevator.png', SNAPSHOT_OPTS);
     errors.assertClean();

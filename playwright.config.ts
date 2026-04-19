@@ -14,7 +14,9 @@ export default defineConfig({
   // and intended as a local dev tool. Skip them in CI to keep the pipeline green.
   testIgnore: process.env.CI ? ['**/visual.spec.ts'] : [],
   fullyParallel: true,
-  workers: 2,
+  // CI runners (ubuntu-latest) have 4 vCPU, so we max out parallelism there.
+  // Locally, use half of the available cores to leave headroom for other work.
+  workers: process.env.CI ? 4 : '50%',
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   timeout: 60_000,
   expect: { timeout: 10_000 },

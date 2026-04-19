@@ -11,7 +11,7 @@ import { Page, expect } from '@playwright/test';
 export const SCREENSHOT_DIR = 'tests/screenshots';
 
 export interface PhaserSceneLike {
-  sys: { settings: { key: string } };
+  sys: { settings: { key: string; status?: number } };
 }
 
 export interface PhaserLike {
@@ -21,6 +21,17 @@ export interface PhaserLike {
     start: (key: string) => void;
   };
 }
+
+/**
+ * Phaser's Scenes.RUNNING status value. Used by `waitForScene` below to
+ * detect that a scene's `create()` has fully finished, rather than just
+ * that it became active — a scene can be active while still CREATING.
+ *
+ * Values (from Phaser source):
+ *   PENDING=0, INIT=1, START=2, LOADING=3, CREATING=4, RUNNING=5,
+ *   PAUSED=6, SLEEPING=7, SHUTDOWN=8, DESTROYED=9.
+ */
+const SCENE_STATUS_RUNNING = 5;
 
 declare global {
   interface Window {
@@ -37,13 +48,70 @@ export async function waitForGame(page: Page): Promise<void> {
 
 /** Wait until a specific Phaser scene is active (its `create()` has run). */
 export async function waitForScene(page: Page, sceneKey: string): Promise<void> {
+  // Poll until the scene has reached the RUNNING status — that is, its
+  // `create()` method has completed. This replaces a prior fixed 800ms
+  // sleep which was conservative on slow CI but wasted time everywhere.
   await page.waitForFunction(
-    (key) => !!window.__game && window.__game.scene.isActive(key),
-    sceneKey,
+    ({ key, running }) => {
+      const g = window.__game;
+      if (!g || !g.scene.isActive(key)) return false;
+      const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === key);
+      return !!scene && scene.sys.settings.status === running;
+    },
+    { key: sceneKey, running: SCENE_STATUS_RUNNING },
     { timeout: 30_000 },
   );
-  // Give Phaser a few frames to finish fading in / rendering.
-  await page.waitForTimeout(800);
+  // Wait two animation frames so Phaser has rendered the scene at least
+  // once. Two rAF is a well-known idiom for "let the browser commit a
+  // frame"; on 60 fps this costs ~33ms vs the old 800ms fixed sleep.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
+/**
+ * Wait until the DialogController on the given scene reports `isOpen`.
+ * Scenes expose their DialogController on the (TS-private) `dialogs`
+ * property; opening a dialog is async-ish (sets the flag on the next
+ * tick), so tests previously waited a fixed 200–500ms. This is the
+ * deterministic replacement.
+ */
+export async function waitForDialogOpen(page: Page, sceneKey: string): Promise<void> {
+  await page.waitForFunction(
+    (key) => {
+      const g = window.__game;
+      if (!g) return false;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === key) as unknown as Record<string, unknown>;
+      if (!scene) return false;
+      const dialogs = scene['dialogs'] as { isOpen: boolean } | undefined;
+      return !!dialogs && dialogs.isOpen === true;
+    },
+    sceneKey,
+    { timeout: 15_000 },
+  );
+}
+
+/** Inverse of `waitForDialogOpen`: wait until `dialogs.isOpen` is false. */
+export async function waitForDialogClosed(page: Page, sceneKey: string): Promise<void> {
+  await page.waitForFunction(
+    (key) => {
+      const g = window.__game;
+      if (!g) return false;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === key) as unknown as Record<string, unknown>;
+      if (!scene) return false;
+      const dialogs = scene['dialogs'] as { isOpen: boolean } | undefined;
+      return !!dialogs && dialogs.isOpen === false;
+    },
+    sceneKey,
+    { timeout: 15_000 },
+  );
 }
 
 export interface SeedSaveOptions {

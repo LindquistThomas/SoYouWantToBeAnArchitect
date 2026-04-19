@@ -32,7 +32,6 @@ test.describe('Token collection', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
-    await page.waitForTimeout(400);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -43,7 +42,6 @@ test.describe('Token collection', () => {
       (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'PlatformTeamScene');
-    await page.waitForTimeout(800);
 
     // Snapshot state before, then drive the scene's real onAUCollect handler
     // — the same handler physics dispatches on player↔token overlap.
@@ -86,7 +84,7 @@ test.describe('Token collection', () => {
     expect(result.bodyEnabled).toBe(false);
 
     // Give the collection animation a moment to play before the screenshot.
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(150);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/08-token-collected.png` });
 
     // Persistence: the collected index made it into localStorage.
