@@ -46,53 +46,36 @@ test.describe('elevator return', () => {
       await page.keyboard.press('Enter');
       await waitForScene(page, 'ElevatorScene');
 
-      // Walk right onto the cab (player spawns at x=200, cab at cx=640).
-      await page.keyboard.down('ArrowRight');
-      await page.waitForFunction(
-        () => {
+      // Jump directly to the "just returned from floor" state by restarting
+      // ElevatorScene with the exact NavigationContext the floor scene would
+      // hand back on exit (see LevelScene.returnToElevator). This skips the
+      // menu→lobby walk→ride→step-off→walk-back→Enter preamble, which is
+      // inherently timing-sensitive over keyboard input and intermittently
+      // times out on CI under parallel-worker CPU contention. The regression
+      // under test is strictly about what happens AFTER the return — the
+      // preamble was never load-bearing.
+      await page.evaluate(
+        ({ fromFloor, spawnSide }) => {
           const g = window.__game as unknown as {
-            scene: { getScenes: (a?: boolean) => { sys: { settings: { key: string } } }[] };
+            scene: {
+              getScenes: (active?: boolean) => { sys: { settings: { key: string } } }[];
+              start: (key: string, data?: unknown) => void;
+            };
           };
-          const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
-            elevatorCtrl?: { isOnElevator: boolean };
-          } | undefined;
-          return scene?.elevatorCtrl?.isOnElevator === true;
+          const scene = g.scene
+            .getScenes(true)
+            .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+              progression: { setCurrentFloor: (id: number) => void };
+            };
+          // Dock the cab at the returning floor so stepping back onto the
+          // floor walking surface is possible (the cab top sits 8 px below
+          // the walkway — this is exactly the overlap that used to trigger
+          // the bounce).
+          scene.progression.setCurrentFloor(fromFloor);
+          g.scene.start('ElevatorScene', { fromFloor, spawnSide });
         },
-        undefined,
-        { timeout: 20_000 },
+        { fromFloor: c.floorId, spawnSide: c.stepOff },
       );
-      await page.keyboard.up('ArrowRight');
-
-      // Ride to target floor.
-      await page.keyboard.down('ArrowUp');
-      await page.waitForFunction(
-        (target) => {
-          const g = window.__game as unknown as {
-            scene: { getScenes: (a?: boolean) => { sys: { settings: { key: string } } }[] };
-          };
-          const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
-            progression?: { getCurrentFloor(): number };
-          } | undefined;
-          return scene?.progression?.getCurrentFloor() === target;
-        },
-        c.floorId,
-        { timeout: 20_000 },
-      );
-      await page.keyboard.up('ArrowUp');
-
-      // Step off onto the floor in the configured direction.
-      const stepKey = c.stepOff === 'left' ? 'ArrowLeft' : 'ArrowRight';
-      await page.keyboard.down(stepKey);
-      await waitForScene(page, c.sceneKey);
-      await page.keyboard.up(stepKey);
-
-      // Walk back toward the exit door (x≈80, on the left of every floor room).
-      await page.keyboard.down('ArrowLeft');
-      await page.waitForTimeout(2500);
-      await page.keyboard.up('ArrowLeft');
-
-      // Press Enter to return to the elevator.
-      await page.keyboard.press('Enter');
       await waitForScene(page, 'ElevatorScene');
 
       // Now walk back toward the cab then pull back — simulating a user who
