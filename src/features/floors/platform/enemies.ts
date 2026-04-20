@@ -4,7 +4,7 @@ type EnemyList = NonNullable<LevelConfig['enemies']>;
 
 /**
  * Platform floor enemies. `G` is the ground walking-surface y, `C` is the
- * mezzanine (catwalk) walking-surface — `G - 260` — so enemies share the
+ * mezzanine (catwalk) walking-surface — `G - 220` — so enemies share the
  * same reference as platforms, tokens, and props.
  *
  *   - Slime patrols the workstations row on the ground floor.
@@ -15,7 +15,7 @@ type EnemyList = NonNullable<LevelConfig['enemies']>;
  */
 export function enemiesForGroundY(G: number): EnemyList {
   // Catwalk walking-surface — must match `C` in PlatformTeamScene.getLevelConfig().
-  const C = G - 260;
+  const C = G - 220;
   return [
     { type: 'slime', x: 620, y: G - 20, minX: 500, maxX: 780, speed: 55 },
     // Rogue deploy bot patrols the RIGHT mezzanine (Observability catwalk).

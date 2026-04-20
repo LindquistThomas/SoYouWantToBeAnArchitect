@@ -9,11 +9,15 @@ import { enemiesForGroundY } from './enemies';
  *
  * Reached by stepping OFF the elevator to the LEFT at floor 1.
  * Laid out as three ground-level zones plus an upper mezzanine (catwalk)
- * connected by a horizontally-tweened CI/CD platform:
+ * connected by a CI/CD lift that traces an inverted-V path — low near the
+ * ground at its endpoints, high at the midpoint — so it both bridges the
+ * two mezzanines AND provides a way up from the middle of the ground:
  *
- *            [SCALING LAB]            ═ CI/CD ═        [OBSERVABILITY]
- *     ╔═══════════════════╗◀── ↔ moving lift ──▶╔═══════════════════╗  (catwalk y=C)
- *         │ low step                        low step │
+ *            [SCALING LAB]                          [OBSERVABILITY]
+ *     ╔═══════════════════╗      ◦◦◦◦◦        ╔═══════════════════╗  (catwalk y=C)
+ *         │ low step            ◦ CI ◦                low step │
+ *                               ◦ /  ◦
+ *                              ◦◦◦◦◦◦
  *  [PLATFORM TEAM]          desk  router  rack          [EDGE SECURITY] (WAF)
  *  signpost                                             panel
  *  ═════════════════════════════════════════════════════════════════════ (ground y=G)
@@ -28,11 +32,12 @@ import { enemiesForGroundY } from './enemies';
  */
 export class PlatformTeamScene extends LevelScene {
   /** Catwalk walking-surface y (mezzanine). Kept in sync with enemies.ts. */
-  private static readonly CATWALK_Y = GAME_HEIGHT - TILE_SIZE - 260;
+  private static readonly CATWALK_Y = GAME_HEIGHT - TILE_SIZE - 220;
 
   /** The tweened CI/CD moving platform. Exists only after create(). */
   private cicd?: Phaser.Physics.Arcade.Image;
   private cicdPrevX = 0;
+  private cicdPrevY = 0;
 
   constructor() {
     super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
@@ -77,22 +82,26 @@ export class PlatformTeamScene extends LevelScene {
     this.add.image(760, G - 50, 'server_rack').setDepth(3);
     this.add.image(760, G - 10, 'cables').setDepth(1);
 
-    // --- Mezzanine content panels (wall-mounted on the catwalk back wall). ---
-    // baseY = C - 50 keeps the same "46 px above walking surface" visual
-    // relationship the ground panels use (G-50 vs G).
-    this.createScalingDiagram(430, C - 50);
-    this.createMonitoringWall(1030, C - 50);
+    // --- Mezzanine content panels: baseY = catwalk walking surface means
+    //     the panel's mounting feet touch the catwalk (panel body sits ABOVE
+    //     the catwalk so it's visually grounded, not floating). ---
+    this.createScalingDiagram(430, C);
+    this.createMonitoringWall(1030, C);
 
-    // --- Zone C: Web Application Firewall panel (stays on the ground — it's
-    //     the "edge" both thematically and spatially). ---
-    this.createWafDiagram(1165, G - 50);
+    // --- Zone C: Web Application Firewall panel — baseY = ground walking
+    //     surface so the panel's feet rest on the floor (no floating). ---
+    this.createWafDiagram(1165, G);
 
-    // --- Overhead station nameplates. ---
-    this.addStationNameplate(260,  G - 220, '[ PLATFORM TEAM ]', '#b8e6ff');
-    this.addStationNameplate(430,  C - 90,  '[ SCALING LAB ]',   '#b8e6ff');
-    this.addStationNameplate(730,  C - 90,  '[ CI / CD ]',       '#d4f0ff');
-    this.addStationNameplate(1030, C - 90,  '[ OBSERVABILITY ]', '#b8e6ff');
-    this.addStationNameplate(1165, G - 220, '[ EDGE SECURITY ]', '#ff8fa8');
+    // --- Overhead station nameplates. Placed ABOVE the panels so they don't
+    //     overlap the panel body. Mezzanine panels occupy y = C-160..C-10,
+    //     so nameplates sit at C-180. Ground panels occupy y = G-160..G-10,
+    //     so ground nameplates sit at G-180 (EDGE SECURITY), while the
+    //     panel-less PLATFORM TEAM plate matches that height for symmetry. ---
+    this.addStationNameplate(260,  G - 180, '[ PLATFORM TEAM ]', '#b8e6ff');
+    this.addStationNameplate(430,  C - 180, '[ SCALING LAB ]',   '#b8e6ff');
+    this.addStationNameplate(730,  C - 180, '[ CI / CD ]',       '#d4f0ff');
+    this.addStationNameplate(1030, C - 180, '[ OBSERVABILITY ]', '#b8e6ff');
+    this.addStationNameplate(1165, G - 180, '[ EDGE SECURITY ]', '#ff8fa8');
   }
 
   /**
@@ -127,33 +136,55 @@ export class PlatformTeamScene extends LevelScene {
   }
 
   /**
-   * CI/CD moving platform — a horizontally-tweened immovable image that
-   * ferries the player between the left (Scaling) and right (Observability)
-   * mezzanines. Reinforces the deployment-pipeline theme.
+   * CI/CD moving platform — a 2D-tweened immovable image that ferries the
+   * player between ground and mezzanine. It traces an inverted-V path:
    *
-   * Carrying logic lives in {@link carryPlayerOnCicd}: when the player is
-   * standing on top, their x is shifted by the platform's per-frame delta.
+   *        (x=730, y=580)   <-- high, between the two catwalks
+   *         /           \
+   *        /             \
+   *   (x=320, y=780)   (x=1140, y=780)   <-- low, near ground level
+   *
+   * Achieved with two independent yoyo tweens whose periods are phased so
+   * that x reaches its extremes when y is at its low point, and x is at
+   * its midpoint when y is at its high point. This doubles as:
+   *   - the "CI/CD pipeline" theme (moves things between environments);
+   *   - a ride up from the middle of the ground zone (dead-zone fix);
+   *   - a bridge between the two catwalks at the top of its arc.
+   *
+   * Carrying logic (see carryPlayerOnCicd) shifts the player in BOTH x and
+   * y by the platform's per-frame delta when they're standing on top.
    */
   private addCicdPlatform(): void {
-    const C = PlatformTeamScene.CATWALK_Y;
-    const xMin = 600;
-    const xMax = 860;
+    const xMid = 730;
+    const xSpan = 410; // amplitude: xMid ± xSpan → 320..1140
+    const yLow = 780;
+    const yHigh = 580;
 
-    const plat = this.physics.add.image(xMin, C, 'room_elevator_platform');
+    const plat = this.physics.add.image(xMid - xSpan, yLow, 'room_elevator_platform');
     plat.setImmovable(true);
     (plat.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     plat.setDepth(3);
-    // Slight tint so it visually reads as "CI/CD lift" distinct from the
-    // static room elevator cabs on other floors.
     plat.setTint(0x7fb8d6);
 
     this.cicd = plat;
-    this.cicdPrevX = xMin;
+    this.cicdPrevX = plat.x;
+    this.cicdPrevY = plat.y;
 
+    // X: 3200ms out, 3200ms back (full cycle 6400ms).
     this.tweens.add({
       targets: plat,
-      x: xMax,
-      duration: 2800,
+      x: xMid + xSpan,
+      duration: 3200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    // Y: half the period (1600ms out, 1600ms back) — so y is at yHigh when
+    // x is at its midpoint, and at yLow at each x-extreme.
+    this.tweens.add({
+      targets: plat,
+      y: yHigh,
+      duration: 1600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -163,17 +194,19 @@ export class PlatformTeamScene extends LevelScene {
   }
 
   /**
-   * Horizontally carry the player whenever they're standing on the CI/CD
-   * platform. Called after `super.update(...)` so the player's own physics
-   * step has already resolved; we just shift position by the platform's
-   * per-frame delta.
+   * Horizontally and vertically carry the player whenever they're standing
+   * on the CI/CD platform. Called after `super.update(...)` so the player's
+   * physics step has already resolved; we just shift position by the
+   * platform's per-frame delta.
    */
   private carryPlayerOnCicd(): void {
     if (!this.cicd) return;
 
     const dx = this.cicd.x - this.cicdPrevX;
+    const dy = this.cicd.y - this.cicdPrevY;
     this.cicdPrevX = this.cicd.x;
-    if (dx === 0) return;
+    this.cicdPrevY = this.cicd.y;
+    if (dx === 0 && dy === 0) return;
 
     const sprite = this.player.sprite;
     const body = sprite.body as Phaser.Physics.Arcade.Body;
@@ -190,6 +223,7 @@ export class PlatformTeamScene extends LevelScene {
 
     if (standingOnTop) {
       sprite.x += dx;
+      sprite.y += dy;
       body.updateFromGameObject();
     }
   }
@@ -589,6 +623,9 @@ export class PlatformTeamScene extends LevelScene {
         // Right catwalk (Observability mezzanine) + low step.
         { x: 900,  y: C,   width: 2 },
         { x: 1080, y: 700, width: 1 },
+        // Middle access is provided by the CI/CD lift itself (see
+        // addCicdPlatform) — it dips low at its endpoints and rises high
+        // at the midpoint, so falling into the middle isn't a dead zone.
       ],
 
       roomElevators: [],
@@ -601,11 +638,11 @@ export class PlatformTeamScene extends LevelScene {
         { x: 870,  y: G - 40, index: 2 }, // between rack and WAF
         // Mezzanine trail.
         { x: 430,  y: C - 40, index: 3 }, // left catwalk (Scaling)
-        { x: 730,  y: 460,    index: 4 }, // mid-air — grab while jumping off the CI/CD lift
+        { x: 730,  y: 500,    index: 4 }, // mid-air — grab while jumping off the CI/CD lift
         { x: 1030, y: C - 40, index: 5 }, // right catwalk (Observability)
-        // Easter egg: perched on top of the WAF panel — reached by a tricky
-        // left-jump off the right-side low step.
-        { x: 1165, y: 588,    index: 6 },
+        // Easter egg: perched on top of the WAF panel — reached by a short
+        // left-jump off the right-side low step (panel top is at G-160).
+        { x: 1165, y: 650,    index: 6 },
       ],
 
       infoPoints: [
