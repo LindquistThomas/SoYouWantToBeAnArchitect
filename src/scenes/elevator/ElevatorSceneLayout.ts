@@ -100,6 +100,7 @@ export class ElevatorSceneLayout {
     this.createShaftDoors();
     this.createShaftCable();
     this.createFloorLEDs();
+    this.createShaftDustMotes();
   }
 
   /**
@@ -112,8 +113,90 @@ export class ElevatorSceneLayout {
       width: GAME_WIDTH,
       height: this.deps.scene.scale.height,
     });
+    this.createHorizonGlow();
     this.createDistantSkyline();
     this.createBuildingFacade();
+  }
+
+  /**
+   * Warm city-lights haze sitting directly behind the distant skyline.
+   * Parallaxes with the skyline (scrollFactor 0, 0.35) and is painted
+   * as a soft-edged horizontal band at the skyline baseline. Sells
+   * "city glow" without needing a raster texture — three stacked alpha
+   * rectangles give a cheap gradient fade.
+   */
+  private createHorizonGlow(): void {
+    const scene = this.deps.scene;
+    const baselineY = this.deps.shaftExtent.top + 2;
+    const glow = scene.add.graphics().setDepth(-16).setScrollFactor(0, 0.35);
+    // Three stacked bands fading upward from the horizon — bottom band
+    // strongest, thinnest; top band weakest, tallest.
+    const bands: Array<{ yOffset: number; h: number; alpha: number }> = [
+      { yOffset: -8,  h: 10, alpha: 0.28 },
+      { yOffset: -28, h: 24, alpha: 0.14 },
+      { yOffset: -56, h: 40, alpha: 0.06 },
+    ];
+    for (const b of bands) {
+      glow.fillStyle(theme.color.sky.moonHalo, b.alpha);
+      glow.fillRect(0, baselineY + b.yOffset, GAME_WIDTH, b.h);
+    }
+  }
+
+  /**
+   * A handful of slow-drifting dust motes inside the shaft volume.
+   * Purely atmospheric — they add vertical motion that reads as air
+   * movement while the cab is stationary, and reinforce scale during
+   * a ride. Motes are deterministic in position, each with its own
+   * slow vertical bob tween. Rendered inside the shaft bounds only,
+   * at a depth that sits above shaft decor but below the cab/doors.
+   */
+  private createShaftDustMotes(): void {
+    const scene = this.deps.scene;
+    const sw = this.deps.shaftWidth;
+    const cx = GAME_WIDTH / 2;
+    const leftEdge = cx - sw / 2;
+    const { top, bottom } = this.deps.shaftExtent;
+    const shaftH = bottom - top;
+
+    const MOTE_COUNT = 14;
+    // xorshift RNG seeded from the shaft height so motes land in the same
+    // spots every session without needing a saved layout.
+    let s = (shaftH | 0) ^ 0x5eed_d057;
+    if (s === 0) s = 0x1234_5678;
+    const rand = (): number => {
+      s ^= s << 13;
+      s ^= s >>> 17;
+      s ^= s << 5;
+      return ((s >>> 0) % 1_000_000) / 1_000_000;
+    };
+
+    // Inset from the shaft rails so motes don't clip onto them visually.
+    const xMin = leftEdge + 26;
+    const xMax = leftEdge + sw - 26;
+
+    for (let i = 0; i < MOTE_COUNT; i++) {
+      const x = Math.round(xMin + rand() * (xMax - xMin));
+      const y = Math.round(top + 40 + rand() * (shaftH - 80));
+      const size = rand() < 0.35 ? 2 : 1;
+      const baseAlpha = 0.18 + rand() * 0.18;
+      const drift = 18 + Math.floor(rand() * 22);
+      const duration = 4200 + Math.floor(rand() * 2800);
+      const delay = Math.floor(rand() * duration);
+      const mote = scene.add
+        .rectangle(x, y, size, size, 0xffffff, baseAlpha)
+        .setDepth(1.3)
+        .setScrollFactor(1, 1);
+      scene.tweens.add({
+        targets: mote,
+        y: { from: y - drift / 2, to: y + drift / 2 },
+        alpha: { from: baseAlpha * 0.5, to: baseAlpha },
+        duration,
+        delay,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+    }
   }
 
   /**

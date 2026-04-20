@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
@@ -13,9 +13,10 @@ import { InteractiveDoor } from '../../../ui/InteractiveDoor';
  * and organizational direction. Lighter on platforms than the engine-room
  * floors below, with a single info point exploring the penthouse role.
  *
- * Visuals (Pass 3): full-scene vertical gradient sky behind everything,
- * three parallax cloud layers for atmospheric depth, rim-lit platform
- * tiles, and staggered alpha-pulse tokens.
+ * Visuals: uses the shared `sceneBackdrop` pipeline for parity with other
+ * floors — terrazzo pattern + arched-window silhouette with moon halo
+ * (see `floorPatterns.ts` / `floorAccents.ts`). Rim-lit platform tiles
+ * and a staggered alpha-pulse on tokens keep the penthouse feel.
  */
 export class ExecutiveSuiteScene extends LevelScene {
   /** Doors inside the Executive Suite that open into content-only rooms. */
@@ -59,11 +60,6 @@ export class ExecutiveSuiteScene extends LevelScene {
         delay: i * 150,
       });
     });
-  }
-
-  protected override createBackground(): void {
-    this.buildGradientSky();
-    this.buildParallaxClouds();
   }
 
   protected override buildPlatforms(config: LevelConfig): void {
@@ -239,106 +235,5 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
-  }
-
-  /* ---- background helpers (Pass 3) ---- */
-
-  /**
-   * Draw a full-scene vertical gradient into a 1×GAME_HEIGHT texture and
-   * stretch it across the scene. Bottom stop = theme.backgroundColor;
-   * top stop = the same color pushed 15% toward white (rough HSL-lighten
-   * effect done via per-channel linear interpolation toward #ffffff).
-   */
-  private buildGradientSky(): void {
-    const bottom = this.floorData.theme.backgroundColor;
-    const top = ExecutiveSuiteScene.lightenTowardWhite(bottom, 0.15);
-    const [tr, tg, tb] = ExecutiveSuiteScene.hexToRgb(top);
-    const [br, bg_, bb] = ExecutiveSuiteScene.hexToRgb(bottom);
-
-    const key = 'floor4_sky_gradient';
-    if (!this.textures.exists(key)) {
-      const gfx = this.make.graphics({ x: 0, y: 0 }, false);
-      for (let y = 0; y < GAME_HEIGHT; y++) {
-        const t = y / (GAME_HEIGHT - 1);
-        const r = Math.round(tr + (br - tr) * t);
-        const g = Math.round(tg + (bg_ - tg) * t);
-        const b = Math.round(tb + (bb - tb) * t);
-        gfx.fillStyle((r << 16) | (g << 8) | b, 1);
-        gfx.fillRect(0, y, 1, 1);
-      }
-      gfx.generateTexture(key, 1, GAME_HEIGHT);
-      gfx.destroy();
-    }
-
-    this.add.image(0, 0, key)
-      .setOrigin(0, 0)
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-      .setScrollFactor(0)
-      .setDepth(-100);
-  }
-
-  /**
-   * Three parallax cloud layers (back/mid/front) drawn as soft rounded
-   * white blobs. scrollFactors 0.2/0.4/0.6 follow the plan; the scene's
-   * camera is currently fixed but the values are harmless and keep the
-   * effect consistent if the scene ever gains a wider world.
-   */
-  private buildParallaxClouds(): void {
-    const backKey = 'floor4_cloud_back';
-    const midKey = 'floor4_cloud_mid';
-    const frontKey = 'floor4_cloud_front';
-
-    if (!this.textures.exists(backKey)) this.generateCloud(backKey, 360, 110, 0.22);
-    if (!this.textures.exists(midKey))  this.generateCloud(midKey,  280,  90, 0.28);
-    if (!this.textures.exists(frontKey))this.generateCloud(frontKey,220,  70, 0.34);
-
-    // Back layer: highest, smallest feel (big textures, far away).
-    this.add.image(260, 140, backKey).setScrollFactor(0.2).setDepth(-90).setAlpha(0.9);
-    this.add.image(980, 110, backKey).setScrollFactor(0.2).setDepth(-90).setAlpha(0.9);
-
-    // Mid layer.
-    this.add.image(620, 210, midKey).setScrollFactor(0.4).setDepth(-75);
-    this.add.image(1120, 250, midKey).setScrollFactor(0.4).setDepth(-75).setAlpha(0.85);
-
-    // Front layer: closest, slightly lower in the sky.
-    this.add.image(180, 300, frontKey).setScrollFactor(0.6).setDepth(-60);
-    this.add.image(860, 340, frontKey).setScrollFactor(0.6).setDepth(-60).setAlpha(0.9);
-  }
-
-  /** Draw a soft, rounded cloud blob into a generated texture. */
-  private generateCloud(key: string, w: number, h: number, alpha: number): void {
-    const gfx = this.make.graphics({ x: 0, y: 0 }, false);
-    // Soft halo (larger, more translucent).
-    gfx.fillStyle(0xffffff, alpha * 0.5);
-    gfx.fillCircle(w * 0.30, h * 0.55, h * 0.55);
-    gfx.fillCircle(w * 0.55, h * 0.45, h * 0.62);
-    gfx.fillCircle(w * 0.75, h * 0.55, h * 0.55);
-    // Body.
-    gfx.fillStyle(0xffffff, alpha);
-    gfx.fillCircle(w * 0.25, h * 0.65, h * 0.40);
-    gfx.fillCircle(w * 0.45, h * 0.45, h * 0.48);
-    gfx.fillCircle(w * 0.65, h * 0.55, h * 0.44);
-    gfx.fillCircle(w * 0.82, h * 0.68, h * 0.36);
-    gfx.fillRoundedRect(w * 0.10, h * 0.55, w * 0.80, h * 0.35, h * 0.3);
-    gfx.generateTexture(key, w, h);
-    gfx.destroy();
-  }
-
-  private static hexToRgb(hex: number): [number, number, number] {
-    return [(hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff];
-  }
-
-  /**
-   * Linear-interpolate each RGB channel toward white by `amount` (0..1).
-   * Produces a visibly lighter shade in the same hue family — close enough
-   * to an HSL lightness bump for the backgrounds we use, without the extra
-   * code for a round-trip HSL conversion.
-   */
-  private static lightenTowardWhite(hex: number, amount: number): number {
-    const [r, g, b] = ExecutiveSuiteScene.hexToRgb(hex);
-    const nr = Math.min(255, Math.round(r + (255 - r) * amount));
-    const ng = Math.min(255, Math.round(g + (255 - g) * amount));
-    const nb = Math.min(255, Math.round(b + (255 - b) * amount));
-    return (nr << 16) | (ng << 8) | nb;
   }
 }
