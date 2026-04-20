@@ -58,12 +58,6 @@ export class ElevatorSceneLayout {
   /** World-space point where the player should stand while seated on the sofa. */
   private sofaSitPoint?: { x: number; y: number };
 
-  /** "Press Enter to sit / stand up" prompt bubble floated above the sofa. */
-  private sofaPromptBubble?: Phaser.GameObjects.Container;
-
-  /** Text object inside the sofa prompt bubble (for swapping sit/stand labels). */
-  private sofaPromptText?: Phaser.GameObjects.Text;
-
   /** Millisecond "virtual" wall-clock time the lobby clock displays. */
   private clockVirtualMs = 0;
 
@@ -147,11 +141,6 @@ export class ElevatorSceneLayout {
     return this.sofaBounds;
   }
 
-  /** The sofa sit prompt bubble — shown on zone:enter, label swaps on sit/stand. */
-  getSofaPromptBubble(): Phaser.GameObjects.Container | undefined {
-    return this.sofaPromptBubble;
-  }
-
   /**
    * World-space point where the player should stand/sit while on the sofa.
    * Returns undefined if the sofa hasn't been placed (defensive for
@@ -159,14 +148,6 @@ export class ElevatorSceneLayout {
    */
   getSofaSitPoint(): { x: number; y: number } | undefined {
     return this.sofaSitPoint;
-  }
-
-  /**
-   * Update the sofa prompt text — called by the scene when the player's
-   * seated state toggles so the bubble reads "sit" vs "stand up".
-   */
-  setSofaPromptLabel(label: string): void {
-    this.sofaPromptText?.setText(label);
   }
 
   /**
@@ -900,26 +881,14 @@ export class ElevatorSceneLayout {
     // Wall-mounted live clock (real time, analog face + second hand and a
     // small digital HH:MM:SS readout below). Anchored to lobbyY band.
     this.createLobbyClock(1000, lobbyY + 75, 34);
-    scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
     const sofaX = 960;
     const sofaY = floorBottom - 30;
     scene.add.image(sofaX, sofaY, 'sofa').setDepth(3);
-    // Player sits at sofa x; y is handled by the floor collider (gravity
-    // will park them on the lobby slab). Keep x here as the snap target.
+    // Player sits at sofa x; the scene handles the squashed sit pose.
     this.sofaSitPoint = { x: sofaX, y: sofaY };
     // Proximity rect covers the full width of the sofa and a bit of the
     // walkway in front so you only need to be near it — not pixel-perfect.
     this.sofaBounds = { x: sofaX - 80, y: floorBottom - 70, width: 160, height: 100 };
-    // Prompt bubble — starts hidden; toggled by the sofa zone and retexted
-    // by the scene when the player sits down / stands up.
-    this.sofaPromptBubble = this.createSpeechBubble(
-      scene, sofaX, floorBottom - 70, '[Enter] Sit',
-    );
-    // Second child of the bubble container is the text object (see
-    // createSpeechBubble: children are [gfx, txt]). Cache it so we can
-    // swap the label when the seated state changes.
-    this.sofaPromptText = this.sofaPromptBubble.list[1] as Phaser.GameObjects.Text;
-    this.sofaPromptBubble.setVisible(false);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
     scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);

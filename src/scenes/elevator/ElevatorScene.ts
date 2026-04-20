@@ -175,7 +175,6 @@ export class ElevatorScene extends Phaser.Scene {
       receptionBounds: this.layout.getReceptionBounds(),
       receptionBubble: this.layout.getReceptionistBubble(),
       sofaBounds: this.layout.getSofaBounds(),
-      sofaPromptBubble: this.layout.getSofaPromptBubble(),
     });
 
     // Cable + LEDs need an initial tick so they render before update() runs.
@@ -406,21 +405,32 @@ export class ElevatorScene extends Phaser.Scene {
    * restores normal movement and real-time clock speed.
    */
   private toggleSitOnSofa(): void {
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     if (this.isSittingOnSofa) {
       this.isSittingOnSofa = false;
       this.layout.setClockSpeed(1);
-      this.layout.setSofaPromptLabel('[Enter] Sit');
+      // Restore standing pose.
+      this.player.sprite.setScale(1, 1);
+      body.setAllowGravity(true);
       return;
     }
     const seat = this.layout.getSofaSitPoint();
     if (!seat) return;
     this.isSittingOnSofa = true;
-    // Snap to seat; gravity + the floor collider keep the y-coord honest.
-    this.player.sprite.setX(seat.x);
+    // Snap onto the sofa cushion with a squashed pose so the player
+    // clearly reads as seated rather than standing on top of it.
     this.player.sprite.setVelocity(0, 0);
-    // 10× real-time while seated — an ordinary moment feels like it flies by.
-    this.layout.setClockSpeed(10);
-    this.layout.setSofaPromptLabel('[Enter] Stand up');
+    this.player.sprite.setX(seat.x);
+    // seat.y is the sofa image centre; cushion top is ~15 px above. With a
+    // 0.7 scaleY the sprite's visual height shortens, so plant it a bit
+    // higher than the standing y to sit on the cushion.
+    this.player.sprite.setY(seat.y - 12);
+    this.player.sprite.setScale(1, 0.7);
+    body.setAllowGravity(false);
+    this.player.sprite.anims.stop();
+    this.player.sprite.setFrame(0);
+    // 60× real-time while seated — time really flies.
+    this.layout.setClockSpeed(60);
   }
 
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {

@@ -55,17 +55,11 @@ export interface ElevatorZonesOptions {
    */
   receptionBubble?: Phaser.GameObjects.Container;
   /**
-   * Optional proximity rect for the lobby sofa. Players inside this rect
-   * see the "Press Enter to sit" prompt; the scene owns the sit/stand
-   * toggle itself (this class only registers the zone + bubble toggle).
+   * Optional proximity rect for the lobby sofa. When the player is inside
+   * this rect, the scene allows pressing Enter to sit/stand. No visible
+   * prompt is shown — discovery is intentional.
    */
   sofaBounds?: { x: number; y: number; width: number; height: number };
-  /**
-   * Prompt bubble toggled by the sofa zone. Start hidden; zone:enter shows
-   * it, zone:exit hides it. The scene updates the bubble's label when the
-   * seated state changes via {@link ElevatorSceneLayout.setSofaPromptLabel}.
-   */
-  sofaPromptBubble?: Phaser.GameObjects.Container;
 }
 
 /**
@@ -173,8 +167,6 @@ export class ElevatorZones {
         this.geirInfoIcon?.setVisible(true);
       } else if (zoneId === RECEPTION_GREETING_ID) {
         this.opts.receptionBubble?.setVisible(true);
-      } else if (zoneId === SOFA_SIT_ID) {
-        this.opts.sofaPromptBubble?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -187,8 +179,6 @@ export class ElevatorZones {
         this.geirInfoIcon?.setVisible(false);
       } else if (zoneId === RECEPTION_GREETING_ID) {
         this.opts.receptionBubble?.setVisible(false);
-      } else if (zoneId === SOFA_SIT_ID) {
-        this.opts.sofaPromptBubble?.setVisible(false);
       }
     });
   }
