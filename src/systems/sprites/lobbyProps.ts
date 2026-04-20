@@ -56,43 +56,19 @@ function generateReceptionDesk(scene: Phaser.Scene): void {
 
 function generateLobbyLogo(scene: Phaser.Scene): void {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  const w = 320, h = 72;
+  const w = 300, h = 56;
 
-  // Backing plaque — brushed-metal look with brand-blue top band.
-  g.fillStyle(0x0a1422, 0.9);
+  // Simple dark plaque with a brand-blue top band and a subtle border.
+  g.fillStyle(0x0a1422, 0.92);
   g.fillRoundedRect(0, 0, w, h, 8);
   g.fillStyle(0x1a237e, 0.9);
-  g.fillRoundedRect(0, 0, w, 14, { tl: 8, tr: 8, bl: 0, br: 0 });
+  g.fillRoundedRect(0, 0, w, 10, { tl: 8, tr: 8, bl: 0, br: 0 });
   g.lineStyle(2, theme.color.ui.border, 0.9);
   g.strokeRoundedRect(1, 1, w - 2, h - 2, 8);
 
-  // Small accent tick-marks in the top band for visual rhythm.
-  g.fillStyle(theme.color.ui.accent, 0.8);
-  for (let i = 0; i < 6; i++) {
-    g.fillRect(14 + i * 10, 5, 4, 4);
-  }
-
-  // Stepped skyline accent on the left of the plaque body.
-  g.fillStyle(theme.color.ui.accent);
-  g.fillRect(14, 42, 6, 22);
-  g.fillRect(22, 34, 8, 30);
-  g.fillRect(32, 26, 10, 38);
-  g.fillRect(44, 38, 6, 26);
-  // Tower windows.
-  g.fillStyle(0x0a1422);
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 2; col++) {
-      g.fillRect(34 + col * 4, 32 + row * 6, 2, 3);
-    }
-  }
-
-  // Subtle divider between skyline and wordmark area.
-  g.fillStyle(theme.color.ui.accentAlt, 0.5);
-  g.fillRect(58, 26, 2, 36);
-
-  // Underline stripe below where the wordmark text will be overlaid.
+  // Accent underline stripe below where the wordmark sits.
   g.fillStyle(theme.color.ui.accent, 0.9);
-  g.fillRect(64, 58, w - 78, 2);
+  g.fillRect(16, h - 10, w - 32, 2);
 
   g.generateTexture('lobby_logo', w, h);
   g.destroy();

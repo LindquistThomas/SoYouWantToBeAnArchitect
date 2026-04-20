@@ -805,22 +805,18 @@ export class ElevatorSceneLayout {
     const floorBottom = lobbyY + FLOOR_H;
 
     // Left walkway — reception side.
-    // Wall-mounted Norconsult Digital sign (anchored to the lobby band).
-    const signY = lobbyY + 50;
+    // Wall-mounted Norconsult Digital wordmark. Positioned LOW on the wall
+    // so it clears the F0 floor-label plaque (which lives near lobbyY+16
+    // on the left walkway). Single-line wordmark, centred on the plaque.
+    const signY = lobbyY + 110;
     const signX = 260;
     scene.add.image(signX, signY, 'lobby_logo').setDepth(2);
-    scene.add.text(signX + 60, signY - 6, 'Norconsult', {
+    scene.add.text(signX, signY - 4, 'Norconsult Digital', {
       fontFamily: 'monospace',
-      fontSize: '18px',
+      fontSize: '20px',
       color: '#f5f5f5',
       fontStyle: 'bold',
-    }).setOrigin(0, 0.5).setDepth(3);
-    scene.add.text(signX + 60, signY + 14, 'Digital', {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      color: theme.color.css.textAccent,
-      fontStyle: 'bold',
-    }).setOrigin(0, 0.5).setDepth(3);
+    }).setOrigin(0.5).setDepth(3);
 
     scene.add.image(60, floorBottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(100, floorBottom - 32, 'plant_small').setDepth(3);
