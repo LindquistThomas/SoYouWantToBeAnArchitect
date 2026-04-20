@@ -15,6 +15,7 @@ import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
 import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager';
 import type { NavigationContext } from '../NavigationContext';
 import type { GameAction } from '../../input/actions';
+import { eventBus } from '../../systems/EventBus';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -40,6 +41,8 @@ export class ElevatorScene extends Phaser.Scene {
   private isTransitioning = false;
   /** True while the player is seated on the lobby sofa. */
   private isSittingOnSofa = false;
+  /** Player y recorded at sit time, restored on stand-up to avoid tunneling. */
+  private preSitY = 0;
 
   private elevatorButtons?: ElevatorButtons;
 
@@ -409,14 +412,22 @@ export class ElevatorScene extends Phaser.Scene {
     if (this.isSittingOnSofa) {
       this.isSittingOnSofa = false;
       this.layout.setClockSpeed(1);
-      // Restore standing pose.
+      // Restore standing pose BEFORE re-enabling gravity + snap the sprite
+      // back to its pre-sit y. Otherwise the squashed body overlaps the
+      // floor collider and re-enabled gravity tunnels the player through.
       this.player.sprite.setScale(1, 1);
+      this.player.sprite.setY(this.preSitY);
+      this.player.sprite.setVelocity(0, 0);
       body.setAllowGravity(true);
+      body.updateFromGameObject();
+      eventBus.emit('music:pop');
       return;
     }
     const seat = this.layout.getSofaSitPoint();
     if (!seat) return;
     this.isSittingOnSofa = true;
+    // Remember standing y so we can restore it cleanly on stand-up.
+    this.preSitY = this.player.sprite.y;
     // Snap onto the sofa cushion with a squashed pose so the player
     // clearly reads as seated rather than standing on top of it.
     this.player.sprite.setVelocity(0, 0);
@@ -431,6 +442,8 @@ export class ElevatorScene extends Phaser.Scene {
     this.player.sprite.setFrame(0);
     // 60× real-time while seated — time really flies.
     this.layout.setClockSpeed(60);
+    // Swap the lobby music for a gentle lullaby while resting.
+    eventBus.emit('music:push', 'music_lullaby');
   }
 
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {
