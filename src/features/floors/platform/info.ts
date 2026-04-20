@@ -231,4 +231,116 @@ export const INFO_PLATFORM: Record<string, InfoPointDef> = {
       },
     },
   },
+
+  'web-application-firewall': {
+    floorId: FLOORS.PLATFORM_TEAM,
+    content: {
+      id: 'web-application-firewall',
+      title: 'Web Application Firewall (WAF)',
+      body:
+        'A Web Application Firewall inspects HTTP(S) traffic on the way in ' +
+        'and blocks requests that match known attack patterns \u2014 SQL ' +
+        'injection, cross-site scripting, path traversal, command injection, ' +
+        'credential-stuffing bursts, and so on. It sits in front of the app ' +
+        '(at the CDN, load balancer, or ingress) and gives platform teams a ' +
+        'place to enforce security policy without shipping code in every ' +
+        'service.\n\n' +
+        'WHY IT IS NECESSARY\n' +
+        '  \u2022 Defence in depth. Applications ship vulnerabilities; the ' +
+        'WAF is the layer that catches common exploits before they ever ' +
+        'reach the service \u2014 especially useful for zero-day patching ' +
+        'windows.\n' +
+        '  \u2022 Uniform coverage. One rule applied at the edge protects ' +
+        'every service behind it, including legacy systems that can\'t be ' +
+        'changed quickly.\n' +
+        '  \u2022 Compliance & bots. PCI-DSS, regulated industries, and ' +
+        'OWASP-aware audits often require WAF-style controls. Rate limits, ' +
+        'geo rules, and bot-scoring live here too.\n\n' +
+        'THE FALSE-POSITIVE PROBLEM\n' +
+        'A WAF\'s rules are heuristic. Patterns that look like SQL injection ' +
+        '("OR 1=1") or script tags ("<script>") appear in perfectly ' +
+        'legitimate form submissions \u2014 an e-commerce search for a ' +
+        'product description, a CMS editor saving rich text, a developer ' +
+        'pasting a code snippet into a support form. Block too aggressively ' +
+        'and you silently break real user journeys; log-only mode and you ' +
+        'miss the actual attacks. The cost of a bad rule is very visible: ' +
+        'users get cryptic 403s and the team gets paged by customer ' +
+        'support, not by the security stack.\n\n' +
+        'WHY IT IS A PLATFORM \u2194 PRODUCT COLLABORATION\n' +
+        'A WAF can only be tuned well when someone understands what ' +
+        '"normal" looks like for each workload. That knowledge lives with ' +
+        'the product team: which fields accept HTML, what the expected ' +
+        'request rate is for a given customer segment, which endpoints ' +
+        'handle file uploads, where bots are legitimate (partner APIs) and ' +
+        'where they are not. The platform team owns the WAF capability \u2014 ' +
+        'rule engine, telemetry, change control, incident playbooks \u2014 ' +
+        'but the rules themselves are a joint product of both teams. ' +
+        'Without that collaboration the WAF either lets attacks through ' +
+        '(rules too permissive) or blocks paying customers (rules too ' +
+        'strict). Neither outcome is acceptable.',
+      links: [
+        { label: 'OWASP \u2014 Web Application Firewall', url: 'https://owasp.org/www-community/Web_Application_Firewall' },
+        { label: 'OWASP ModSecurity Core Rule Set (CRS)', url: 'https://coreruleset.org/' },
+        { label: 'AWS WAF \u2014 Best practices', url: 'https://docs.aws.amazon.com/waf/latest/developerguide/waf-best-practices.html' },
+        { label: 'OWASP Top 10', url: 'https://owasp.org/www-project-top-ten/' },
+      ],
+      extendedInfo: {
+        title: 'Deep Dive: Tuning a WAF',
+        body:
+          'DEPLOYMENT MODES\n' +
+          'Most WAFs support detect-only (log alerts without blocking) and ' +
+          'prevent (block matching requests). Roll new rules out in ' +
+          'detect-only first; watch the alert stream for a full traffic ' +
+          'cycle (usually at least a week, often a month if there are ' +
+          'batch / end-of-month workloads) before enabling prevent mode. ' +
+          'Skipping this step is the most common way a WAF takes down its ' +
+          'own application.\n\n' +
+          'THE RULE-SET TRADE-OFF\n' +
+          'Off-the-shelf rule sets like the OWASP Core Rule Set (CRS) are ' +
+          'a strong baseline but are deliberately paranoid. Paranoia levels ' +
+          '(PL1 \u2192 PL4) trade detection rate against false-positive ' +
+          'rate. PL1 is safe to enable; PL3+ almost always needs ' +
+          'per-endpoint exceptions. This is where the platform team sits ' +
+          'down with product owners to map the real traffic shape.\n\n' +
+          'FALSE POSITIVES IN PRACTICE\n' +
+          '  \u2022 Rich-text editors: "<script>" and "on*=" attributes look ' +
+          'like XSS payloads. Allow-list the editor endpoints or strip ' +
+          'before the WAF sees them.\n' +
+          '  \u2022 Search boxes: user-entered SQL-keyword-ish text ("or ' +
+          'all" / "union jacks") trips SQLi rules. Scope SQLi rules to ' +
+          'request paths that actually touch a database.\n' +
+          '  \u2022 Bulk APIs: legitimate partner traffic can look like ' +
+          'scraping. Authenticated clients should bypass bot-scoring.\n' +
+          '  \u2022 File uploads: binary payloads confuse generic rules. ' +
+          'Use a dedicated upload endpoint with bypass + scan instead.\n\n' +
+          'RULE LIFECYCLE\n' +
+          'Treat WAF rules like code: version-controlled, peer-reviewed, ' +
+          'rolled out behind feature flags (detect vs prevent, per-route), ' +
+          'and measured. Good KPIs: blocked-request count, top-rule hit ' +
+          'list, false-positive tickets per week, time-to-mitigate a new ' +
+          'CVE via a virtual patch.\n\n' +
+          'OBSERVABILITY & FEEDBACK LOOPS\n' +
+          'Every block needs a traceable event: request id, rule id, ' +
+          'user id (if authenticated), matched field. Surface these to ' +
+          'product teams in dashboards they own. When a customer ' +
+          'complaint comes in ("I keep getting a 403"), the two teams ' +
+          'can correlate in minutes, not days. This is why "you build it, ' +
+          'you run it" matters here too: product engineers seeing real ' +
+          'WAF blocks on their service learn to write inputs and clients ' +
+          'that don\'t look suspicious.\n\n' +
+          'LIMITATIONS\n' +
+          'A WAF is not a silver bullet. It does not stop business-logic ' +
+          'abuse, broken authentication, or attacks that use legitimate ' +
+          'API calls in legitimate ways. It is one layer \u2014 pair it ' +
+          'with secure coding, SAST/DAST, dependency scanning, bot ' +
+          'management, and runtime protection (RASP) for full coverage.\n\n' +
+          'KEY INSIGHT\n' +
+          'The technology is the easy part. A WAF that truly fits an ' +
+          'application only exists when platform and product engineers ' +
+          'share the same telemetry, the same language for "normal ' +
+          'traffic", and the same on-call for the rules they ship ' +
+          'together.',
+      },
+    },
+  },
 };

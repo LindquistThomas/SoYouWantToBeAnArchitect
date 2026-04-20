@@ -13,6 +13,6 @@ type EnemyList = NonNullable<LevelConfig['enemies']>;
 export function enemiesForGroundY(G: number): EnemyList {
   return [
     { type: 'slime', x: 560, y: G - 20, minX: 420, maxX: 720, speed: 55 },
-    { type: 'bot', x: 1140, y: G - 30, minX: 1080, maxX: 1240, speed: 85 },
+    { type: 'bot', x: 1020, y: G - 30, minX: 980, maxX: 1080, speed: 85 },
   ];
 }

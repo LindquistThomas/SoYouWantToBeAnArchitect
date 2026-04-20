@@ -27,7 +27,7 @@ export class PlatformTeamScene extends LevelScene {
       { x: 90, kind: 'tall' },
       { x: 440, kind: 'small', depth: 3 },
       { x: 160, kind: 'small' },
-      { x: 1200, kind: 'tall' },
+      { x: 1250, kind: 'tall' },
     ]);
 
     this.addSignpost({ x: 260, label: 'PLATFORM\n   TEAM', color: '#b8e6ff' });
@@ -45,6 +45,9 @@ export class PlatformTeamScene extends LevelScene {
 
     // "You build it, you run it" monitoring wall (animated).
     this.createMonitoringWall(930, G - 50);
+
+    // Web Application Firewall panel to the right of the monitoring wall.
+    this.createWafDiagram(1165, G - 50);
   }
 
   /**
@@ -276,6 +279,154 @@ export class PlatformTeamScene extends LevelScene {
     this.time.addEvent({ delay: 160, loop: true, callback: redraw });
   }
 
+  /**
+   * Web Application Firewall panel. A shield icon sits between an inbound
+   * "Internet" arrow and the protected app. Requests flow right-to-left:
+   *   - most arrive as "safe" (green) and pass through the shield,
+   *   - some arrive "attack" (red) and the shield stops them (flash),
+   *   - occasionally a legitimate request is flagged as a FALSE POSITIVE
+   *     (amber) — it gets blocked even though it was benign, illustrating
+   *     the core tuning challenge. A small counter tallies the three
+   *     outcomes so the player can see the trade-off over time.
+   */
+  private createWafDiagram(cx: number, baseY: number): void {
+    const W = 200, H = 150;
+    const x = cx - W / 2, y = baseY - H - 10;
+
+    const frame = this.add.graphics().setDepth(3);
+    frame.fillStyle(0x1a1a22, 1).fillRoundedRect(x, y, W, H, 6);
+    frame.lineStyle(2, 0x3b4a5c, 1).strokeRoundedRect(x, y, W, H, 6);
+    frame.fillStyle(0x2a2a33, 1);
+    frame.fillRect(x + 10, y + H, 6, 14);
+    frame.fillRect(x + W - 16, y + H, 6, 14);
+
+    this.add.text(x + 8, y + 4, 'WAF', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#ff8fa8', fontStyle: 'bold',
+    }).setDepth(4);
+    this.add.text(x + W - 8, y + 4, 'shield', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#6fa8d6',
+    }).setOrigin(1, 0).setDepth(4);
+
+    // Track area — internet (right) → shield (centre) → app (left).
+    const trackY = y + 58;
+    const trackLeft = x + 14, trackRight = x + W - 14;
+    frame.fillStyle(0x06101c, 1).fillRect(trackLeft, trackY - 16, trackRight - trackLeft, 32);
+    frame.lineStyle(1, 0x3b4a5c, 0.8).strokeRect(trackLeft, trackY - 16, trackRight - trackLeft, 32);
+
+    // Endpoints: app (left), internet (right).
+    this.add.text(trackLeft + 2, trackY - 28, 'APP', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#8fb8e6',
+    }).setDepth(4);
+    this.add.text(trackRight - 2, trackY - 28, 'INTERNET', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#8fb8e6',
+    }).setOrigin(1, 0).setDepth(4);
+
+    // Shield icon (static) centred in the track.
+    const shieldX = (trackLeft + trackRight) / 2;
+    const shield = this.add.graphics().setDepth(4);
+    const drawShield = (glow: number) => {
+      shield.clear();
+      // Outer shield silhouette.
+      shield.fillStyle(0x2a3a55, 1);
+      shield.fillRoundedRect(shieldX - 10, trackY - 14, 20, 24, 4);
+      shield.fillStyle(glow, 1);
+      shield.fillRoundedRect(shieldX - 7, trackY - 11, 14, 18, 3);
+      shield.lineStyle(1, 0xffffff, 0.7);
+      shield.strokeRoundedRect(shieldX - 10, trackY - 14, 20, 24, 4);
+      // Tick mark inside.
+      shield.lineStyle(1.5, 0xffffff, 0.9);
+      shield.beginPath();
+      shield.moveTo(shieldX - 4, trackY - 1);
+      shield.lineTo(shieldX - 1, trackY + 3);
+      shield.lineTo(shieldX + 5, trackY - 5);
+      shield.strokePath();
+    };
+    drawShield(0x3b6fb0);
+
+    // Captions under the track (rules / counters).
+    const statRow = y + H - 34;
+    const safeLabel = this.add.text(x + 10, statRow, 'allowed: 0', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#8fe6a8',
+    }).setDepth(4);
+    const blockLabel = this.add.text(x + 10, statRow + 12, 'blocked: 0', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ff8fa8',
+    }).setDepth(4);
+    const fpLabel = this.add.text(x + W - 10, statRow, 'false pos: 0', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#ffd36a',
+    }).setOrigin(1, 0).setDepth(4);
+    this.add.text(x + W - 10, statRow + 12, 'tune with product \u2192', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#6fa8d6',
+    }).setOrigin(1, 0).setDepth(4);
+
+    // In-flight packets — each is an x position + classification.
+    type Kind = 'safe' | 'attack' | 'falsepos';
+    interface Packet { pos: number; kind: Kind; stopped: boolean; }
+    const packets: Packet[] = [];
+    let allowed = 0, blocked = 0, falsePos = 0;
+    let shieldGlowUntil = 0;
+
+    const anim = this.add.graphics().setDepth(5);
+    const STEP = 3; // pixels per tick
+    const tick = () => {
+      anim.clear();
+
+      // Occasionally spawn a new packet at the right edge.
+      if (Math.random() < 0.55) {
+        const r = Math.random();
+        // 60% safe traffic, 25% attack, 15% benign-but-flagged (false positive).
+        const kind: Kind = r < 0.6 ? 'safe' : r < 0.85 ? 'attack' : 'falsepos';
+        packets.push({ pos: trackRight - 4, kind, stopped: false });
+      }
+
+      // Advance and render.
+      for (const p of packets) {
+        if (!p.stopped) p.pos -= STEP;
+        // Reached the shield? Resolve the outcome.
+        if (!p.stopped && p.pos <= shieldX + 4) {
+          if (p.kind === 'attack') {
+            p.stopped = true;
+            blocked++;
+            shieldGlowUntil = performance.now() + 250;
+          } else if (p.kind === 'falsepos') {
+            p.stopped = true;
+            falsePos++;
+            shieldGlowUntil = performance.now() + 250;
+          } else {
+            // safe — passes through.
+          }
+        }
+        // Draw.
+        const color = p.kind === 'safe' ? 0x4caf50
+          : p.kind === 'attack' ? 0xff3355
+            : 0xffb84a;
+        anim.fillStyle(color, 1);
+        anim.fillCircle(p.pos, trackY, 3);
+      }
+
+      // Retire packets that have exited off the left (allowed) or have
+      // been stopped long enough to fade.
+      for (let i = packets.length - 1; i >= 0; i--) {
+        const p = packets[i];
+        if (!p.stopped && p.pos < trackLeft) {
+          if (p.kind === 'safe') allowed++;
+          packets.splice(i, 1);
+        } else if (p.stopped && performance.now() > shieldGlowUntil + 120) {
+          packets.splice(i, 1);
+        }
+      }
+
+      // Shield flashes briefly when it blocks something.
+      drawShield(performance.now() < shieldGlowUntil ? 0xff5577 : 0x3b6fb0);
+
+      safeLabel.setText(`allowed: ${allowed}`);
+      blockLabel.setText(`blocked: ${blocked}`);
+      fpLabel.setText(`false pos: ${falsePos}`);
+    };
+
+    tick();
+    this.time.addEvent({ delay: 90, loop: true, callback: tick });
+  }
+
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
 
@@ -311,6 +462,10 @@ export class PlatformTeamScene extends LevelScene {
         {
           x: 930, y: G, contentId: 'you-build-you-run',
           zone: { shape: 'rect', width: 280, height: 220 },
+        },
+        {
+          x: 1165, y: G, contentId: 'web-application-firewall',
+          zone: { shape: 'rect', width: 180, height: 220 },
         },
       ],
 
