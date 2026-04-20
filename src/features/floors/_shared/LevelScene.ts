@@ -16,6 +16,7 @@ import { LevelTokenManager } from './LevelTokenManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
+import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
 
 /**
@@ -269,10 +270,25 @@ export class LevelScene extends Phaser.Scene {
 
   /**
    * Subclass hook for per-floor silhouettes / prints painted on top of
-   * the layered backdrop. Default: no-op. Phase 6 will populate this for
-   * each floor theme.
+   * the layered backdrop. Default behaviour dispatches to the per-floor
+   * accent painter in `floorAccents.ts` (server racks, bar chart, arched
+   * window, etc.) including one ambient tween per floor. Subclasses may
+   * override to suppress or replace the motif.
    */
-  protected drawBackgroundAccents(_g: Phaser.GameObjects.Graphics): void {}
+  protected drawBackgroundAccents(g: Phaser.GameObjects.Graphics): void {
+    drawFloorAccents(this.floorId, {
+      scene: this,
+      g,
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      theme: {
+        backgroundColor: this.floorData.theme.backgroundColor,
+        wallColor: this.floorData.theme.wallColor,
+        platformColor: this.floorData.theme.platformColor,
+        tokenColor: this.floorData.theme.tokenColor,
+      },
+    });
+  }
 
   /* ---- platforms ---- */
   protected createPlatforms(): void {
