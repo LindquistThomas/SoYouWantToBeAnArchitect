@@ -7,6 +7,7 @@ import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
 import { drawSkyBackdrop } from './skyBackdrop';
 import { drawDistantSkyline } from './distantSkyline';
+import { drawBuildingFacade, type FacadeBand } from './buildingFacade';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -112,6 +113,50 @@ export class ElevatorSceneLayout {
       height: this.deps.scene.scale.height,
     });
     this.createDistantSkyline();
+    this.createBuildingFacade();
+  }
+
+  /**
+   * Outer-building façade filling the hallway strips on either side of the
+   * shaft. See `./buildingFacade` for rendering + window-grid generation.
+   * One band per floor, tinted with `LEVEL_DATA[fId].theme.wallColor` so
+   * each floor "reads" with its own temperature even behind plaques/props.
+   */
+  private createBuildingFacade(): void {
+    const sw = this.deps.shaftWidth;
+    const cx = GAME_WIDTH / 2;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
+    // Outer shaft pillars (createShaftBackground) occupy [leftEdge-12, leftEdge]
+    // and [rightEdge, rightEdge+12]. Keep the façade inboard of those edges so
+    // the pillars remain crisp against the dark façade wall.
+    const sides: [{ xLeft: number; xRight: number }, { xLeft: number; xRight: number }] = [
+      { xLeft: 0, xRight: leftEdge - 12 },
+      { xLeft: rightEdge + 12, xRight: GAME_WIDTH },
+    ];
+
+    const positions = this.deps.floorYPositions;
+    // Sort top-to-bottom (ascending y) so bands tile cleanly.
+    const sorted = Object.entries(positions)
+      .map(([id, y]) => ({ id: Number(id) as FloorId, y }))
+      .sort((a, b) => a.y - b.y);
+    const { top, bottom } = this.deps.shaftExtent;
+
+    const bands: FacadeBand[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const yTop = i === 0 ? top : sorted[i].y;
+      const yBottom = i < sorted.length - 1 ? sorted[i + 1].y : bottom;
+      const data = LEVEL_DATA[sorted[i].id];
+      bands.push({
+        yTop,
+        yBottom,
+        wallColor: data?.theme.wallColor ?? theme.color.bg.mid,
+        // Seed from floor id so the window pattern is stable but distinct per floor.
+        seed: 0xabc123 ^ (sorted[i].id * 0x9e3779b1),
+      });
+    }
+
+    drawBuildingFacade(this.deps.scene, { sides, bands });
   }
 
   /**
