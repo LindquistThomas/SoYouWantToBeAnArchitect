@@ -6,6 +6,7 @@ import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
 import { drawSkyBackdrop } from './skyBackdrop';
+import { drawDistantSkyline } from './distantSkyline';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -109,6 +110,22 @@ export class ElevatorSceneLayout {
     drawSkyBackdrop(this.deps.scene, {
       width: GAME_WIDTH,
       height: this.deps.scene.scale.height,
+    });
+    this.createDistantSkyline();
+  }
+
+  /**
+   * Distant city silhouette visible above the rooftop when the camera is
+   * near the top of the shaft. Parallaxes at 0.35× so riding the cab up
+   * reveals the horizon with believable depth. Implementation + tests live
+   * in `./distantSkyline`.
+   */
+  private createDistantSkyline(): void {
+    drawDistantSkyline(this.deps.scene, {
+      width: GAME_WIDTH,
+      // Baseline sits a touch below the rooftop so the tallest buildings
+      // tuck behind the parapet instead of floating above the building.
+      baselineY: this.deps.shaftExtent.top + 2,
     });
   }
 
