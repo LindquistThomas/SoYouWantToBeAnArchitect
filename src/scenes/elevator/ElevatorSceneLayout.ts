@@ -836,13 +836,124 @@ export class ElevatorSceneLayout {
     scene.add.image(455, floorBottom - 32, 'plant_small').setDepth(3);
 
     // Right walkway — waiting area.
-    // Wall-mounted clock (anchored to lobbyY band).
-    scene.add.image(1000, lobbyY + 60, 'wall_clock').setDepth(2);
+    // Wall-mounted live clock (real time, analog face + second hand and a
+    // small digital HH:MM:SS readout below). Anchored to lobbyY band.
+    this.createLobbyClock(1000, lobbyY + 90, 50);
     scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
     scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
     scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);
+  }
+
+  /**
+   * Build a live, real-time analog wall clock in the lobby waiting area.
+   * The static face (rim, dial, ticks, centre pin, digital readout frame)
+   * is drawn once. The hour/minute/second hands and the HH:MM:SS label are
+   * redrawn every second via a looping timer event. The timer is cleaned up
+   * automatically on scene shutdown.
+   *
+   * @param cx Centre x in world space
+   * @param cy Centre y in world space
+   * @param radius Face radius in pixels (outer rim sits at radius + 3)
+   */
+  private createLobbyClock(cx: number, cy: number, radius: number): void {
+    const scene = this.deps.scene;
+    const rimOuter = radius + 4;
+    const rimInner = radius + 2;
+
+    // --- Static face (drawn once) ---
+    const face = scene.add.graphics().setDepth(2);
+    // Outer rim
+    face.fillStyle(0x37474f);
+    face.fillCircle(cx, cy, rimOuter);
+    face.fillStyle(0x263238);
+    face.fillCircle(cx, cy, rimInner);
+    // Dial
+    face.fillStyle(0xeceff1);
+    face.fillCircle(cx, cy, radius);
+    // Hour ticks (12 chunky, with a thicker marker at 12/3/6/9)
+    face.fillStyle(0x263238);
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      const tx = cx + Math.cos(angle) * (radius - 5);
+      const ty = cy + Math.sin(angle) * (radius - 5);
+      const size = i % 3 === 0 ? 4 : 2;
+      face.fillRect(Math.round(tx - size / 2), Math.round(ty - size / 2), size, size);
+    }
+
+    // Digital readout background (small plaque just above the 6 o'clock).
+    const plaqueW = radius * 1.0;
+    const plaqueH = 14;
+    const plaqueY = cy + radius * 0.45;
+    face.fillStyle(0x102027, 0.85);
+    face.fillRoundedRect(cx - plaqueW / 2, plaqueY - plaqueH / 2, plaqueW, plaqueH, 3);
+
+    // Digital HH:MM:SS text (updated each tick).
+    const digital = scene.add.text(cx, plaqueY, '', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#00e5ff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(3);
+
+    // Hands layer (above face, below centre pin).
+    const hands = scene.add.graphics().setDepth(3);
+
+    // Centre pin (drawn on top of hands so the pivot reads cleanly).
+    const pin = scene.add.graphics().setDepth(4);
+    pin.fillStyle(theme.color.ui.accent);
+    pin.fillCircle(cx, cy, Math.max(2, Math.round(radius * 0.06)));
+
+    // Hand lengths / widths scale with radius so the clock looks right at any size.
+    const hourLen = radius * 0.50;
+    const minuteLen = radius * 0.75;
+    const secondLen = radius * 0.85;
+    const hourTail = radius * 0.15;
+    const minuteTail = radius * 0.18;
+    const secondTail = radius * 0.22;
+    const hourW = Math.max(3, Math.round(radius * 0.08));
+    const minuteW = Math.max(2, Math.round(radius * 0.05));
+    const secondW = Math.max(1, Math.round(radius * 0.025));
+
+    const drawHand = (angle: number, length: number, tail: number, width: number, color: number) => {
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      hands.lineStyle(width, color, 1);
+      hands.beginPath();
+      hands.moveTo(cx - dx * tail, cy - dy * tail);
+      hands.lineTo(cx + dx * length, cy + dy * length);
+      hands.strokePath();
+    };
+
+    const render = (): void => {
+      const now = new Date();
+      const hh = now.getHours();
+      const mm = now.getMinutes();
+      const ss = now.getSeconds();
+
+      // -π/2 puts 0 at the top (12 o'clock). Hour hand drifts with minutes.
+      const secondAngle = (ss / 60) * Math.PI * 2 - Math.PI / 2;
+      const minuteAngle = ((mm + ss / 60) / 60) * Math.PI * 2 - Math.PI / 2;
+      const hourAngle = (((hh % 12) + mm / 60) / 12) * Math.PI * 2 - Math.PI / 2;
+
+      hands.clear();
+      drawHand(hourAngle, hourLen, hourTail, hourW, 0x263238);
+      drawHand(minuteAngle, minuteLen, minuteTail, minuteW, 0x263238);
+      drawHand(secondAngle, secondLen, secondTail, secondW, 0xe53935);
+
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      digital.setText(`${pad(hh)}:${pad(mm)}:${pad(ss)}`);
+    };
+
+    render();
+    const timer = scene.time.addEvent({ delay: 1000, loop: true, callback: render });
+
+    // Tear down the timer on scene shutdown so it doesn't leak across
+    // scene restarts (EventBus-singleton-style hazard).
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      timer.remove(false);
+    });
   }
 
   /**

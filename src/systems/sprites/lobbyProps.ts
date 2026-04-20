@@ -14,7 +14,8 @@ export function generateLobbyPropSprites(scene: Phaser.Scene): void {
   generateSofa(scene);
   generateCoffeeTable(scene);
   generateFloorLamp(scene);
-  generateWallClock(scene);
+  // Note: the lobby wall clock is a live analog+digital clock built at
+  // runtime in ElevatorSceneLayout.createLobbyClock rather than a sprite.
   generateWelcomeMat(scene);
 }
 
@@ -140,45 +141,6 @@ function generateFloorLamp(scene: Phaser.Scene): void {
   g.fillRect(4, 26, w - 8, 2);
 
   g.generateTexture('floor_lamp', w, h);
-  g.destroy();
-}
-
-function generateWallClock(scene: Phaser.Scene): void {
-  const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  const w = 48, h = 48;
-
-  // Outer rim
-  g.fillStyle(0x37474f);
-  g.fillCircle(w / 2, h / 2, 22);
-  g.fillStyle(0x263238);
-  g.fillCircle(w / 2, h / 2, 20);
-  // Face
-  g.fillStyle(0xeceff1);
-  g.fillCircle(w / 2, h / 2, 18);
-  // Hour ticks
-  g.fillStyle(0x263238);
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2;
-    const tx = w / 2 + Math.cos(angle) * 15;
-    const ty = h / 2 + Math.sin(angle) * 15;
-    g.fillRect(Math.round(tx) - 1, Math.round(ty) - 1, 2, 2);
-  }
-  // Hands — hour at ~10, minute at ~2
-  g.lineStyle(2, 0x263238, 1);
-  g.beginPath();
-  g.moveTo(w / 2, h / 2);
-  g.lineTo(w / 2 - 6, h / 2 - 4);
-  g.strokePath();
-  g.lineStyle(2, 0x263238, 1);
-  g.beginPath();
-  g.moveTo(w / 2, h / 2);
-  g.lineTo(w / 2 + 4, h / 2 - 10);
-  g.strokePath();
-  // Center pin
-  g.fillStyle(theme.color.ui.accent);
-  g.fillCircle(w / 2, h / 2, 2);
-
-  g.generateTexture('wall_clock', w, h);
   g.destroy();
 }
 
