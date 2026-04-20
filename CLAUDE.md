@@ -184,6 +184,7 @@ Full workflow and integration steps live in `.github/skills/git-worktree.md`.
 1. **Start of session**: create a worktree branch for the session's work **before** touching any file. Ask the user for a short topic if it isn't obvious from the first request.
 2. **During the session**: commit to that branch as normal. If a second unrelated task comes up, spin up an additional worktree rather than mixing concerns.
 3. **End of session / work complete**: prompt the user to merge the branch into `main` (PR or local merge — let the user choose). **Keep the worktree and branch alive after merging** so the user can continue or revisit it. Only delete a worktree when the user explicitly asks.
+4. **When creating a PR**: always create it as **ready for review** (not a draft) unless the user explicitly asks for a draft. Pass `draft: false` (or omit the flag and override to non-draft) when calling `create_pull_request`.
 
 ## AI collaboration
 
