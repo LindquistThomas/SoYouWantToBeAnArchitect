@@ -8,46 +8,190 @@ import { enemiesForGroundY } from './enemies';
  * Floor 1 — Platform room (left side of the Platform Team floor).
  *
  * Reached by stepping OFF the elevator to the LEFT at floor 1.
- * Focused on platform-engineering content: the Platform Team signpost
- * on entry and the animated "PROD OPS" monitoring wall on the right.
+ * Laid out as three ground-level zones plus an upper mezzanine (catwalk)
+ * connected by a horizontally-tweened CI/CD platform:
+ *
+ *            [SCALING LAB]            ═ CI/CD ═        [OBSERVABILITY]
+ *     ╔═══════════════════╗◀── ↔ moving lift ──▶╔═══════════════════╗  (catwalk y=C)
+ *         │ low step                        low step │
+ *  [PLATFORM TEAM]          desk  router  rack          [EDGE SECURITY] (WAF)
+ *  signpost                                             panel
+ *  ═════════════════════════════════════════════════════════════════════ (ground y=G)
+ *   zone A carpet   │  workstation carpet  │   zone C carpet
  *
  * A sibling scene `ArchitectureTeamScene` hosts the architecture content
  * on the other side of the elevator; both scenes share FloorId
- * PLATFORM_TEAM and use disjoint token-index ranges.
+ * PLATFORM_TEAM and use disjoint token-index ranges (platform 0..6,
+ * architecture 7..).
+ *
+ * TODO: consider a low datacenter-hum ambience when the scene is active.
  */
 export class PlatformTeamScene extends LevelScene {
+  /** Catwalk walking-surface y (mezzanine). Kept in sync with enemies.ts. */
+  private static readonly CATWALK_Y = GAME_HEIGHT - TILE_SIZE - 260;
+
+  /** The tweened CI/CD moving platform. Exists only after create(). */
+  private cicd?: Phaser.Physics.Arcade.Image;
+  private cicdPrevX = 0;
+
   constructor() {
     super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
   }
 
+  override create(): void {
+    super.create();
+    // Player is created by super; wire the moving platform AFTER so the
+    // collider can reference this.player.sprite.
+    this.addCicdPlatform();
+  }
+
+  override update(time: number, delta: number): void {
+    super.update(time, delta);
+    this.carryPlayerOnCicd();
+  }
+
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
+    const C = PlatformTeamScene.CATWALK_Y;
 
+    // --- Floor zone carpets (thin tinted stripes at the walking surface). ---
+    // Drawn BEFORE props so props sit on top.
+    this.addFloorCarpet(100, 340, 0x4a8fbf, 0.35);   // Zone A — Platform Onboarding (cyan)
+    this.addFloorCarpet(500, 800, 0x707878, 0.30);   // Workstations lane (neutral grey)
+    this.addFloorCarpet(1020, 1260, 0xc27099, 0.35); // Zone C — Edge Security (rose)
+
+    // --- Ambient greenery (kept sparse; back accents already carry density). ---
     this.addAmbientPlants([
-      { x: 90, kind: 'tall' },
-      { x: 440, kind: 'small', depth: 3 },
-      { x: 160, kind: 'small' },
-      { x: 1250, kind: 'tall' },
+      { x: 60,   kind: 'tall' },
+      { x: 140,  kind: 'small' },
+      { x: 1260, kind: 'tall' },
     ]);
 
+    // --- Zone A: Platform Team signpost. ---
     this.addSignpost({ x: 260, label: 'PLATFORM\n   TEAM', color: '#b8e6ff' });
 
-    // Workstations flanking the center.
+    // --- Workstations cluster (moved left so the server rack no longer
+    //     overlaps the (relocated) monitoring wall). ---
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(680, G - 10, 'router').setDepth(3);
-
-    // Server rack cluster behind the monitoring wall.
     this.add.image(760, G - 50, 'server_rack').setDepth(3);
     this.add.image(760, G - 10, 'cables').setDepth(1);
 
-    // "Scaling" info wall between the signpost and the workstations.
-    this.createScalingDiagram(440, G - 50);
+    // --- Mezzanine content panels (wall-mounted on the catwalk back wall). ---
+    // baseY = C - 50 keeps the same "46 px above walking surface" visual
+    // relationship the ground panels use (G-50 vs G).
+    this.createScalingDiagram(430, C - 50);
+    this.createMonitoringWall(1030, C - 50);
 
-    // "You build it, you run it" monitoring wall (animated).
-    this.createMonitoringWall(930, G - 50);
-
-    // Web Application Firewall panel to the right of the monitoring wall.
+    // --- Zone C: Web Application Firewall panel (stays on the ground — it's
+    //     the "edge" both thematically and spatially). ---
     this.createWafDiagram(1165, G - 50);
+
+    // --- Overhead station nameplates. ---
+    this.addStationNameplate(260,  G - 220, '[ PLATFORM TEAM ]', '#b8e6ff');
+    this.addStationNameplate(430,  C - 90,  '[ SCALING LAB ]',   '#b8e6ff');
+    this.addStationNameplate(730,  C - 90,  '[ CI / CD ]',       '#d4f0ff');
+    this.addStationNameplate(1030, C - 90,  '[ OBSERVABILITY ]', '#b8e6ff');
+    this.addStationNameplate(1165, G - 220, '[ EDGE SECURITY ]', '#ff8fa8');
+  }
+
+  /**
+   * Thin tinted floor-carpet strip sitting just above the walking surface.
+   * Gives each ground zone an identity without overpainting the floor tile.
+   */
+  private addFloorCarpet(xLeft: number, xRight: number, tint: number, alpha: number): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const w = xRight - xLeft;
+    this.add
+      .rectangle(xLeft + w / 2, G, w, 8, tint, alpha)
+      .setOrigin(0.5, 0) // anchor to the walking-surface line
+      .setDepth(2);
+  }
+
+  /**
+   * Small overhead nameplate to identify a station at a glance.
+   * Monospace text on a dark rounded background, high contrast.
+   */
+  private addStationNameplate(cx: number, cy: number, label: string, color: string): void {
+    this.add
+      .text(cx, cy, label, {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color,
+        backgroundColor: '#1a1a22',
+        fontStyle: 'bold',
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(0.5, 0.5)
+      .setDepth(4);
+  }
+
+  /**
+   * CI/CD moving platform — a horizontally-tweened immovable image that
+   * ferries the player between the left (Scaling) and right (Observability)
+   * mezzanines. Reinforces the deployment-pipeline theme.
+   *
+   * Carrying logic lives in {@link carryPlayerOnCicd}: when the player is
+   * standing on top, their x is shifted by the platform's per-frame delta.
+   */
+  private addCicdPlatform(): void {
+    const C = PlatformTeamScene.CATWALK_Y;
+    const xMin = 600;
+    const xMax = 860;
+
+    const plat = this.physics.add.image(xMin, C, 'room_elevator_platform');
+    plat.setImmovable(true);
+    (plat.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    plat.setDepth(3);
+    // Slight tint so it visually reads as "CI/CD lift" distinct from the
+    // static room elevator cabs on other floors.
+    plat.setTint(0x7fb8d6);
+
+    this.cicd = plat;
+    this.cicdPrevX = xMin;
+
+    this.tweens.add({
+      targets: plat,
+      x: xMax,
+      duration: 2800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.physics.add.collider(this.player.sprite, plat);
+  }
+
+  /**
+   * Horizontally carry the player whenever they're standing on the CI/CD
+   * platform. Called after `super.update(...)` so the player's own physics
+   * step has already resolved; we just shift position by the platform's
+   * per-frame delta.
+   */
+  private carryPlayerOnCicd(): void {
+    if (!this.cicd) return;
+
+    const dx = this.cicd.x - this.cicdPrevX;
+    this.cicdPrevX = this.cicd.x;
+    if (dx === 0) return;
+
+    const sprite = this.player.sprite;
+    const body = sprite.body as Phaser.Physics.Arcade.Body;
+    if (!body) return;
+
+    const platTop = this.cicd.y - this.cicd.height / 2;
+    const platLeft = this.cicd.x - this.cicd.width / 2;
+    const platRight = this.cicd.x + this.cicd.width / 2;
+    const standingOnTop =
+      body.touching.down &&
+      Math.abs(body.bottom - platTop) < 8 &&
+      sprite.x > platLeft - 10 &&
+      sprite.x < platRight + 10;
+
+    if (standingOnTop) {
+      sprite.x += dx;
+      body.updateFromGameObject();
+    }
   }
 
   /**
@@ -429,6 +573,7 @@ export class PlatformTeamScene extends LevelScene {
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
+    const C = PlatformTeamScene.CATWALK_Y;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
@@ -436,36 +581,54 @@ export class PlatformTeamScene extends LevelScene {
       exitPosition: { x: 80, y: G - 56 },
 
       platforms: [
-        { x: 0, y: G, width: 10 },
+        // Ground (full room width, 10 tiles).
+        { x: 0,    y: G,   width: 10 },
+        // Left access: low step + left catwalk (Scaling mezzanine).
+        { x: 180,  y: 700, width: 1 },
+        { x: 300,  y: C,   width: 2 },
+        // Right catwalk (Observability mezzanine) + low step.
+        { x: 900,  y: C,   width: 2 },
+        { x: 1080, y: 700, width: 1 },
       ],
 
       roomElevators: [],
 
-      // Token indices 0..4 — disjoint from ArchitectureTeamScene (5..).
+      // Token indices 0..6 — disjoint from ArchitectureTeamScene (7..).
       tokens: [
-        { x: 380,  y: G - 40 },
-        { x: 500,  y: G - 40 },
-        { x: 620,  y: G - 40 },
-        { x: 830,  y: G - 40 },
-        { x: 1070, y: G - 40 },
+        // Ground trail.
+        { x: 300,  y: G - 40, index: 0 }, // entry reward
+        { x: 620,  y: G - 40, index: 1 }, // between desk & router
+        { x: 870,  y: G - 40, index: 2 }, // between rack and WAF
+        // Mezzanine trail.
+        { x: 430,  y: C - 40, index: 3 }, // left catwalk (Scaling)
+        { x: 730,  y: 460,    index: 4 }, // mid-air — grab while jumping off the CI/CD lift
+        { x: 1030, y: C - 40, index: 5 }, // right catwalk (Observability)
+        // Easter egg: perched on top of the WAF panel — reached by a tricky
+        // left-jump off the right-side low step.
+        { x: 1165, y: 588,    index: 6 },
       ],
 
       infoPoints: [
+        // Ground — onboarding signpost and the WAF edge station.
         {
           x: 260, y: G, contentId: 'platform-engineering',
           zone: { shape: 'rect', width: 140, height: 220 },
         },
         {
-          x: 440, y: G, contentId: 'scaling',
-          zone: { shape: 'rect', width: 200, height: 220 },
-        },
-        {
-          x: 930, y: G, contentId: 'you-build-you-run',
-          zone: { shape: 'rect', width: 280, height: 220 },
-        },
-        {
           x: 1165, y: G, contentId: 'web-application-firewall',
           zone: { shape: 'rect', width: 180, height: 220 },
+        },
+        // Mezzanine — zones centred on the catwalk walking surface. `y` is
+        // slightly below the walking surface so the default `offsetY = -h/2`
+        // produces a zone rect that clearly contains a catwalk-standing
+        // player (foot y ≈ C).
+        {
+          x: 430, y: C + 10, contentId: 'scaling',
+          zone: { shape: 'rect', width: 220, height: 200 },
+        },
+        {
+          x: 1030, y: C + 10, contentId: 'you-build-you-run',
+          zone: { shape: 'rect', width: 260, height: 200 },
         },
       ],
 
