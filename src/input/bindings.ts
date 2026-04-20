@@ -20,17 +20,17 @@ const K = Phaser.Input.Keyboard.KeyCodes;
  */
 export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   // --- Movement ---
-  MoveLeft:  [K.LEFT, K.A],
-  MoveRight: [K.RIGHT, K.D],
-  MoveUp:    [K.UP, K.W],
-  MoveDown:  [K.DOWN, K.S],
+  MoveLeft:  [K.LEFT],
+  MoveRight: [K.RIGHT],
+  MoveUp:    [K.UP],
+  MoveDown:  [K.DOWN],
 
   // --- Gameplay verbs ---
   // Space is reserved exclusively for Jump so it never triggers a
   // scene transition or dialog by accident. Action verbs (entering
   // doors, opening info cards) all go through Enter — which is also
   // dispatched by pointer/touch events on interactive game objects.
-  Jump:       [K.SPACE, K.UP, K.W],
+  Jump:       [K.SPACE, K.UP],
   Interact:   [K.ENTER],
   ToggleInfo: [K.I, K.ENTER],
 
