@@ -317,7 +317,15 @@ export class ElevatorScene extends Phaser.Scene {
     const infoPressed = inputs.justPressed('ToggleInfo');
     const interactPressed = inputs.justPressed('Interact');
 
-    if (this.dialogs.isOpen) return;
+    // Keep the Player ticking while a dialog is open so it can react to
+    // the `modal` input context (zeroing velocity, switching to `idle`).
+    // Everything else in the elevator (cab, doors, buttons) intentionally
+    // pauses — the player is just reading the dialog.
+    if (this.dialogs.isOpen) {
+      this.player.update(delta);
+      this.hud.update();
+      return;
+    }
 
     this.player.update(delta);
     this.hud.update();
