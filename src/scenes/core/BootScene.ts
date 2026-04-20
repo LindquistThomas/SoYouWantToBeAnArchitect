@@ -59,6 +59,12 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('music_floor1', 'music/8bit-chiptune/bgm_action_1.mp3');
     this.load.audio('music_floor2', 'music/8bit-chiptune/bgm_action_2.mp3');
     this.load.audio('music_quiz', 'music/retro-synth/hostile_territory-loop1.ogg');
+
+    // Brand assets. The Norconsult Digital wordmark (white) is used as the
+    // wall-mounted company sign in the lobby. Rendered from SVG so it stays
+    // crisp at any camera zoom. The SVG's native viewBox is 160×54; scale up
+    // to ~3× so it reads from across the lobby.
+    this.load.svg('lobby_logo', 'brand/norconsult-digital-white.svg', { width: 200, height: 68 });
   }
 
   create(): void {

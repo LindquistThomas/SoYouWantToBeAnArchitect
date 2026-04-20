@@ -211,7 +211,7 @@ export class ElevatorScene extends Phaser.Scene {
       }
     }
     const lobbyY = positions[FLOORS.LOBBY];
-    return { x: 200, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
+    return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
   }
 
   /* ---- elevator ---- */

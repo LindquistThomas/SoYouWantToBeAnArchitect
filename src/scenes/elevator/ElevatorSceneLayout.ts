@@ -805,21 +805,13 @@ export class ElevatorSceneLayout {
     const floorBottom = lobbyY + FLOOR_H;
 
     // Left walkway — reception side.
-    // Wall-mounted Norconsult Digital wordmark. Positioned LOW on the wall
-    // so it clears the F0 floor-label plaque (which lives near lobbyY+16
-    // on the left walkway). Single-line wordmark, centred on the plaque.
-    const signY = lobbyY + 110;
+    // Wall-mounted Norconsult Digital wordmark (SVG loaded in BootScene).
+    // Positioned on the upper wall, above the reception desk.
+    const signY = lobbyY + 75;
     const signX = 260;
     scene.add.image(signX, signY, 'lobby_logo').setDepth(2);
-    scene.add.text(signX, signY - 4, 'Norconsult Digital', {
-      fontFamily: 'monospace',
-      fontSize: '20px',
-      color: '#f5f5f5',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(3);
 
     scene.add.image(60, floorBottom - 40, 'plant_tall').setDepth(3);
-    scene.add.image(100, floorBottom - 32, 'plant_small').setDepth(3);
 
     // Reception desk with the seated receptionist tucked behind it.
     const deskX = 200;
@@ -840,16 +832,13 @@ export class ElevatorSceneLayout {
     this.receptionistBubble = this.createSpeechBubble(scene, deskX + 40, deskY - 90, 'Hello!');
     this.receptionistBubble.setVisible(false);
 
-    scene.add.image(355, floorBottom - 60, 'info_board').setDepth(3);
-    scene.add.image(425, floorBottom - 32, 'plant_small').setDepth(3);
-    scene.add.image(485, floorBottom - 40, 'plant_tall').setDepth(11);
+    scene.add.image(395, floorBottom - 60, 'info_board').setDepth(3);
+    scene.add.image(455, floorBottom - 32, 'plant_small').setDepth(3);
 
     // Right walkway — waiting area.
     // Wall-mounted clock (anchored to lobbyY band).
     scene.add.image(1000, lobbyY + 60, 'wall_clock').setDepth(2);
     scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
-    // Moved from x=870 -> x=820 so it no longer overlaps the sofa.
-    scene.add.image(820, floorBottom - 32, 'plant_small').setDepth(11);
     scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);

@@ -9,7 +9,8 @@ import { theme } from '../../style/theme';
  */
 export function generateLobbyPropSprites(scene: Phaser.Scene): void {
   generateReceptionDesk(scene);
-  generateLobbyLogo(scene);
+  // Note: the company logo ('lobby_logo') is loaded as an SVG in BootScene
+  // from public/brand/norconsult-digital-white.svg rather than generated.
   generateSofa(scene);
   generateCoffeeTable(scene);
   generateFloorLamp(scene);
@@ -51,26 +52,6 @@ function generateReceptionDesk(scene: Phaser.Scene): void {
   g.fillRect(22, 26, 8, 2);
 
   g.generateTexture('reception_desk', w, h);
-  g.destroy();
-}
-
-function generateLobbyLogo(scene: Phaser.Scene): void {
-  const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  const w = 300, h = 56;
-
-  // Simple dark plaque with a brand-blue top band and a subtle border.
-  g.fillStyle(0x0a1422, 0.92);
-  g.fillRoundedRect(0, 0, w, h, 8);
-  g.fillStyle(0x1a237e, 0.9);
-  g.fillRoundedRect(0, 0, w, 10, { tl: 8, tr: 8, bl: 0, br: 0 });
-  g.lineStyle(2, theme.color.ui.border, 0.9);
-  g.strokeRoundedRect(1, 1, w - 2, h - 2, 8);
-
-  // Accent underline stripe below where the wordmark sits.
-  g.fillStyle(theme.color.ui.accent, 0.9);
-  g.fillRect(16, h - 10, w - 32, 2);
-
-  g.generateTexture('lobby_logo', w, h);
   g.destroy();
 }
 
