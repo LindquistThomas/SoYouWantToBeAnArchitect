@@ -398,6 +398,135 @@ export const QUIZ_PLATFORM: Record<string, QuizDefinition> = {
   },
 
   /* --------------------------------------------------------- */
+  /*  Horizontal vs Vertical Scaling                            */
+  /* --------------------------------------------------------- */
+  'scaling': {
+    infoId: 'scaling',
+    questions: [
+      // ---- EASY ----
+      {
+        id: 'scl-e1',
+        difficulty: 'easy',
+        question: 'Which statement best describes vertical scaling ("scale up")?',
+        choices: [
+          'Adding more identical servers behind a load balancer',
+          'Making a single server bigger — more CPU, more RAM, faster disks',
+          'Splitting the database into many shards',
+          'Moving the workload to a different data centre',
+        ],
+        correctIndex: 1,
+        explanation: 'Scaling up means replacing the existing machine with a larger one. There is still only one node.',
+      },
+      {
+        id: 'scl-e2',
+        difficulty: 'easy',
+        question: 'Which statement best describes horizontal scaling ("scale out")?',
+        choices: [
+          'Upgrading the CPU to a higher clock speed',
+          'Running more copies of the service behind a load balancer',
+          'Rewriting the application in a faster language',
+          'Moving from spinning disks to SSDs',
+        ],
+        correctIndex: 1,
+        explanation: 'Scaling out means adding more nodes so the workload can be spread across them.',
+      },
+      {
+        id: 'scl-e3',
+        difficulty: 'easy',
+        question: 'A key reliability advantage of horizontal scaling over vertical scaling is…',
+        choices: [
+          'Lower software-licence cost per core',
+          'No single point of failure — one node can die and the service stays up',
+          'Guaranteed strong consistency without any extra work',
+          'Faster CPU per request',
+        ],
+        correctIndex: 1,
+        explanation: 'A fleet of N nodes behind a load balancer tolerates single-node failure; one big box does not.',
+      },
+      {
+        id: 'scl-e4',
+        difficulty: 'easy',
+        question: 'Which kind of workload is the easiest to scale horizontally?',
+        choices: [
+          'A stateful legacy monolith that holds sessions in memory',
+          'A stateless HTTP service behind a load balancer',
+          'A single-writer SQL database',
+          'A desktop application',
+        ],
+        correctIndex: 1,
+        explanation: 'Stateless services can run as N identical copies — any request can land on any node.',
+      },
+      // ---- MEDIUM ----
+      {
+        id: 'scl-m1',
+        difficulty: 'medium',
+        question: 'Why do teams often reach for vertical scaling first on a classic SQL database?',
+        choices: [
+          'It is always cheaper at every scale',
+          'A single node preserves a single source of truth — no need to redesign for distribution',
+          'Vertical scaling automatically turns the database into a NoSQL store',
+          'It removes the need for backups',
+        ],
+        correctIndex: 1,
+        explanation: 'Keeping everything on one node sidesteps the hard problems of replication and partitioning, at least for a while.',
+      },
+      {
+        id: 'scl-m2',
+        difficulty: 'medium',
+        question: 'Which pattern extends horizontal scaling to stateful systems by partitioning data by key?',
+        choices: [
+          'Caching',
+          'Sharding',
+          'Blue-green deployment',
+          'Feature flagging',
+        ],
+        correctIndex: 1,
+        explanation: 'Sharding partitions data (by user id, tenant, range, etc.) so each shard fits on a node that can still be scaled up.',
+      },
+      {
+        id: 'scl-m3',
+        difficulty: 'medium',
+        question: 'Which of these is a real limitation of vertical scaling?',
+        choices: [
+          'There is always a hard ceiling — even the biggest instance has a top size, and cost rises non-linearly near it',
+          'Vertical scaling prevents the use of containers',
+          'Scaling up requires rewriting the application in a new language',
+          'Vertical scaling makes horizontal scaling impossible later',
+        ],
+        correctIndex: 0,
+        explanation: 'The top instance SKUs are disproportionately expensive and eventually run out — physics and vendor price lists both impose ceilings.',
+      },
+      // ---- HARD ----
+      {
+        id: 'scl-h1',
+        difficulty: 'hard',
+        question: 'Which trade-off is introduced specifically by scaling a stateful system horizontally (vs keeping it vertical)?',
+        choices: [
+          'The CAP trade-off between Consistency and Availability during network partitions',
+          'The need to compile code to native binaries',
+          'A requirement to use a proprietary operating system',
+          'The loss of all ACID guarantees in every case',
+        ],
+        correctIndex: 0,
+        explanation: 'A distributed stateful system must pick, during a partition, between rejecting writes (CP) or serving stale data (AP). A single node sidesteps the question.',
+      },
+      {
+        id: 'scl-h2',
+        difficulty: 'hard',
+        question: 'Horizontal scaling pairs naturally with which operational technique for elastic capacity?',
+        choices: [
+          'Scheduled downtime windows for weekly resizing',
+          'Autoscaling driven by signals such as CPU, queue depth, or p95 latency',
+          'Manual re-provisioning per release',
+          'Fixing the fleet size permanently at its peak demand',
+        ],
+        correctIndex: 1,
+        explanation: 'Adding/removing nodes is what autoscalers (Kubernetes HPA, AWS ASG, serverless concurrency) do in response to live load signals.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
   /*  You Build It, You Run It                                  */
   /* --------------------------------------------------------- */
   'you-build-you-run': {

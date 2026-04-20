@@ -40,8 +40,139 @@ export class PlatformTeamScene extends LevelScene {
     this.add.image(760, G - 50, 'server_rack').setDepth(3);
     this.add.image(760, G - 10, 'cables').setDepth(1);
 
+    // "Scaling" info wall between the signpost and the workstations.
+    this.createScalingDiagram(440, G - 50);
+
     // "You build it, you run it" monitoring wall (animated).
     this.createMonitoringWall(930, G - 50);
+  }
+
+  /**
+   * Wall-mounted "SCALING" diagram contrasting horizontal vs vertical scaling.
+   *
+   * Two labelled halves:
+   *   - HORIZONTAL: four small server boxes appearing one-by-one across the
+   *     row, illustrating "add more machines" (scale out).
+   *   - VERTICAL: a single server box whose height grows, illustrating
+   *     "make one machine bigger" (scale up).
+   *
+   * A looping timer drives the animation so the difference between the two
+   * strategies is visible at a glance. The timer is owned by scene.time so
+   * it's cleaned up automatically on scene shutdown.
+   */
+  private createScalingDiagram(cx: number, baseY: number): void {
+    const W = 240, H = 150;
+    const x = cx - W / 2, y = baseY - H - 10;
+
+    const frame = this.add.graphics().setDepth(3);
+    frame.fillStyle(0x1a1a22, 1).fillRoundedRect(x, y, W, H, 6);
+    frame.lineStyle(2, 0x3b4a5c, 1).strokeRoundedRect(x, y, W, H, 6);
+    // Tiny mounting feet so it reads as a wall panel (matches monitoring wall).
+    frame.fillStyle(0x2a2a33, 1);
+    frame.fillRect(x + 10, y + H, 6, 14);
+    frame.fillRect(x + W - 16, y + H, 6, 14);
+
+    this.add.text(x + 8, y + 4, 'SCALING', {
+      fontFamily: 'monospace', fontSize: '10px', color: '#b8e6ff', fontStyle: 'bold',
+    }).setDepth(4);
+
+    // Two panes split the interior.
+    const pane = (px: number, pw: number, label: string) => {
+      frame.fillStyle(0x06101c, 1).fillRect(px, y + 22, pw, H - 44);
+      frame.lineStyle(1, 0x3b4a5c, 0.8).strokeRect(px, y + 22, pw, H - 44);
+      this.add.text(px + pw / 2, y + H - 16, label, {
+        fontFamily: 'monospace', fontSize: '9px', color: '#6fa8d6', fontStyle: 'bold',
+      }).setOrigin(0.5, 0).setDepth(4);
+    };
+    const leftX = x + 8,  leftW  = (W - 24) / 2;
+    const rightX = leftX + leftW + 8, rightW = leftW;
+    pane(leftX, leftW, 'HORIZONTAL');
+    pane(rightX, rightW, 'VERTICAL');
+
+    // Captions above each pane.
+    this.add.text(leftX + leftW / 2, y + 24, 'scale out', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#8fb8e6',
+    }).setOrigin(0.5, 0).setDepth(4);
+    this.add.text(rightX + rightW / 2, y + 24, 'scale up', {
+      fontFamily: 'monospace', fontSize: '8px', color: '#8fb8e6',
+    }).setOrigin(0.5, 0).setDepth(4);
+
+    const anim = this.add.graphics().setDepth(4);
+
+    // Horizontal layout: a row of up to N small boxes that appear one by one.
+    const SERVERS = 4;
+    const rowY = y + 54;
+    const rowH = 38;
+    const slotW = (leftW - 10) / SERVERS;
+
+    // Vertical layout: a single box whose height grows then resets.
+    const vBoxX = rightX + rightW / 2 - 9;
+    const vBoxBottom = y + H - 26;
+    const vMinH = 14;
+    const vMaxH = 68;
+
+    let step = 0; // advances on every tick; horizontal cycle = SERVERS+2, vertical cycle = ~40
+    const redraw = () => {
+      anim.clear();
+
+      // --- Horizontal: paint N boxes, reveal them one per step, pause, reset.
+      const cycle = SERVERS + 3; // 4 reveal steps + 3 idle steps
+      const revealed = Math.min(SERVERS, step % cycle);
+      for (let i = 0; i < revealed; i++) {
+        const bx = leftX + 5 + i * slotW;
+        const by = rowY;
+        anim.fillStyle(0x4caf50, 1);
+        anim.fillRect(bx, by, slotW - 4, rowH);
+        anim.lineStyle(1, 0x8fe6a8, 0.9).strokeRect(bx, by, slotW - 4, rowH);
+        // Server LED.
+        anim.fillStyle(0xaaffaa, 1).fillRect(bx + 3, by + 3, 3, 3);
+        // Faint link line connecting siblings — illustrates a cluster.
+        if (i > 0) {
+          const pbx = leftX + 5 + (i - 1) * slotW;
+          anim.lineStyle(1, 0x4caf50, 0.6)
+            .lineBetween(pbx + slotW - 4, by + rowH / 2, bx, by + rowH / 2);
+        }
+      }
+      // Arrow hint under the row.
+      anim.lineStyle(1, 0x8fe6a8, 0.6);
+      const arrY = rowY + rowH + 6;
+      anim.lineBetween(leftX + 6, arrY, leftX + leftW - 6, arrY);
+      anim.fillStyle(0x8fe6a8, 0.8);
+      anim.fillTriangle(
+        leftX + leftW - 6, arrY,
+        leftX + leftW - 12, arrY - 3,
+        leftX + leftW - 12, arrY + 3,
+      );
+
+      // --- Vertical: one box whose height oscillates between min and max.
+      const vCycle = 24;
+      const phase = (step % vCycle) / vCycle;
+      // Smooth triangular oscillation: 0→1→0.
+      const tri = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+      const vH = vMinH + (vMaxH - vMinH) * tri;
+      const vTop = vBoxBottom - vH;
+      anim.fillStyle(0x42a5f5, 1);
+      anim.fillRect(vBoxX, vTop, 18, vH);
+      anim.lineStyle(1, 0xaacff0, 0.9).strokeRect(vBoxX, vTop, 18, vH);
+      // CPU/RAM band markers inside the growing box.
+      const bands = Math.max(1, Math.floor(vH / 10));
+      anim.fillStyle(0xaaffaa, 1);
+      for (let b = 0; b < bands; b++) {
+        anim.fillRect(vBoxX + 3, vBoxBottom - 4 - b * 10, 3, 2);
+        anim.fillRect(vBoxX + 12, vBoxBottom - 4 - b * 10, 3, 2);
+      }
+      // Upward arrow next to the box.
+      anim.lineStyle(1, 0xaacff0, 0.7);
+      const ax = vBoxX + 26;
+      anim.lineBetween(ax, vBoxBottom, ax, vTop);
+      anim.fillStyle(0xaacff0, 0.9);
+      anim.fillTriangle(ax, vTop, ax - 3, vTop + 6, ax + 3, vTop + 6);
+
+      step++;
+    };
+
+    redraw();
+    this.time.addEvent({ delay: 320, loop: true, callback: redraw });
   }
 
   /**
@@ -172,6 +303,10 @@ export class PlatformTeamScene extends LevelScene {
         {
           x: 260, y: G, contentId: 'platform-engineering',
           zone: { shape: 'rect', width: 140, height: 220 },
+        },
+        {
+          x: 440, y: G, contentId: 'scaling',
+          zone: { shape: 'rect', width: 200, height: 220 },
         },
         {
           x: 930, y: G, contentId: 'you-build-you-run',

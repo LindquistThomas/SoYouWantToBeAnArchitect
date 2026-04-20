@@ -50,6 +50,106 @@ export const INFO_PLATFORM: Record<string, InfoPointDef> = {
     },
   },
 
+  'scaling': {
+    floorId: FLOORS.PLATFORM_TEAM,
+    content: {
+      id: 'scaling',
+      title: 'Horizontal vs Vertical Scaling',
+      body:
+        'When a system needs to handle more load, there are two fundamentally ' +
+        'different ways to add capacity: make a single machine bigger, or add ' +
+        'more machines. Each has very different cost, reliability, and ' +
+        'architectural implications.\n\n' +
+        'VERTICAL SCALING (scale up)\n' +
+        'Replace the existing server with a larger one \u2014 more CPU cores, ' +
+        'more RAM, faster disks. It is the simplest approach: the application ' +
+        'does not need to change, there is still only one node, and ' +
+        'consistency is trivially preserved. The trade-offs are a hard upper ' +
+        'bound (even the biggest machine has a ceiling), non-linear cost at ' +
+        'the top end, and a single point of failure \u2014 if that one big ' +
+        'box goes down, so does the service.\n\n' +
+        'HORIZONTAL SCALING (scale out)\n' +
+        'Add more servers behind a load balancer and share the work between ' +
+        'them. Capacity grows (nearly) linearly with the number of nodes, a ' +
+        'single machine failure no longer takes the system down, and commodity ' +
+        'hardware is cheaper per unit of work. The cost: the application must ' +
+        'be designed for it \u2014 state has to live somewhere shared ' +
+        '(database, cache) or be replicated, requests must be routable to ' +
+        'any node, and operators now run a cluster rather than a box.\n\n' +
+        'WHEN TO USE WHICH\n' +
+        '  \u2022 Scale up first for stateful components that are hard to ' +
+        'distribute (classic relational databases, legacy monoliths). It is ' +
+        'the cheapest way to buy headroom while you plan something better.\n' +
+        '  \u2022 Scale out for stateless services, web tiers, and any ' +
+        'workload where throughput, redundancy, or cost-per-request matters ' +
+        'more than single-node simplicity.\n' +
+        '  \u2022 In practice, real systems do both: scale out the stateless ' +
+        'tiers, scale up (or shard) the stateful ones.',
+      links: [
+        { label: 'AWS: Scalability (up vs out)', url: 'https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_adapt_to_changes_scale_out.html' },
+        { label: 'Martin Kleppmann \u2014 Designing Data-Intensive Applications', url: 'https://dataintensive.net/' },
+        { label: 'Google SRE \u2014 Load balancing', url: 'https://sre.google/sre-book/load-balancing-frontend/' },
+      ],
+      extendedInfo: {
+        title: 'Deep Dive: Horizontal vs Vertical Scaling',
+        body:
+          'THE STATE PROBLEM\n' +
+          'The real axis that separates the two approaches is state. A ' +
+          'stateless HTTP service scales out almost for free: put a load ' +
+          'balancer in front, run N copies, done. A stateful service (a ' +
+          'SQL database, an in-memory session store, a WebSocket hub) ' +
+          'resists horizontal scaling because requests for the same entity ' +
+          'must land on the node that owns its state. That is why people ' +
+          'reach for vertical scaling on databases first \u2014 it preserves ' +
+          'a single source of truth.\n\n' +
+          'SHARDING = HORIZONTAL FOR STATE\n' +
+          'When vertical scaling runs out, the usual next step for stateful ' +
+          'systems is sharding: partition the data by key (user id, tenant, ' +
+          'geography) so that each shard fits on a single node that can ' +
+          'still be scaled up. Consistent hashing, range partitioning, and ' +
+          'tenant-per-shard are common strategies. Modern "distributed SQL" ' +
+          'databases (CockroachDB, Spanner, YugabyteDB) automate this at ' +
+          'the cost of additional latency and operational complexity.\n\n' +
+          'AUTOSCALING\n' +
+          'Horizontal scaling pairs naturally with elastic autoscaling. ' +
+          'Kubernetes HPA, AWS Auto Scaling Groups, and serverless ' +
+          'concurrency all add nodes when a signal (CPU, queue depth, ' +
+          'request rate, p95 latency) crosses a threshold, and remove them ' +
+          'when the signal drops. The value shows up on the bill: you pay ' +
+          'for peaks, not averages. Vertical scaling rarely autoscales ' +
+          'well \u2014 resizing a VM usually means a restart.\n\n' +
+          'COST SHAPE\n' +
+          'Vertical: cost per unit of work rises as you climb the SKU ' +
+          'ladder \u2014 the top instance types are disproportionately ' +
+          'expensive. Horizontal: cost per unit of work stays roughly ' +
+          'flat, plus a small overhead for the load balancer and ' +
+          'coordination. At small scale vertical usually wins; at ' +
+          'internet scale horizontal is the only option that fits on ' +
+          'the planet.\n\n' +
+          'RELIABILITY CONSEQUENCES\n' +
+          'A single large box is a single point of failure \u2014 its ' +
+          'reliability is bounded by hardware MTBF. A fleet of N smaller ' +
+          'boxes behind a load balancer tolerates N-1 failures if the ' +
+          'application is truly stateless. This is why "you build it, ' +
+          'you run it" teams tend to design for horizontal scaling ' +
+          'from day one: the operational story is simpler even before ' +
+          'load becomes an issue.\n\n' +
+          'CAP AND CONSISTENCY\n' +
+          'Going horizontal introduces the CAP trade-off: in the ' +
+          'presence of a network partition you must choose between ' +
+          'Consistency and Availability. Vertical scaling sidesteps ' +
+          'the question by keeping everything on one node \u2014 which ' +
+          'is exactly why some systems stay vertical longer than they ' +
+          'should.\n\n' +
+          'KEY INSIGHT\n' +
+          'Vertical scaling buys time. Horizontal scaling buys a future. ' +
+          'The architect\'s job is to know where each one belongs and to ' +
+          'make the jump from up to out before the business depends on a ' +
+          'single box staying alive.',
+      },
+    },
+  },
+
   'you-build-you-run': {
     floorId: FLOORS.PLATFORM_TEAM,
     content: {
