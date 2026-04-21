@@ -26,6 +26,7 @@ export function generateDatacenterAmbience(): ArrayBuffer {
   // --- Brown noise (fan whoosh). Integrated white noise, tamed with a
   //     leaky integrator so it stays bounded.
   let brown = 0;
+  let prevBrown = 0;
   const brownLeak = 0.995;
 
   // --- Mains hum phases.
@@ -50,7 +51,8 @@ export function generateDatacenterAmbience(): ArrayBuffer {
     const white = Math.random() * 2 - 1;
     brown = brown * brownLeak + white * 0.05;
     // Gentle low-pass via 2-sample moving average (cheap & good enough).
-    const fan = brown;
+    const fan = (brown + prevBrown) * 0.5;
+    prevBrown = brown;
 
     // Mains hum + PSU buzz with slow amplitude drift.
     const humA = Math.sin(hum60 * i) * 0.07;
@@ -84,7 +86,7 @@ export function generateDatacenterAmbience(): ArrayBuffer {
   //     the corresponding head samples so the boundary is continuous.
   const fadeLen = Math.floor(SAMPLE_RATE * 0.25);
   for (let j = 0; j < fadeLen; j++) {
-    const t = j / fadeLen; // 0 at tail start, 1 at buffer end
+    const t = fadeLen > 1 ? j / (fadeLen - 1) : 1; // 0 at tail start, 1 at buffer end
     const tail = samples[numSamples - fadeLen + j];
     const head = samples[j];
     // Linear crossfade: tail ramps out (1→0), head ramps in (0→1) at the seam.

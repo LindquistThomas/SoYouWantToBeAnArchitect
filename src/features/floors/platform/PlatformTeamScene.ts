@@ -551,7 +551,7 @@ export class PlatformTeamScene extends LevelScene {
       //     middle and can't get out" dead zone. Reaches from the ground
       //     (bottom parked position) up to the catwalk level. ---
       roomElevators: [
-        { x: 640, minY: C, maxY: G - 40, startY: G - 40 },
+        { x: 640, minY: C + 6, maxY: G + 6, startY: G + 6 },
       ],
 
       // Token indices 0..6 — disjoint from ArchitectureTeamScene (7..).

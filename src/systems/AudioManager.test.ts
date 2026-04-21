@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioManager } from './AudioManager';
 import { eventBus } from './EventBus';
-import { SFX_EVENTS } from '../config/audioConfig';
+import { MUSIC_VOLUME, SFX_EVENTS } from '../config/audioConfig';
 
 const MUTE_STORAGE_KEY = 'architect_audio_muted_v1';
 
@@ -142,7 +142,7 @@ describe('AudioManager', () => {
       );
       const callVolume = (fakeSound.add.mock.calls[0][1] as { volume: number }).volume;
       // Ambience must be quieter than music so it sits UNDER the main track.
-      expect(callVolume).toBeLessThan(0.35);
+      expect(callVolume).toBeLessThan(MUSIC_VOLUME);
       expect(fakeSound._instances).toHaveLength(1);
       expect(fakeSound._instances[0].play).toHaveBeenCalledTimes(1);
     });
