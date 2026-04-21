@@ -16,7 +16,7 @@ type SfxEventName = Extract<GameEventName, `sfx:${string}`>;
 export const SCENE_MUSIC: Record<string, string> = {
   MenuScene:    'music_menu',
   ElevatorScene:     'music_elevator_jazz',
-  PlatformTeamScene:       'music_floor1',
+  PlatformTeamScene:       'music_platform',
   ArchitectureTeamScene:   'music_floor1',
   FinanceTeamScene:        'music_floor2',
   ProductLeadershipScene:  'music_floor2',
@@ -40,6 +40,7 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
   { key: 'music_floor1', path: 'music/8bit-chiptune/bgm_action_1.mp3' },
   { key: 'music_floor2', path: 'music/8bit-chiptune/bgm_action_2.mp3' },
+  { key: 'music_platform', path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz', path: 'music/retro-synth/hostile_territory-loop1.ogg' },
 ];
 
@@ -55,6 +56,7 @@ export const SOUNDTRACK_PLAYLIST: ReadonlyArray<SoundtrackTrack> = [
   { key: 'music_elevator_ride', label: 'ELEVATOR RIDE' },
   { key: 'music_floor1', label: 'FLOOR 1' },
   { key: 'music_floor2', label: 'FLOOR 2' },
+  { key: 'music_platform', label: 'PLATFORM' },
   { key: 'music_quiz', label: 'QUIZ' },
   { key: 'music_lullaby', label: 'LULLABY' },
 ];
@@ -78,3 +80,10 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
 
 /** Default volume for background music (0–1). */
 export const MUSIC_VOLUME = 0.35;
+
+/**
+ * Default volume for looping ambience beds (0–1). Kept well below
+ * MUSIC_VOLUME so the ambience reads as background texture underneath
+ * the scene music rather than competing with it.
+ */
+export const AMBIENCE_VOLUME = 0.12;

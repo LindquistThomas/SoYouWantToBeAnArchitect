@@ -20,6 +20,11 @@ export interface GameEvents {
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
 
+  /** Start looping an ambience bed on the dedicated ambience channel. */
+  'ambience:play': [key: string];
+  /** Stop the current ambience bed. */
+  'ambience:stop': [];
+
   'zone:enter': [zoneId: string];
   'zone:exit': [zoneId: string];
 

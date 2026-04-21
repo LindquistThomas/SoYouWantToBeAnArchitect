@@ -14,6 +14,7 @@ import {
   generateDropAUSound,
   generateRecoverAUSound,
 } from './sounds/movement';
+import { generateDatacenterAmbience } from './sounds/ambience';
 
 /**
  * Composition root for runtime audio generation.
@@ -37,6 +38,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'stomp', generateStompSound());
   loadWav(scene, 'drop_au', generateDropAUSound());
   loadWav(scene, 'recover_au', generateRecoverAUSound());
+  loadWav(scene, 'ambience_datacenter', generateDatacenterAmbience());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';
