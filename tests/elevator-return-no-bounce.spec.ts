@@ -89,11 +89,11 @@ test.describe('elevator return', () => {
       const walkInKey = c.stepOff === 'left' ? 'ArrowRight' : 'ArrowLeft';
       const walkOutKey = c.stepOff === 'left' ? 'ArrowLeft' : 'ArrowRight';
 
-      // Fails the test as soon as the target floor scene becomes active.
-      // `page.waitForFunction` rejects if the predicate never becomes true
-      // within its timeout, so we flip the logic: resolve when the target
-      // scene is NOT active, but also poll every frame so if the bounce
-      // happens we catch it before the final assertion runs.
+      // Poll for a bounce during the next `ms` milliseconds by checking
+      // whether the original floor scene becomes active again. Returns
+      // `true` as soon as `c.sceneKey` is active; otherwise keeps sampling
+      // via `page.evaluate` every 50 ms until the window expires and then
+      // returns `false`.
       const observeBounce = async (ms: number): Promise<boolean> => {
         const deadline = Date.now() + ms;
         while (Date.now() < deadline) {
