@@ -16,7 +16,7 @@ type SfxEventName = Extract<GameEventName, `sfx:${string}`>;
 export const SCENE_MUSIC: Record<string, string> = {
   MenuScene:    'music_menu',
   ElevatorScene:     'music_elevator_jazz',
-  PlatformTeamScene:       'music_floor1',
+  PlatformTeamScene:       'music_platform',
   ArchitectureTeamScene:   'music_floor1',
   FinanceTeamScene:        'music_floor2',
   ProductLeadershipScene:  'music_floor2',
@@ -47,3 +47,10 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
 
 /** Default volume for background music (0–1). */
 export const MUSIC_VOLUME = 0.35;
+
+/**
+ * Default volume for looping ambience beds (0–1). Kept well below
+ * MUSIC_VOLUME so the ambience reads as background texture underneath
+ * the scene music rather than competing with it.
+ */
+export const AMBIENCE_VOLUME = 0.12;
