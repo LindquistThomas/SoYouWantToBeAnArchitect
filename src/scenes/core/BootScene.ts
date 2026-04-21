@@ -5,6 +5,7 @@ import { generateLullabyMusic } from '../../systems/MusicGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
+import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 
@@ -53,13 +54,10 @@ export class BootScene extends Phaser.Scene {
     // Generate procedural SFX and queue for Phaser's loader
     generateSounds(this);
 
-    // Load background music from MP3 files (distinct per scene)
-    this.load.audio('music_menu', 'music/8bit-chiptune/bgm_menu.mp3');
-    this.load.audio('music_elevator_jazz', 'music/elevator-jazz/elevator_jazz.mp3');
-    this.load.audio('music_elevator_ride', 'music/8bit-chiptune/bgm_action_3.mp3');
-    this.load.audio('music_floor1', 'music/8bit-chiptune/bgm_action_1.mp3');
-    this.load.audio('music_floor2', 'music/8bit-chiptune/bgm_action_2.mp3');
-    this.load.audio('music_quiz', 'music/retro-synth/hostile_territory-loop1.ogg');
+    // Load static background music files.
+    for (const { key, path } of STATIC_MUSIC_ASSETS) {
+      this.load.audio(key, path);
+    }
 
     // Procedurally generated lullaby — used while the player sits on the
     // lobby sofa. Keeps the feature self-contained with no extra asset.

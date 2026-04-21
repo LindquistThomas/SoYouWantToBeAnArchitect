@@ -24,6 +24,7 @@ export class MenuScene extends Phaser.Scene {
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
   private soundtrackButton?: Phaser.GameObjects.Text;
+  /** -1 so first playNextSoundtrack() wraps to index 0 (first track). */
   private soundtrackIndex = -1;
 
   constructor() {
@@ -349,15 +350,17 @@ export class MenuScene extends Phaser.Scene {
       this.menuButtons.push({ btn: contBtn, action: continueAction });
     }
 
-    const soundtrackYOffset = gameState?.hasSave()
-      ? MenuScene.SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET
-      : MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
-    const soundtrackY = cy + soundtrackYOffset;
-    const soundtrackAction = () => this.playNextSoundtrack();
-    const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
-    soundtrackBtn.setDepth(TEXT_DEPTH);
-    this.menuButtons.push({ btn: soundtrackBtn, action: soundtrackAction });
-    this.soundtrackButton = soundtrackBtn;
+    if (SOUNDTRACK_PLAYLIST.length > 0) {
+      const soundtrackYOffset = gameState?.hasSave()
+        ? MenuScene.SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET
+        : MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
+      const soundtrackY = cy + soundtrackYOffset;
+      const soundtrackAction = () => this.playNextSoundtrack();
+      const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
+      soundtrackBtn.setDepth(TEXT_DEPTH);
+      this.menuButtons.push({ btn: soundtrackBtn, action: soundtrackAction });
+      this.soundtrackButton = soundtrackBtn;
+    }
   }
 
   private makeButton(
