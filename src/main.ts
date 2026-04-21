@@ -46,6 +46,9 @@ creatorProto.text = function (config, addToScene) {
   return t;
 };
 
+// ±0.1% aspect drift tolerance prevents tiny floating-point/rounding jitter
+// from enabling the backdrop path when viewport and game ratio are effectively
+// the same.
 const ASPECT_RATIO_TOLERANCE = 0.001;
 // Chosen once at boot. `preserveDrawingBuffer` is a WebGL context creation
 // flag and can't be toggled after the renderer is created.
