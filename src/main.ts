@@ -46,8 +46,11 @@ creatorProto.text = function (config, addToScene) {
   return t;
 };
 
+const ASPECT_RATIO_TOLERANCE = 0.001;
+// Chosen once at boot. `preserveDrawingBuffer` is a WebGL context creation
+// flag and can't be toggled after the renderer is created.
 const needsPillarboxBackdrop =
-  Math.abs(window.innerWidth / Math.max(1, window.innerHeight) - GAME_WIDTH / GAME_HEIGHT) > 0.001;
+  Math.abs(window.innerWidth / Math.max(1, window.innerHeight) - GAME_WIDTH / GAME_HEIGHT) > ASPECT_RATIO_TOLERANCE;
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
