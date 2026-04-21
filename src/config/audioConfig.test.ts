@@ -13,4 +13,16 @@ describe('audioConfig soundtrack listen mode', () => {
       expect(playlistKeys.has(musicKey)).toBe(true);
     }
   });
+
+  it('contains only known loaded music keys', () => {
+    const knownKeys = new Set([
+      ...Object.values(SCENE_MUSIC),
+      'music_elevator_ride',
+      'music_quiz',
+      'music_lullaby',
+    ]);
+    for (const track of SOUNDTRACK_PLAYLIST) {
+      expect(knownKeys.has(track.key)).toBe(true);
+    }
+  });
 });

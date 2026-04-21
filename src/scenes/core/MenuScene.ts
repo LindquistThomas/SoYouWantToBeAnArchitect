@@ -17,6 +17,9 @@ import type { NavigationContext } from '../NavigationContext';
  * column on the left; the cityscape fills the right two-thirds.
  */
 export class MenuScene extends Phaser.Scene {
+  private static readonly SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET = 160;
+  private static readonly SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET = 100;
+
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
@@ -31,8 +34,6 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x05060f);
     this.menuButtons = [];
     this.selectedIndex = 0;
-    this.soundtrackButton = undefined;
-    this.soundtrackIndex = -1;
 
     this.createStarfield();
     this.createSkylineBackdrop();
@@ -348,7 +349,10 @@ export class MenuScene extends Phaser.Scene {
       this.menuButtons.push({ btn: contBtn, action: continueAction });
     }
 
-    const soundtrackY = gameState?.hasSave() ? cy + 160 : cy + 100;
+    const soundtrackYOffset = gameState?.hasSave()
+      ? MenuScene.SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET
+      : MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
+    const soundtrackY = cy + soundtrackYOffset;
     const soundtrackAction = () => this.playNextSoundtrack();
     const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
     soundtrackBtn.setDepth(TEXT_DEPTH);
