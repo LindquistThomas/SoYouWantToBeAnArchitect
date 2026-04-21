@@ -14,11 +14,10 @@ export default defineConfig({
   // and intended as a local dev tool. Skip them in CI to keep the pipeline green.
   testIgnore: process.env.CI ? ['**/visual.spec.ts'] : [],
   fullyParallel: true,
-  // CI runners (ubuntu-latest) have 4 vCPU. 4 workers over-subscribes once the
-  // Vite dev server, node test host, and OS are accounted for, which starves
-  // Phaser's render loop and produces 60s timeouts. 3 workers keeps most of
-  // the parallelism win without pinning every core.
-  workers: process.env.CI ? 3 : '50%',
+  // CI runners (ubuntu-latest) have 4 vCPU. The game loop + browser + Vite
+  // preview process are CPU-heavy; parallel workers regularly starve frame
+  // updates and trigger 120s timeouts. Run serially on CI for stability.
+  workers: process.env.CI ? 1 : '50%',
   // One retry on CI absorbs rare flake (worker eviction, cold cache miss)
   // without hiding bugs locally where retries stay at 0.
   retries: process.env.CI ? 1 : 0,
