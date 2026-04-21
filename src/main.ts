@@ -20,6 +20,7 @@ import { DebugPlugin } from './plugins/DebugPlugin';
 import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
+import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -45,6 +46,15 @@ creatorProto.text = function (config, addToScene) {
   return t;
 };
 
+// ±0.1% aspect drift tolerance prevents tiny floating-point/rounding jitter
+// from enabling the backdrop path when viewport and game ratio are effectively
+// the same.
+const ASPECT_RATIO_TOLERANCE = 0.001;
+// Chosen once at boot. `preserveDrawingBuffer` is a WebGL context creation
+// flag and can't be toggled after the renderer is created.
+const needsPillarboxBackdrop =
+  Math.abs(window.innerWidth / Math.max(1, window.innerHeight) - GAME_WIDTH / GAME_HEIGHT) > ASPECT_RATIO_TOLERANCE;
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
@@ -63,6 +73,15 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  // Enabled only when viewport aspect differs from game aspect; this limits
+  // WebGL preserveDrawingBuffer perf/memory overhead to sessions where the
+  // pillarbox backdrop is actually used.
+  // Required so the pillarbox backdrop (src/ui/pillarboxBackdrop.ts) can
+  // `drawImage` the live WebGL canvas. Without this, reads from the GL
+  // context yield blank frames.
+  render: {
+    preserveDrawingBuffer: needsPillarboxBackdrop,
   },
   scene: [BootScene, MenuScene, ElevatorScene, PlatformTeamScene, ArchitectureTeamScene, FinanceTeamScene, ProductLeadershipScene, CustomerSuccessScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
@@ -92,3 +111,13 @@ const gameWindow = window as unknown as {
 };
 gameWindow.__game = game;
 gameWindow.__testHooks = { QuizDialog, canRetryQuiz };
+
+// Kick the pillarbox backdrop once the first frame has rendered, so the
+// initial draw copies actual scene pixels rather than a blank buffer. The
+// `.ready` class fades it in (see #pillarbox-bg CSS in index.html).
+if (needsPillarboxBackdrop) {
+  game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+    startPillarboxBackdrop(game);
+    document.getElementById('pillarbox-bg')?.classList.add('ready');
+  });
+}
