@@ -89,15 +89,32 @@ describe('actions', () => {
 });
 
 describe('bindings', () => {
-  it('maps arrow keys and WASD to their movement actions', () => {
-    expect(DEFAULT_BINDINGS.MoveLeft).toContain(K.LEFT);
-    expect(DEFAULT_BINDINGS.MoveLeft).toContain(K.A);
-    expect(DEFAULT_BINDINGS.MoveRight).toContain(K.RIGHT);
-    expect(DEFAULT_BINDINGS.MoveRight).toContain(K.D);
-    expect(DEFAULT_BINDINGS.MoveUp).toContain(K.UP);
-    expect(DEFAULT_BINDINGS.MoveUp).toContain(K.W);
-    expect(DEFAULT_BINDINGS.MoveDown).toContain(K.DOWN);
-    expect(DEFAULT_BINDINGS.MoveDown).toContain(K.S);
+  it('maps arrow keys (and only arrows) to gameplay movement actions', () => {
+    // WASD is intentionally reserved for menu/dialog Navigate* actions so
+    // it never drives the player avatar. See `chore: remove WASD from
+    // movement bindings`.
+    expect(DEFAULT_BINDINGS.MoveLeft).toEqual([K.LEFT]);
+    expect(DEFAULT_BINDINGS.MoveRight).toEqual([K.RIGHT]);
+    expect(DEFAULT_BINDINGS.MoveUp).toEqual([K.UP]);
+    expect(DEFAULT_BINDINGS.MoveDown).toEqual([K.DOWN]);
+    for (const wasd of [K.A, K.D, K.W, K.S]) {
+      expect(DEFAULT_BINDINGS.MoveLeft).not.toContain(wasd);
+      expect(DEFAULT_BINDINGS.MoveRight).not.toContain(wasd);
+      expect(DEFAULT_BINDINGS.MoveUp).not.toContain(wasd);
+      expect(DEFAULT_BINDINGS.MoveDown).not.toContain(wasd);
+    }
+  });
+
+  it('maps both arrow keys and WASD to menu Navigate* actions', () => {
+    expect(DEFAULT_BINDINGS.NavigateLeft).toEqual(expect.arrayContaining([K.LEFT, K.A]));
+    expect(DEFAULT_BINDINGS.NavigateRight).toEqual(expect.arrayContaining([K.RIGHT, K.D]));
+    expect(DEFAULT_BINDINGS.NavigateUp).toEqual(expect.arrayContaining([K.UP, K.W]));
+    expect(DEFAULT_BINDINGS.NavigateDown).toEqual(expect.arrayContaining([K.DOWN, K.S]));
+  });
+
+  it('binds Jump to Space and ArrowUp only (no W — W is a Navigate* key)', () => {
+    expect(DEFAULT_BINDINGS.Jump).toEqual([K.SPACE, K.UP]);
+    expect(DEFAULT_BINDINGS.Jump).not.toContain(K.W);
   });
 
   it('reserves Space exclusively for Jump (not Interact/Confirm)', () => {
@@ -163,16 +180,20 @@ describe('keyLabels', () => {
   });
 
   it('primaryKeyLabel returns the label of the first-bound key', () => {
-    // Jump binds [SPACE, UP, W] — primary is Space.
+    // Jump binds [SPACE, UP] — primary is Space.
     expect(primaryKeyLabel('Jump')).toBe('Space');
-    // MoveLeft binds [LEFT, A] — primary is the arrow.
+    // MoveLeft binds [LEFT] only — primary is the arrow.
     expect(primaryKeyLabel('MoveLeft')).toBe('←');
+    // NavigateLeft binds [LEFT, A] — primary is still the arrow.
+    expect(primaryKeyLabel('NavigateLeft')).toBe('←');
   });
 
   it('allKeyLabels joins every bound key with the given separator', () => {
-    // Jump binds [Space, ↑, W] — exercises the multi-key join path.
-    expect(allKeyLabels('Jump')).toBe('Space/↑/W');
-    expect(allKeyLabels('Jump', ', ')).toBe('Space, ↑, W');
+    // Jump binds [Space, ↑] — exercises the multi-key join path.
+    expect(allKeyLabels('Jump')).toBe('Space/↑');
+    expect(allKeyLabels('Jump', ', ')).toBe('Space, ↑');
+    // Navigate* actions exercise the WASD + arrow join.
+    expect(allKeyLabels('NavigateLeft')).toBe('←/A');
     // Single-key actions render without a separator.
     expect(allKeyLabels('Interact')).toBe('Enter');
   });
