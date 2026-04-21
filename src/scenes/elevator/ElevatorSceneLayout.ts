@@ -5,6 +5,9 @@ import { LEVEL_DATA } from '../../config/levelData';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
+import { drawSkyBackdrop } from './skyBackdrop';
+import { drawDistantSkyline } from './distantSkyline';
+import { drawBuildingFacade, type FacadeBand } from './buildingFacade';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -52,6 +55,22 @@ export class ElevatorSceneLayout {
    */
   private geirBounds?: { x: number; y: number; width: number; height: number };
 
+  /** World-space bounds of the lobby sofa (proximity for the sit action). */
+  private sofaBounds?: { x: number; y: number; width: number; height: number };
+
+  /** World-space point where the player should stand while seated on the sofa. */
+  private sofaSitPoint?: { x: number; y: number };
+
+  /** Millisecond "virtual" wall-clock time the lobby clock displays. */
+  private clockVirtualMs = 0;
+
+  /**
+   * Clock render speed multiplier. 1 = real time; >1 fast-forwards the
+   * virtual time used by the lobby clock. Changed via {@link setClockSpeed}
+   * when the player sits on the sofa.
+   */
+  private clockSpeedMultiplier = 1;
+
   /**
    * World-space bounds of the receptionist desk proximity area in the lobby,
    * for the "Hello!" greeting zone. Populated in
@@ -69,6 +88,7 @@ export class ElevatorSceneLayout {
   /** Build the entire elevator-scene visual scaffolding in order. */
   build(): void {
     this.pulleyAnchorY = this.deps.shaftExtent.top;
+    this.createExteriorBackdrop();
     this.createShaftBackground();
     this.createShaftCaps();
     this.createRooftop();
@@ -80,6 +100,169 @@ export class ElevatorSceneLayout {
     this.createShaftDoors();
     this.createShaftCable();
     this.createFloorLEDs();
+    this.createShaftDustMotes();
+  }
+
+  /**
+   * Night-city exterior — gradient sky, moon, and a starfield rendered
+   * behind everything else. Screen-locked; later layers (skyline, façade)
+   * supply parallax. Implementation + tests live in `./skyBackdrop`.
+   */
+  private createExteriorBackdrop(): void {
+    drawSkyBackdrop(this.deps.scene, {
+      width: GAME_WIDTH,
+      height: this.deps.scene.scale.height,
+    });
+    this.createHorizonGlow();
+    this.createDistantSkyline();
+    this.createBuildingFacade();
+  }
+
+  /**
+   * Warm city-lights haze sitting directly behind the distant skyline.
+   * Parallaxes with the skyline (scrollFactor 0, 0.35) and is painted
+   * as a soft-edged horizontal band at the skyline baseline. Sells
+   * "city glow" without needing a raster texture — three stacked alpha
+   * rectangles give a cheap gradient fade.
+   */
+  private createHorizonGlow(): void {
+    const scene = this.deps.scene;
+    const baselineY = this.deps.shaftExtent.top + 2;
+    const glow = scene.add.graphics().setDepth(-16).setScrollFactor(0, 0.35);
+    // Three stacked bands fading upward from the horizon — bottom band
+    // strongest, thinnest; top band weakest, tallest.
+    const bands: Array<{ yOffset: number; h: number; alpha: number }> = [
+      { yOffset: -8,  h: 10, alpha: 0.28 },
+      { yOffset: -28, h: 24, alpha: 0.14 },
+      { yOffset: -56, h: 40, alpha: 0.06 },
+    ];
+    for (const b of bands) {
+      glow.fillStyle(theme.color.sky.moonHalo, b.alpha);
+      glow.fillRect(0, baselineY + b.yOffset, GAME_WIDTH, b.h);
+    }
+  }
+
+  /**
+   * A handful of slow-drifting dust motes inside the shaft volume.
+   * Purely atmospheric — they add vertical motion that reads as air
+   * movement while the cab is stationary, and reinforce scale during
+   * a ride. Motes are deterministic in position, each with its own
+   * slow vertical bob tween. Rendered inside the shaft bounds only,
+   * at a depth that sits above shaft decor but below the cab/doors.
+   */
+  private createShaftDustMotes(): void {
+    const scene = this.deps.scene;
+    const sw = this.deps.shaftWidth;
+    const cx = GAME_WIDTH / 2;
+    const leftEdge = cx - sw / 2;
+    const { top, bottom } = this.deps.shaftExtent;
+    const shaftH = bottom - top;
+
+    const MOTE_COUNT = 14;
+    // xorshift RNG seeded from the shaft height so motes land in the same
+    // spots every session without needing a saved layout.
+    let s = (shaftH | 0) ^ 0x5eed_d057;
+    if (s === 0) s = 0x1234_5678;
+    const rand = (): number => {
+      s ^= s << 13;
+      s ^= s >>> 17;
+      s ^= s << 5;
+      return ((s >>> 0) % 1_000_000) / 1_000_000;
+    };
+
+    // Inset from the shaft rails so motes don't clip onto them visually.
+    const xMin = leftEdge + 26;
+    const xMax = leftEdge + sw - 26;
+
+    for (let i = 0; i < MOTE_COUNT; i++) {
+      const x = Math.round(xMin + rand() * (xMax - xMin));
+      const y = Math.round(top + 40 + rand() * (shaftH - 80));
+      const size = rand() < 0.35 ? 2 : 1;
+      const baseAlpha = 0.18 + rand() * 0.18;
+      const drift = 18 + Math.floor(rand() * 22);
+      const duration = 4200 + Math.floor(rand() * 2800);
+      const delay = Math.floor(rand() * duration);
+      const mote = scene.add
+        .rectangle(x, y, size, size, 0xffffff, baseAlpha)
+        .setDepth(1.3)
+        .setScrollFactor(1, 1);
+      scene.tweens.add({
+        targets: mote,
+        y: { from: y - drift / 2, to: y + drift / 2 },
+        alpha: { from: baseAlpha * 0.5, to: baseAlpha },
+        duration,
+        delay,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+    }
+  }
+
+  /**
+   * Outer-building façade filling the hallway strips on either side of the
+   * shaft. See `./buildingFacade` for rendering + window-grid generation.
+   *
+   * Parallaxes at 0.85× (configured in drawBuildingFacade) so the wall
+   * reads as "behind" the shaft when the camera rides up or down. The
+   * per-floor band division survives as a source of window-grid variation
+   * (distinct seeds), but every band uses the same neutral wallColor so
+   * the parallax-induced misalignment between bands and real floor slabs
+   * is visually hidden. Per-floor identity is carried by the floor scenes
+   * themselves (see `floorPatterns.ts` / `floorAccents.ts`).
+   */
+  private createBuildingFacade(): void {
+    const sw = this.deps.shaftWidth;
+    const cx = GAME_WIDTH / 2;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
+    // Outer shaft pillars (createShaftBackground) occupy [leftEdge-12, leftEdge]
+    // and [rightEdge, rightEdge+12]. Keep the façade inboard of those edges so
+    // the pillars remain crisp against the dark façade wall.
+    const sides: [{ xLeft: number; xRight: number }, { xLeft: number; xRight: number }] = [
+      { xLeft: 0, xRight: leftEdge - 12 },
+      { xLeft: rightEdge + 12, xRight: GAME_WIDTH },
+    ];
+
+    const positions = this.deps.floorYPositions;
+    const sorted = Object.entries(positions)
+      .map(([id, y]) => ({ id: Number(id) as FloorId, y }))
+      .sort((a, b) => a.y - b.y);
+    const { top, bottom } = this.deps.shaftExtent;
+
+    // Neutral wall colour everywhere — per-floor colour would drift out of
+    // alignment with the real slabs under parallax and look wrong.
+    const wallColor = theme.color.bg.mid;
+
+    const bands: FacadeBand[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const yTop = i === 0 ? top : sorted[i].y;
+      const yBottom = i < sorted.length - 1 ? sorted[i + 1].y : bottom;
+      bands.push({
+        yTop,
+        yBottom,
+        wallColor,
+        // Keep per-floor seeds so window patterns vary across the height.
+        seed: 0xabc123 ^ (sorted[i].id * 0x9e3779b1),
+      });
+    }
+
+    drawBuildingFacade(this.deps.scene, { sides, bands });
+  }
+
+  /**
+   * Distant city silhouette visible above the rooftop when the camera is
+   * near the top of the shaft. Parallaxes at 0.35× so riding the cab up
+   * reveals the horizon with believable depth. Implementation + tests live
+   * in `./distantSkyline`.
+   */
+  private createDistantSkyline(): void {
+    drawDistantSkyline(this.deps.scene, {
+      width: GAME_WIDTH,
+      // Baseline sits a touch below the rooftop so the tallest buildings
+      // tuck behind the parapet instead of floating above the building.
+      baselineY: this.deps.shaftExtent.top + 2,
+    });
   }
 
   updateShaftCable(controller: ElevatorController | undefined): void {
@@ -115,6 +298,32 @@ export class ElevatorSceneLayout {
   /** The receptionist's speech-bubble container — shown on zone:enter. */
   getReceptionistBubble(): Phaser.GameObjects.Container | undefined {
     return this.receptionistBubble;
+  }
+
+  /**
+   * World-space bounds of the lobby sofa proximity area. Consumed by
+   * {@link ElevatorZones} to register the "Press Enter to sit" zone.
+   */
+  getSofaBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    return this.sofaBounds;
+  }
+
+  /**
+   * World-space point where the player should stand/sit while on the sofa.
+   * Returns undefined if the sofa hasn't been placed (defensive for
+   * non-elevator scenes that might reuse this layout helper).
+   */
+  getSofaSitPoint(): { x: number; y: number } | undefined {
+    return this.sofaSitPoint;
+  }
+
+  /**
+   * Multiplier applied to the lobby wall clock's virtual time. 1 = real
+   * time; >1 fast-forwards (e.g. 10 = 10× faster). Used to make time feel
+   * like it passes faster while the player is seated on the sofa.
+   */
+  setClockSpeed(multiplier: number): void {
+    this.clockSpeedMultiplier = Math.max(0, multiplier);
   }
 
   updateFloorLEDs(controller: ElevatorController | undefined): void {
@@ -839,8 +1048,14 @@ export class ElevatorSceneLayout {
     // Wall-mounted live clock (real time, analog face + second hand and a
     // small digital HH:MM:SS readout below). Anchored to lobbyY band.
     this.createLobbyClock(1000, lobbyY + 75, 34);
-    scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
-    scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
+    const sofaX = 960;
+    const sofaY = floorBottom - 30;
+    scene.add.image(sofaX, sofaY, 'sofa').setDepth(3);
+    // Player sits at sofa x; the scene handles the squashed sit pose.
+    this.sofaSitPoint = { x: sofaX, y: sofaY };
+    // Proximity rect covers the full width of the sofa and a bit of the
+    // walkway in front so you only need to be near it — not pixel-perfect.
+    this.sofaBounds = { x: sofaX - 80, y: floorBottom - 70, width: 160, height: 100 };
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
     scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);
@@ -914,8 +1129,15 @@ export class ElevatorSceneLayout {
       hands.strokePath();
     };
 
+    // Virtual-clock state: starts in sync with the real system clock and
+    // advances by `tickMs * speedMultiplier` each tick. A higher speed makes
+    // time "feel like it passes faster" — used when the player sits on the
+    // sofa to let them skim through a slow moment in the lobby.
+    this.clockVirtualMs = Date.now();
+    const tickMs = 200;
+
     const render = (): void => {
-      const now = new Date();
+      const now = new Date(this.clockVirtualMs);
       const hh = now.getHours();
       const mm = now.getMinutes();
       const ss = now.getSeconds();
@@ -932,7 +1154,14 @@ export class ElevatorSceneLayout {
     };
 
     render();
-    const timer = scene.time.addEvent({ delay: 1000, loop: true, callback: render });
+    const timer = scene.time.addEvent({
+      delay: tickMs,
+      loop: true,
+      callback: () => {
+        this.clockVirtualMs += tickMs * this.clockSpeedMultiplier;
+        render();
+      },
+    });
 
     // Tear down the timer on scene shutdown so it doesn't leak across
     // scene restarts (EventBus-singleton-style hazard).

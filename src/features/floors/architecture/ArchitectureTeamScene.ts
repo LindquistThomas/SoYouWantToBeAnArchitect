@@ -19,7 +19,7 @@ import { theme } from '../../../style/theme';
  */
 export class ArchitectureTeamScene extends LevelScene {
   /** First token index used in this room — must not overlap PlatformTeamScene. */
-  private static readonly TOKEN_INDEX_OFFSET = 5;
+  private static readonly TOKEN_INDEX_OFFSET = 7;
 
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);

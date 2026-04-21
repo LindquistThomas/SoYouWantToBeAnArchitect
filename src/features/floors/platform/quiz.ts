@@ -398,6 +398,135 @@ export const QUIZ_PLATFORM: Record<string, QuizDefinition> = {
   },
 
   /* --------------------------------------------------------- */
+  /*  Horizontal vs Vertical Scaling                            */
+  /* --------------------------------------------------------- */
+  'scaling': {
+    infoId: 'scaling',
+    questions: [
+      // ---- EASY ----
+      {
+        id: 'scl-e1',
+        difficulty: 'easy',
+        question: 'Which statement best describes vertical scaling ("scale up")?',
+        choices: [
+          'Adding more identical servers behind a load balancer',
+          'Making a single server bigger — more CPU, more RAM, faster disks',
+          'Splitting the database into many shards',
+          'Moving the workload to a different data centre',
+        ],
+        correctIndex: 1,
+        explanation: 'Scaling up means replacing the existing machine with a larger one. There is still only one node.',
+      },
+      {
+        id: 'scl-e2',
+        difficulty: 'easy',
+        question: 'Which statement best describes horizontal scaling ("scale out")?',
+        choices: [
+          'Upgrading the CPU to a higher clock speed',
+          'Running more copies of the service behind a load balancer',
+          'Rewriting the application in a faster language',
+          'Moving from spinning disks to SSDs',
+        ],
+        correctIndex: 1,
+        explanation: 'Scaling out means adding more nodes so the workload can be spread across them.',
+      },
+      {
+        id: 'scl-e3',
+        difficulty: 'easy',
+        question: 'A key reliability advantage of horizontal scaling over vertical scaling is…',
+        choices: [
+          'Lower software-licence cost per core',
+          'No single point of failure — one node can die and the service stays up',
+          'Guaranteed strong consistency without any extra work',
+          'Faster CPU per request',
+        ],
+        correctIndex: 1,
+        explanation: 'A fleet of N nodes behind a load balancer tolerates single-node failure; one big box does not.',
+      },
+      {
+        id: 'scl-e4',
+        difficulty: 'easy',
+        question: 'Which kind of workload is the easiest to scale horizontally?',
+        choices: [
+          'A stateful legacy monolith that holds sessions in memory',
+          'A stateless HTTP service behind a load balancer',
+          'A single-writer SQL database',
+          'A desktop application',
+        ],
+        correctIndex: 1,
+        explanation: 'Stateless services can run as N identical copies — any request can land on any node.',
+      },
+      // ---- MEDIUM ----
+      {
+        id: 'scl-m1',
+        difficulty: 'medium',
+        question: 'Why do teams often reach for vertical scaling first on a classic SQL database?',
+        choices: [
+          'It is always cheaper at every scale',
+          'A single node preserves a single source of truth — no need to redesign for distribution',
+          'Vertical scaling automatically turns the database into a NoSQL store',
+          'It removes the need for backups',
+        ],
+        correctIndex: 1,
+        explanation: 'Keeping everything on one node sidesteps the hard problems of replication and partitioning, at least for a while.',
+      },
+      {
+        id: 'scl-m2',
+        difficulty: 'medium',
+        question: 'Which pattern extends horizontal scaling to stateful systems by partitioning data by key?',
+        choices: [
+          'Caching',
+          'Sharding',
+          'Blue-green deployment',
+          'Feature flagging',
+        ],
+        correctIndex: 1,
+        explanation: 'Sharding partitions data (by user id, tenant, range, etc.) so each shard fits on a node that can still be scaled up.',
+      },
+      {
+        id: 'scl-m3',
+        difficulty: 'medium',
+        question: 'Which of these is a real limitation of vertical scaling?',
+        choices: [
+          'There is always a hard ceiling — even the biggest instance has a top size, and cost rises non-linearly near it',
+          'Vertical scaling prevents the use of containers',
+          'Scaling up requires rewriting the application in a new language',
+          'Vertical scaling makes horizontal scaling impossible later',
+        ],
+        correctIndex: 0,
+        explanation: 'The top instance SKUs are disproportionately expensive and eventually run out — physics and vendor price lists both impose ceilings.',
+      },
+      // ---- HARD ----
+      {
+        id: 'scl-h1',
+        difficulty: 'hard',
+        question: 'Which trade-off is introduced specifically by scaling a stateful system horizontally (vs keeping it vertical)?',
+        choices: [
+          'The CAP trade-off between Consistency and Availability during network partitions',
+          'The need to compile code to native binaries',
+          'A requirement to use a proprietary operating system',
+          'The loss of all ACID guarantees in every case',
+        ],
+        correctIndex: 0,
+        explanation: 'A distributed stateful system must pick, during a partition, between rejecting writes (CP) or serving stale data (AP). A single node sidesteps the question.',
+      },
+      {
+        id: 'scl-h2',
+        difficulty: 'hard',
+        question: 'Horizontal scaling pairs naturally with which operational technique for elastic capacity?',
+        choices: [
+          'Scheduled downtime windows for weekly resizing',
+          'Autoscaling driven by signals such as CPU, queue depth, or p95 latency',
+          'Manual re-provisioning per release',
+          'Fixing the fleet size permanently at its peak demand',
+        ],
+        correctIndex: 1,
+        explanation: 'Adding/removing nodes is what autoscalers (Kubernetes HPA, AWS ASG, serverless concurrency) do in response to live load signals.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
   /*  You Build It, You Run It                                  */
   /* --------------------------------------------------------- */
   'you-build-you-run': {
@@ -793,6 +922,137 @@ export const QUIZ_PLATFORM: Record<string, QuizDefinition> = {
         ],
         correctIndex: 2,
         explanation: 'Progressive deployment reduces risk by limiting blast radius: a canary rollout exposes a small percentage of traffic to the new version before full release.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
+  /*  Web Application Firewall                                  */
+  /* --------------------------------------------------------- */
+  'web-application-firewall': {
+    infoId: 'web-application-firewall',
+    questions: [
+      // ---- EASY ----
+      {
+        id: 'waf-e1',
+        difficulty: 'easy',
+        question: 'What does a Web Application Firewall (WAF) primarily inspect?',
+        choices: [
+          'Disk I/O on the application server',
+          'HTTP(S) requests and responses to the application',
+          'Outbound DNS lookups from the datacentre',
+          'SSH sessions to production hosts',
+        ],
+        correctIndex: 1,
+        explanation: 'A WAF operates at layer 7 \u2014 it inspects HTTP(S) traffic and blocks requests that match attack patterns before they reach the application.',
+      },
+      {
+        id: 'waf-e2',
+        difficulty: 'easy',
+        question: 'Which of the following is a classic attack a WAF is designed to stop?',
+        choices: [
+          'A phishing email sent to an employee',
+          'SQL injection in a login form',
+          'A stolen laptop in an airport',
+          'A misconfigured backup job',
+        ],
+        correctIndex: 1,
+        explanation: 'WAFs specialise in application-layer attacks such as SQL injection, XSS, path traversal and command injection \u2014 the OWASP Top 10 territory.',
+      },
+      {
+        id: 'waf-e3',
+        difficulty: 'easy',
+        question: 'Where is a WAF typically deployed?',
+        choices: [
+          'Inside the database engine',
+          'On every developer laptop',
+          'In front of the application \u2014 at the CDN, load balancer or ingress',
+          'As a client-side JavaScript library',
+        ],
+        correctIndex: 2,
+        explanation: 'A WAF sits at the edge so one rule set protects every service behind it, including legacy apps that cannot easily be changed.',
+      },
+      {
+        id: 'waf-e4',
+        difficulty: 'easy',
+        question: 'What is a "false positive" in WAF terms?',
+        choices: [
+          'An attack the WAF failed to detect',
+          'A legitimate request that the WAF incorrectly blocks',
+          'A rule that has been disabled',
+          'A successful deployment of a new rule',
+        ],
+        correctIndex: 1,
+        explanation: 'A false positive is a legitimate request wrongly flagged as malicious. False negatives are the opposite \u2014 real attacks that slip through.',
+      },
+
+      // ---- MEDIUM ----
+      {
+        id: 'waf-m1',
+        difficulty: 'medium',
+        question: 'Why are false positives particularly painful for a product team?',
+        choices: [
+          'They make the security dashboard look too green',
+          'They silently break real user journeys and generate support tickets that look like application bugs',
+          'They reduce CPU utilisation on the WAF',
+          'They force a rollback of the application version',
+        ],
+        correctIndex: 1,
+        explanation: 'False positives present to users as cryptic 403s and to the team as "the app is broken" tickets \u2014 the cost is visible on the product side, not the security side.',
+      },
+      {
+        id: 'waf-m2',
+        difficulty: 'medium',
+        question: 'What is the recommended way to roll out a new WAF rule in production?',
+        choices: [
+          'Enable it in prevent mode immediately so no attacks slip through',
+          'Deploy it only on weekends',
+          'Start in detect-only (log) mode, observe a full traffic cycle, then switch to prevent mode',
+          'Apply it exclusively to authenticated users first',
+        ],
+        correctIndex: 2,
+        explanation: 'Detect-only first lets you see which legitimate traffic the rule would have blocked. Skipping this step is the most common way a WAF takes down its own application.',
+      },
+      {
+        id: 'waf-m3',
+        difficulty: 'medium',
+        question: 'Why is tuning a WAF a collaboration between the platform team and the product team?',
+        choices: [
+          'Because the platform team needs the product team\'s AWS credentials',
+          'Because only the product team knows what "normal traffic" looks like for the workload \u2014 which fields accept HTML, expected rates, upload endpoints, legitimate bots',
+          'Because product teams enjoy writing regular expressions',
+          'Because security rules are classified information',
+        ],
+        correctIndex: 1,
+        explanation: 'The platform team owns the WAF capability; the product team owns the knowledge of normal traffic. Good rules are a joint product of both.',
+      },
+
+      // ---- HARD ----
+      {
+        id: 'waf-h1',
+        difficulty: 'hard',
+        question: 'A rich-text editor in your CMS lets authors paste "<script>" tags intentionally. The OWASP CRS blocks every save with an XSS rule. What is the best fix?',
+        choices: [
+          'Disable the entire CRS globally',
+          'Ask authors to avoid HTML in their articles',
+          'Scope the XSS rule to exclude the specific editor endpoint (and sanitize server-side instead)',
+          'Lower the paranoia level of every rule to PL1',
+        ],
+        correctIndex: 2,
+        explanation: 'Surgical scoping is the right answer: exempt the one endpoint where rich HTML is legitimate, keep the rule active everywhere else, and handle sanitisation server-side where context is known.',
+      },
+      {
+        id: 'waf-h2',
+        difficulty: 'hard',
+        question: 'Which statement best captures a WAF\'s limitations?',
+        choices: [
+          'A WAF replaces the need for secure coding, SAST and dependency scanning',
+          'A WAF stops business-logic abuse and broken authentication out of the box',
+          'A WAF is one layer of defence \u2014 it does not stop business-logic abuse or attacks that use legitimate API calls in legitimate ways',
+          'A WAF makes TLS termination unnecessary',
+        ],
+        correctIndex: 2,
+        explanation: 'A WAF is not a silver bullet. Pair it with secure coding, SAST/DAST, dependency scanning, bot management and runtime protection for full coverage.',
       },
     ],
   },

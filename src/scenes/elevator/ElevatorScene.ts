@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, FLOORS, TILE_SIZE, COLORS, FloorId } from '../../config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, FLOORS, TILE_SIZE, FloorId } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { HUD } from '../../ui/HUD';
@@ -8,12 +9,14 @@ import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { DialogController } from '../../ui/DialogController';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID } from './ElevatorZones';
+import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID, SOFA_SIT_ID } from './ElevatorZones';
 import { ElevatorController } from './ElevatorController';
 import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
 import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
 import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager';
 import type { NavigationContext } from '../NavigationContext';
+import type { GameAction } from '../../input/actions';
+import { eventBus } from '../../systems/EventBus';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -37,6 +40,10 @@ export class ElevatorScene extends Phaser.Scene {
   private gameState!: GameStateManager;
   private progression!: ProgressionSystem;
   private isTransitioning = false;
+  /** True while the player is seated on the lobby sofa. */
+  private isSittingOnSofa = false;
+  /** Player y recorded at sit time, restored on stand-up to avoid tunneling. */
+  private preSitY = 0;
 
   private elevatorButtons?: ElevatorButtons;
 
@@ -83,7 +90,10 @@ export class ElevatorScene extends Phaser.Scene {
 
   create(): void {
     this.isTransitioning = false;
-    this.cameras.main.setBackgroundColor(COLORS.background);
+    // Fallback colour behind the sky backdrop (drawn by ElevatorSceneLayout).
+    // Matches the horizon band so any sub-pixel leak reads as "sky", not a
+    // harsh purple notch.
+    this.cameras.main.setBackgroundColor(theme.color.sky.horizon);
 
     this.shaftExtent = this.computeShaftExtent();
     const worldH = this.shaftExtent.bottom;
@@ -171,6 +181,7 @@ export class ElevatorScene extends Phaser.Scene {
       geirBounds: this.layout.getGeirBounds(),
       receptionBounds: this.layout.getReceptionBounds(),
       receptionBubble: this.layout.getReceptionistBubble(),
+      sofaBounds: this.layout.getSofaBounds(),
     });
 
     // Cable + LEDs need an initial tick so they render before update() runs.
@@ -238,7 +249,7 @@ export class ElevatorScene extends Phaser.Scene {
   private createUI(): void {
     this.hud = new HUD(this, this.progression);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-4  Call Floor  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
@@ -327,13 +338,37 @@ export class ElevatorScene extends Phaser.Scene {
       return;
     }
 
+    // Emit zone:enter / zone:exit events first so sit-zone state is fresh.
+    this.zoneManager.update();
+    const activeZone = this.zoneManager.getActiveZone();
+
+    // --- Sofa sit/stand toggle. Runs BEFORE the generic info-dialog open
+    //     so pressing Enter at the sofa always triggers sitting (and never
+    //     a dialog — there is no 'sofa-sit' info content by design).
+    if (interactPressed && (activeZone === SOFA_SIT_ID || this.isSittingOnSofa)) {
+      this.toggleSitOnSofa();
+      return;
+    }
+
+    // While seated, the player is frozen — skip physics-input processing,
+    // pin them to the sofa, and let the camera continue to follow. Player
+    // can only stand up via the sit/stand toggle above.
+    if (this.isSittingOnSofa) {
+      const seat = this.layout.getSofaSitPoint();
+      if (seat) this.player.sprite.setX(seat.x);
+      this.player.sprite.setVelocityX(0);
+      this.hud.update();
+      // Keep elevator/doors/LEDs alive so the world doesn't freeze.
+      const cabY = this.elevatorCtrl.elevator.getY();
+      for (const door of this.layout.shaftDoors) door.update(cabY, delta);
+      this.layout.updateShaftCable(this.elevatorCtrl);
+      this.layout.updateFloorLEDs(this.elevatorCtrl);
+      return;
+    }
+
     this.player.update(delta);
     this.hud.update();
 
-    // Emit zone:enter / zone:exit events; ElevatorZones' subscribers react.
-    this.zoneManager.update();
-
-    const activeZone = this.zoneManager.getActiveZone();
     if (infoPressed && activeZone && !this.dialogs.isOpen) {
       this.dialogs.open(activeZone);
       return;
@@ -345,6 +380,13 @@ export class ElevatorScene extends Phaser.Scene {
       btnState ? { up: btnState.up, down: btnState.down } : undefined,
       delta,
     );
+
+    // Keyboard floor-call: digit keys 0..4 map to the visual floor order
+    // (F0 = lobby at the bottom, F4 = executive at the top). Only honoured
+    // while the player is riding the cab — matches the on-screen ▲/▼ buttons.
+    if (this.elevatorCtrl.isOnElevator) {
+      this.handleFloorCallInput();
+    }
 
     const cabY = this.elevatorCtrl.elevator.getY();
     for (const door of this.layout.shaftDoors) door.update(cabY, delta);
@@ -371,6 +413,51 @@ export class ElevatorScene extends Phaser.Scene {
     this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
   }
 
+  /**
+   * Toggle the player's seated state on the lobby sofa. Sitting down snaps
+   * them to the sofa sit point, halts their movement, and accelerates the
+   * lobby wall clock so time "passes faster" while they rest. Standing up
+   * restores normal movement and real-time clock speed.
+   */
+  private toggleSitOnSofa(): void {
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    if (this.isSittingOnSofa) {
+      this.isSittingOnSofa = false;
+      this.layout.setClockSpeed(1);
+      // Restore standing pose BEFORE re-enabling gravity + snap the sprite
+      // back to its pre-sit y. Otherwise the squashed body overlaps the
+      // floor collider and re-enabled gravity tunnels the player through.
+      this.player.sprite.setScale(1, 1);
+      this.player.sprite.setY(this.preSitY);
+      this.player.sprite.setVelocity(0, 0);
+      body.setAllowGravity(true);
+      body.updateFromGameObject();
+      eventBus.emit('music:pop');
+      return;
+    }
+    const seat = this.layout.getSofaSitPoint();
+    if (!seat) return;
+    this.isSittingOnSofa = true;
+    // Remember standing y so we can restore it cleanly on stand-up.
+    this.preSitY = this.player.sprite.y;
+    // Snap onto the sofa cushion with a squashed pose so the player
+    // clearly reads as seated rather than standing on top of it.
+    this.player.sprite.setVelocity(0, 0);
+    this.player.sprite.setX(seat.x);
+    // seat.y is the sofa image centre; cushion top is ~15 px above. With a
+    // 0.7 scaleY the sprite's visual height shortens, so plant it a bit
+    // higher than the standing y to sit on the cushion.
+    this.player.sprite.setY(seat.y - 12);
+    this.player.sprite.setScale(1, 0.7);
+    body.setAllowGravity(false);
+    this.player.sprite.anims.stop();
+    this.player.sprite.setFrame(0);
+    // 60× real-time while seated — time really flies.
+    this.layout.setClockSpeed(60);
+    // Swap the lobby music for a gentle lullaby while resting.
+    eventBus.emit('music:push', 'music_lullaby');
+  }
+
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
@@ -378,5 +465,31 @@ export class ElevatorScene extends Phaser.Scene {
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(sceneKey));
+  }
+
+  /**
+   * Translate digit-key presses into a `moveToFloor` call. Digits map by
+   * visual stack order (the same order the cab's button panel uses): the
+   * lowest-indexed digit selects the bottom-most floor (lobby = F0), and
+   * the highest selects the top-most.
+   */
+  private handleFloorCallInput(): void {
+    const positions = this.getFloorYPositions();
+    // Sort so the bottom floor (largest Y) comes first → visual index 0.
+    const visualOrder = Object.entries(positions)
+      .map(([id, y]) => ({ id: Number(id) as FloorId, y }))
+      .sort((a, b) => b.y - a.y);
+
+    const inputs = this.inputs;
+    const actions: readonly GameAction[] = [
+      'ElevatorCallFloor0', 'ElevatorCallFloor1', 'ElevatorCallFloor2',
+      'ElevatorCallFloor3', 'ElevatorCallFloor4',
+    ];
+    for (let i = 0; i < visualOrder.length && i < actions.length; i++) {
+      if (inputs.justPressed(actions[i])) {
+        this.elevatorCtrl.elevator.moveToFloor(visualOrder[i].id);
+        return;
+      }
+    }
   }
 }

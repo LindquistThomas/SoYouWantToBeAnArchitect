@@ -15,7 +15,22 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
+import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
+import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
+
+/**
+ * Decorative background pattern assignment per floor. Each motif echoes
+ * the floor's identity without clashing with decor (see `floorPatterns.ts`).
+ * Floors not listed fall back to the quiet default grid.
+ */
+const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
+  [FLOORS.LOBBY]: 'grid',
+  [FLOORS.PLATFORM_TEAM]: 'blueprint',
+  [FLOORS.BUSINESS]: 'wood',
+  [FLOORS.EXECUTIVE]: 'terrazzo',
+  [FLOORS.PRODUCTS]: 'dots',
+};
 
 export interface RoomElevator {
   x: number;
@@ -230,21 +245,49 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- background ---- */
   protected createBackground(): void {
-    const g = this.add.graphics().setDepth(0);
+    drawSceneBackdrop(this, {
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      theme: {
+        backgroundColor: this.floorData.theme.backgroundColor,
+        wallColor: this.floorData.theme.wallColor,
+        platformColor: this.floorData.theme.platformColor,
+      },
+      pattern: this.getBackgroundPattern(),
+      patternSeed: this.floorId,
+      drawAccents: (g) => this.drawBackgroundAccents(g),
+    });
+  }
 
-    g.fillStyle(this.floorData.theme.backgroundColor);
-    g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+  /**
+   * Per-floor decorative pattern id. Default picks a motif matching the
+   * floor's identity; subclasses can override to use a different pattern
+   * or fall back to the quiet legacy grid.
+   */
+  protected getBackgroundPattern(): FloorPatternId {
+    return FLOOR_PATTERNS[this.floorId] ?? 'grid';
+  }
 
-    g.lineStyle(1, this.floorData.theme.wallColor, 0.15);
-    for (let x = 0; x < GAME_WIDTH; x += 64) {
-      g.lineBetween(x, 0, x, GAME_HEIGHT);
-    }
-    for (let y = 0; y < GAME_HEIGHT; y += 64) {
-      g.lineBetween(0, y, GAME_WIDTH, y);
-    }
-
-    g.lineStyle(4, this.floorData.theme.platformColor, 0.8);
-    g.strokeRect(2, 2, GAME_WIDTH - 4, GAME_HEIGHT - 4);
+  /**
+   * Subclass hook for per-floor silhouettes / prints painted on top of
+   * the layered backdrop. Default behaviour dispatches to the per-floor
+   * accent painter in `floorAccents.ts` (server racks, bar chart, arched
+   * window, etc.) including one ambient tween per floor. Subclasses may
+   * override to suppress or replace the motif.
+   */
+  protected drawBackgroundAccents(g: Phaser.GameObjects.Graphics): void {
+    drawFloorAccents(this.floorId, {
+      scene: this,
+      g,
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      theme: {
+        backgroundColor: this.floorData.theme.backgroundColor,
+        wallColor: this.floorData.theme.wallColor,
+        platformColor: this.floorData.theme.platformColor,
+        tokenColor: this.floorData.theme.tokenColor,
+      },
+    });
   }
 
   /* ---- platforms ---- */

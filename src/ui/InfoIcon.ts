@@ -222,8 +222,8 @@ export class InfoIcon {
 
   /** Force-switch to the subtle "seen" animation (called after the dialog is closed). */
   markAsSeen(): void {
-    // The player has just opened an info dialog — hide the "Press ↑" hint
-    // everywhere, regardless of whether this icon was the one opened.
+    // This icon has just been opened/read, so hide its local "Press ↑" hint
+    // immediately before switching to the subtle seen-state animation.
     this.hint?.setVisible(false);
     if (!this.container.visible) return;
     if (this.mode === 'calm') return;
