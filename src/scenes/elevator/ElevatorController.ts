@@ -2,12 +2,11 @@ import * as Phaser from 'phaser';
 import { eventBus } from '../../systems/EventBus';
 import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
+import { clampRiderToCab } from './elevatorCabGeometry';
 
-const ELEVATOR_STEP_OUT_X_MARGIN = 12;
 const ELEVATOR_STAND_X_TOLERANCE = 96;
 const ELEVATOR_STAND_Y_MIN = -16;
 const ELEVATOR_STAND_Y_MAX = 24;
-const ELEVATOR_CAB_HALF_WIDTH = 70;
 const ELEVATOR_PLAT_HW = 80;
 
 /**
@@ -96,9 +95,8 @@ export class ElevatorController {
       if (up || down) {
         const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
         body.setVelocityX(0);
-        const left = this.elevator.platform.x - ELEVATOR_CAB_HALF_WIDTH + ELEVATOR_STEP_OUT_X_MARGIN;
-        const right = this.elevator.platform.x + ELEVATOR_CAB_HALF_WIDTH - ELEVATOR_STEP_OUT_X_MARGIN;
-        this.player.sprite.setX(Phaser.Math.Clamp(this.player.sprite.x, left, right));
+        const { x } = clampRiderToCab(this.player.sprite.x, this.elevator.platform.x);
+        this.player.sprite.setX(x);
       }
 
       this.elevator.ride(up, down, delta);
@@ -146,11 +144,9 @@ export class ElevatorController {
     if (this.elevator.getFloorAtCurrentPosition() !== null) return;
 
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const left = this.elevator.platform.x - ELEVATOR_CAB_HALF_WIDTH + ELEVATOR_STEP_OUT_X_MARGIN;
-    const right = this.elevator.platform.x + ELEVATOR_CAB_HALF_WIDTH - ELEVATOR_STEP_OUT_X_MARGIN;
-    const clampedX = Phaser.Math.Clamp(this.player.sprite.x, left, right);
+    const { x: clampedX, moved } = clampRiderToCab(this.player.sprite.x, this.elevator.platform.x);
 
-    if (clampedX !== this.player.sprite.x) {
+    if (moved) {
       this.player.sprite.setX(clampedX);
       body.setVelocityX(0);
     }

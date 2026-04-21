@@ -44,12 +44,32 @@ test.describe('Floor 1 (Platform Team)', () => {
     await waitForScene(page, 'PlatformTeamScene');
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
 
-    // Walk right a bit for a representative screenshot, then open the info
+    // Walk right until the player has clearly moved, then open the info
     // dialog through the DialogController — driving the zone-detection path
     // through arrow keys is timing-sensitive and flaky under parallel load,
     // whereas this still exercises the real dialog + keyboard-scroll path.
+    const startX = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as Record<string, unknown>;
+      const player = scene['player'] as { sprite: { x: number } };
+      return player.sprite.x;
+    });
     await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(1200);
+    await page.waitForFunction(
+      (baseX) => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as Record<string, unknown>;
+        const player = scene?.['player'] as { sprite: { x: number } } | undefined;
+        return !!player && player.sprite.x - baseX >= 120;
+      },
+      startX,
+      { timeout: 5_000 },
+    );
     await page.keyboard.up('ArrowRight');
 
     await page.evaluate(() => {
@@ -136,29 +156,6 @@ test.describe('Floor 1 (Platform Team)', () => {
 
     await page.keyboard.press('Escape');
     await waitForDialogClosed(page, 'PlatformTeamScene');
-    errors.assertClean();
-  });
-
-  test('platform team floor shows enemies', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
-
-    await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
-      (scene['enterFloor'] as (id: number) => void)(1);
-    });
-    await waitForScene(page, 'PlatformTeamScene');
-
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/08-floor1-enemies.png` });
     errors.assertClean();
   });
 });

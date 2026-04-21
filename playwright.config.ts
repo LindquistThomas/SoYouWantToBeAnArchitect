@@ -52,13 +52,16 @@ export default defineConfig({
   ],
 
   webServer: {
-    // On CI we serve the built bundle via `vite preview` — dramatically
-    // faster and more stable than `npm run dev`, because Vite in dev mode
-    // does on-demand TypeScript transforms per request, and under parallel
-    // Playwright workers that would frequently push per-test time past
-    // the 60s timeout. Locally we keep `npm run dev` so hot-reload works
-    // while iterating on tests.
-    command: process.env.CI ? 'npm run build && npm run preview -- --port 3000 --strictPort' : 'npm run dev',
+    // On CI we serve the already-built bundle via `vite preview` —
+    // dramatically faster and more stable than `npm run dev`, because Vite
+    // in dev mode does on-demand TypeScript transforms per request, and
+    // under parallel Playwright workers that would frequently push
+    // per-test time past the 60s timeout. The CI workflow runs `npm run
+    // build` as its own step before Playwright starts (see ci.yml), so
+    // we deliberately do NOT rebuild here — doing so would double the
+    // build cost (~15s wasted per run). Locally we keep `npm run dev` so
+    // hot-reload works while iterating on tests.
+    command: process.env.CI ? 'npm run preview -- --port 3000 --strictPort' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
