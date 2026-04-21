@@ -89,42 +89,33 @@ describe('actions', () => {
 });
 
 describe('bindings', () => {
-  it('maps arrow keys (and only arrows) to gameplay movement actions', () => {
-    // WASD is intentionally reserved for menu/dialog Navigate* actions so
-    // it never drives the player avatar. See `chore: remove WASD from
-    // movement bindings`.
-    expect(DEFAULT_BINDINGS.MoveLeft).toEqual([K.LEFT]);
-    expect(DEFAULT_BINDINGS.MoveRight).toEqual([K.RIGHT]);
-    expect(DEFAULT_BINDINGS.MoveUp).toEqual([K.UP]);
-    expect(DEFAULT_BINDINGS.MoveDown).toEqual([K.DOWN]);
-    for (const wasd of [K.A, K.D, K.W, K.S]) {
-      expect(DEFAULT_BINDINGS.MoveLeft).not.toContain(wasd);
-      expect(DEFAULT_BINDINGS.MoveRight).not.toContain(wasd);
-      expect(DEFAULT_BINDINGS.MoveUp).not.toContain(wasd);
-      expect(DEFAULT_BINDINGS.MoveDown).not.toContain(wasd);
-    }
-  });
-
-  it('maps both arrow keys and WASD to menu Navigate* actions', () => {
-    expect(DEFAULT_BINDINGS.NavigateLeft).toEqual(expect.arrayContaining([K.LEFT, K.A]));
-    expect(DEFAULT_BINDINGS.NavigateRight).toEqual(expect.arrayContaining([K.RIGHT, K.D]));
-    expect(DEFAULT_BINDINGS.NavigateUp).toEqual(expect.arrayContaining([K.UP, K.W]));
-    expect(DEFAULT_BINDINGS.NavigateDown).toEqual(expect.arrayContaining([K.DOWN, K.S]));
-  });
-
-  it('binds Jump to Space and ArrowUp only (no W — W is a Navigate* key)', () => {
-    expect(DEFAULT_BINDINGS.Jump).toEqual([K.SPACE, K.UP]);
-    expect(DEFAULT_BINDINGS.Jump).not.toContain(K.W);
+  it('maps arrow keys and WASD to their movement actions', () => {
+    expect(DEFAULT_BINDINGS.MoveLeft).toContain(K.LEFT);
+    expect(DEFAULT_BINDINGS.MoveLeft).toContain(K.A);
+    expect(DEFAULT_BINDINGS.MoveRight).toContain(K.RIGHT);
+    expect(DEFAULT_BINDINGS.MoveRight).toContain(K.D);
+    expect(DEFAULT_BINDINGS.MoveUp).toContain(K.UP);
+    expect(DEFAULT_BINDINGS.MoveUp).toContain(K.W);
+    expect(DEFAULT_BINDINGS.MoveDown).toContain(K.DOWN);
+    expect(DEFAULT_BINDINGS.MoveDown).toContain(K.S);
   });
 
   it('reserves Space exclusively for Jump (not Interact/Confirm)', () => {
     // Per the comment in bindings.ts: Space must never trigger a scene
     // transition or dialog by accident — Enter handles those verbs.
     expect(DEFAULT_BINDINGS.Jump).toContain(K.SPACE);
+    // Jump is also reserved against Up so pressing Up near an info zone
+    // opens the card without also triggering a jump frame.
+    expect(DEFAULT_BINDINGS.Jump).not.toContain(K.UP);
     expect(DEFAULT_BINDINGS.Interact).not.toContain(K.SPACE);
     expect(DEFAULT_BINDINGS.Confirm).not.toContain(K.SPACE);
     expect(DEFAULT_BINDINGS.Interact).toContain(K.ENTER);
     expect(DEFAULT_BINDINGS.Confirm).toContain(K.ENTER);
+  });
+
+  it('binds ArrowUp as the primary ToggleInfo key', () => {
+    expect(DEFAULT_BINDINGS.ToggleInfo).toContain(K.UP);
+    expect(DEFAULT_BINDINGS.ToggleInfo[0]).toBe(K.UP);
   });
 
   it('defines a non-empty binding for every action', () => {
@@ -146,6 +137,12 @@ describe('bindings', () => {
     expect(actionsForKey(K.LEFT)).toEqual(
       expect.arrayContaining(['MoveLeft', 'NavigateLeft']),
     );
+
+    // Arrow Up drives MoveUp, NavigateUp, and ToggleInfo — but NOT Jump.
+    expect(actionsForKey(K.UP)).toEqual(
+      expect.arrayContaining(['MoveUp', 'NavigateUp', 'ToggleInfo']),
+    );
+    expect(actionsForKey(K.UP)).not.toContain('Jump');
   });
 
   it('actionsForKey returns empty for an unbound key code', () => {
@@ -180,20 +177,18 @@ describe('keyLabels', () => {
   });
 
   it('primaryKeyLabel returns the label of the first-bound key', () => {
-    // Jump binds [SPACE, UP] — primary is Space.
+    // Jump binds [SPACE, W] — primary is Space.
     expect(primaryKeyLabel('Jump')).toBe('Space');
-    // MoveLeft binds [LEFT] only — primary is the arrow.
+    // MoveLeft binds [LEFT, A] — primary is the arrow.
     expect(primaryKeyLabel('MoveLeft')).toBe('←');
-    // NavigateLeft binds [LEFT, A] — primary is still the arrow.
-    expect(primaryKeyLabel('NavigateLeft')).toBe('←');
+    // ToggleInfo is primarily Arrow Up so on-screen hints read "Press ↑".
+    expect(primaryKeyLabel('ToggleInfo')).toBe('↑');
   });
 
   it('allKeyLabels joins every bound key with the given separator', () => {
-    // Jump binds [Space, ↑] — exercises the multi-key join path.
-    expect(allKeyLabels('Jump')).toBe('Space/↑');
-    expect(allKeyLabels('Jump', ', ')).toBe('Space, ↑');
-    // Navigate* actions exercise the WASD + arrow join.
-    expect(allKeyLabels('NavigateLeft')).toBe('←/A');
+    // Jump binds [Space, W] — exercises the multi-key join path.
+    expect(allKeyLabels('Jump')).toBe('Space/W');
+    expect(allKeyLabels('Jump', ', ')).toBe('Space, W');
     // Single-key actions render without a separator.
     expect(allKeyLabels('Interact')).toBe('Enter');
   });

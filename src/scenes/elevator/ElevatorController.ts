@@ -87,6 +87,20 @@ export class ElevatorController {
     if (this.playerOnElevator) {
       const up = input.up || (buttonState?.up ?? false);
       const down = input.down || (buttonState?.down ?? false);
+
+      // When the rider requests to move the cab, commit them to the ride:
+      // kill residual walk momentum and clamp them onto the cab. Without
+      // this, walking onto the cab at PLAYER_SPEED carries the player
+      // past the docked-floor unmount threshold (dx > PLAT_HW + 10)
+      // before the cab leaves the floor, so Up/Down appear to do nothing.
+      if (up || down) {
+        const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+        body.setVelocityX(0);
+        const left = this.elevator.platform.x - ELEVATOR_CAB_HALF_WIDTH + ELEVATOR_STEP_OUT_X_MARGIN;
+        const right = this.elevator.platform.x + ELEVATOR_CAB_HALF_WIDTH - ELEVATOR_STEP_OUT_X_MARGIN;
+        this.player.sprite.setX(Phaser.Math.Clamp(this.player.sprite.x, left, right));
+      }
+
       this.elevator.ride(up, down, delta);
       this.constrainPlayerToCab();
       // Match velocity so the physics integration step keeps the player

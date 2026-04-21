@@ -167,14 +167,12 @@ describe('InputService — axes', () => {
     expect(h.svc.horizontal()).toBe(0);
   });
 
-  it('horizontal() ignores WASD (A/D drive Navigate*, not Move*)', () => {
-    // WASD was intentionally removed from MoveLeft/MoveRight so the avatar
-    // never responds to keys meant for menu navigation.
+  it('horizontal() honours the WASD rebinding (A/D)', () => {
     h.keys.get(K.A)!.isDown = true;
-    expect(h.svc.horizontal()).toBe(0);
+    expect(h.svc.horizontal()).toBe(-1);
     h.keys.get(K.A)!.isDown = false;
     h.keys.get(K.D)!.isDown = true;
-    expect(h.svc.horizontal()).toBe(0);
+    expect(h.svc.horizontal()).toBe(1);
   });
 
   it('vertical() returns -1 when up is held, +1 when down is held, 0 when both or neither', () => {
@@ -201,7 +199,7 @@ describe('InputService — isDown', () => {
     h.keys.get(K.SPACE)!.isDown = true;
     expect(h.svc.isDown('Jump')).toBe(true);
     h.keys.get(K.SPACE)!.isDown = false;
-    h.keys.get(K.UP)!.isDown = true; // Jump is also bound to ArrowUp
+    h.keys.get(K.W)!.isDown = true; // Jump is also bound to W
     expect(h.svc.isDown('Jump')).toBe(true);
   });
 
@@ -233,11 +231,17 @@ describe('InputService — justPressed', () => {
     expect(h.svc.justPressed('Jump')).toBe(true);
   });
 
-  it('fires for any key bound to the action (Jump: Space, ArrowUp)', () => {
+  it('fires for any key rebound to the action (Jump: Space, W)', () => {
+    h.fireKeyDown(K.W);
+    expect(h.svc.justPressed('Jump')).toBe(true);
     h.fireKeyDown(K.SPACE);
     expect(h.svc.justPressed('Jump')).toBe(true);
+  });
+
+  it('binds ArrowUp to ToggleInfo — and not to Jump', () => {
     h.fireKeyDown(K.UP);
-    expect(h.svc.justPressed('Jump')).toBe(true);
+    expect(h.svc.justPressed('ToggleInfo')).toBe(true);
+    expect(h.svc.justPressed('Jump')).toBe(false);
   });
 
   it('dispatches to all actions a key is bound to (respecting context)', () => {
