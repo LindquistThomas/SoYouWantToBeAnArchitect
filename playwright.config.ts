@@ -21,7 +21,12 @@ export default defineConfig({
   // One retry on CI absorbs rare flake (worker eviction, cold cache miss)
   // without hiding bugs locally where retries stay at 0.
   retries: process.env.CI ? 1 : 0,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  reporter: process.env.CI
+    // On CI, add the `github` reporter so Playwright failures surface as
+    // GitHub Actions annotations on the PR check — gives test+line context
+    // without needing admin access to download the raw job log.
+    ? [['list'], ['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
+    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   // 60s is comfortable locally (most tests finish in 5-12s), but CI
   // runners (ubuntu-latest, 4 hyperthreaded vCPU) clock in ~3-5x slower
   // per test — and a few tests that drive through menu → elevator →
