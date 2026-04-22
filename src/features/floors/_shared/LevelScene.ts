@@ -43,6 +43,20 @@ export interface LevelConfig {
   floorId: FloorId;
   platforms: Array<{ x: number; y: number; width: number }>;
   /**
+   * Thin catwalks / walkways.
+   *
+   * Unlike `platforms` (which use the 128×128 floor tile as both visual
+   * and physics body — great for the ground, terrible for mezzanines
+   * because the tile body extends 128 px downward and crushes the
+   * headroom beneath), catwalks are a ~20 px thin rectangle with a
+   * matching graphic on top. Use these for any floating walkway.
+   *
+   * `x`, `y` = top-left of the walking surface (same semantics as
+   * `platforms.y` — the top of the slab, not its centre). `width` is in
+   * pixels. `thickness` defaults to 20.
+   */
+  catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
+  /**
    * Tokens in the room. `index` overrides the default array-position
    * index used to key into the ProgressionSystem's collected-tokens
    * state. Useful when two scenes share the same floorId and need
@@ -385,7 +399,9 @@ export class LevelScene extends Phaser.Scene {
   /* ---- platforms ---- */
   protected createPlatforms(): void {
     this.platformGroup = this.physics.add.staticGroup();
-    this.buildPlatforms(this.getLevelConfig());
+    const config = this.getLevelConfig();
+    this.buildPlatforms(config);
+    this.buildCatwalks(config);
   }
 
   protected buildPlatforms(config: LevelConfig): void {
@@ -405,6 +421,60 @@ export class LevelScene extends Phaser.Scene {
           this.add.image(tx, ty, 'tile_detail_overlay').setDepth(2.5);
         }
       }
+    }
+  }
+
+  /**
+   * Thin floating walkways. A ~20 px rectangle with a static physics body is
+   * added to the same platformGroup the ground tiles use, so every existing
+   * collider (player, enemies, dropped AU, etc.) just works. On top, a small
+   * graphic draws the slab face, a top rim, and subtle rivets so the catwalk
+   * reads as a metal grating rather than a floating block.
+   *
+   * Using a thin body — rather than re-using the 128 px ground tile — keeps
+   * headroom clear under mezzanines, which is the whole point of the primitive.
+   */
+  protected buildCatwalks(config: LevelConfig): void {
+    if (!config.catwalks?.length) return;
+    for (const c of config.catwalks) {
+      const thickness = c.thickness ?? 20;
+      const cx = c.x + c.width / 2;
+      const cy = c.y + thickness / 2;
+
+      // Physics body (invisible rectangle, added to platformGroup).
+      const body = this.add.rectangle(cx, cy, c.width, thickness, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.platformGroup.add(body);
+
+      // One-way: only collide from above, so the player can jump up
+      // through a catwalk and land on top of it. Without this, the thin
+      // body blocks a rising head even when there's plenty of room to
+      // land on top (the classic platformer "jump-through" behaviour).
+      const pbody = body.body as Phaser.Physics.Arcade.StaticBody;
+      pbody.checkCollision.down = false;
+      pbody.checkCollision.left = false;
+      pbody.checkCollision.right = false;
+
+      // Decorative face. Depth sits just above ground tiles (2) but below
+      // props (3) so desks/diagrams in front still overlap correctly.
+      const g = this.add.graphics().setDepth(2.2);
+      const x = c.x, y = c.y, w = c.width, h = thickness;
+      // Slab.
+      g.fillStyle(0x4a5560, 1).fillRect(x, y, w, h);
+      // Top rim — lighter stripe to read as a walking surface.
+      g.fillStyle(0x8fa0b3, 1).fillRect(x, y, w, 3);
+      // Bottom shadow edge.
+      g.fillStyle(0x2a323c, 1).fillRect(x, y + h - 2, w, 2);
+      // Rivets every ~32 px.
+      g.fillStyle(0x1a2028, 1);
+      for (let rx = x + 10; rx < x + w - 6; rx += 32) {
+        g.fillRect(rx, y + 6, 2, 2);
+        g.fillRect(rx, y + h - 8, 2, 2);
+      }
+      // Side caps so the end of the walkway reads as a thick edge piece.
+      g.fillStyle(0x2a323c, 1);
+      g.fillRect(x, y, 2, h);
+      g.fillRect(x + w - 2, y, 2, h);
     }
   }
 

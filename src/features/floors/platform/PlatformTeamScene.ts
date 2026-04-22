@@ -9,20 +9,23 @@ import { enemiesForGroundY } from './enemies';
  * Floor 1 — Platform room (left side of the Platform Team floor).
  *
  * Reached by stepping OFF the elevator to the LEFT at floor 1.
- * Laid out as a ground floor, a left-side stepping-stone up to a left
- * mezzanine (Scaling Lab), a right mezzanine (Observability), and a
- * single CENTRAL vertical lift that bridges the middle of the ground up
- * to catwalk level — so there is no "dead zone" if the player falls into
- * the middle of the room:
  *
- *            [SCALING LAB]                          [OBSERVABILITY]
- *     ╔═══════════════════╗       │lift│        ╔═══════════════════╗   (catwalk y=C)
- *         │ low step              │    │
- *                                 │    │
- *                                 │    │
- *  [PLATFORM TEAM]          desk router rack           [EDGE SECURITY]
- *  signpost                                            (WAF panel)
- *  ═══════════════════════════════════════════════════════════════════ (ground y=G)
+ * Layout is a four-tier single-screen room built on thin catwalks (NOT
+ * 128×128 floor tiles), so mezzanines don't crush the headroom
+ * underneath. Three in-room lifts stitch the tiers together:
+ *
+ *              [T4 central island]   ← lift B tops here
+ *     [T3 SCALING LAB]            [T3 OBSERVABILITY]
+ *                                                            ┌T1 WAF┐
+ *   [T2 wall] [T2 main] [west bridge] [east bridge] [T2 right]│ledge│
+ *     │A│                  │B│                               │C│
+ *   ════════════════════════════════════════════════════════════════ ground
+ *   signpost   desk / router / rack                        ←WAF panel→
+ *
+ * Lifts:
+ *   A — left (x=160):   ground → T2 (Scaling Lab approach)
+ *   B — centre (x=640): ground → T4 (spine; lands on the central island)
+ *   C — right (x=1100): ground → T1 (Edge Security WAF ledge)
  *
  * A sibling scene `ArchitectureTeamScene` hosts the architecture content
  * on the other side of the elevator; both scenes share FloorId
@@ -34,8 +37,16 @@ import { enemiesForGroundY } from './enemies';
  * rack-buzz / fan-hum / disk-seek ambience underneath the music.
  */
 export class PlatformTeamScene extends LevelScene {
-  /** Catwalk walking-surface y (mezzanine). Kept in sync with enemies.ts. */
-  private static readonly CATWALK_Y = GAME_HEIGHT - TILE_SIZE - 220;
+  /** Tier walking-surface Ys. Kept in sync with enemies.ts.
+   *  Pitch = 140 px; catwalk thickness = 16 → ~124 px clear headroom
+   *  under a catwalk body (140 - 16), which fits the 116 px player
+   *  hitbox with a small safety margin everywhere one tier stacks
+   *  above another. */
+  private static readonly T1_Y = 692; // low ledges (WAF right)
+  private static readonly T2_Y = 552; // mid catwalks spanning the room
+  private static readonly T3_Y = 412; // upper station catwalks (scaling / ops)
+  private static readonly T4_Y = 272; // top central island (split around lift B)
+  private static readonly CATWALK_THICKNESS = 16;
 
   constructor() {
     super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
@@ -53,59 +64,51 @@ export class PlatformTeamScene extends LevelScene {
 
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const C = PlatformTeamScene.CATWALK_Y;
+    const T3 = PlatformTeamScene.T3_Y;
+    const T4 = PlatformTeamScene.T4_Y;
 
     // --- Floor zone carpets (thin tinted stripes at the walking surface). ---
-    // Drawn BEFORE props so props sit on top. Ranges keep clear of the
-    // central lift shaft (roughly x=600..680) so the carpet doesn't ghost
-    // through the lift graphics.
+    // Drawn BEFORE props so props sit on top. Ranges stay clear of the
+    // three lift shafts (A ~x=120..200, B ~x=600..680, C ~x=1060..1140).
     this.addFloorCarpet(80,   340,  0x4a8fbf, 0.35); // Zone A — Platform Onboarding (cyan)
-    this.addFloorCarpet(440,  600,  0x707878, 0.30); // Workstations lane-left (neutral grey)
-    this.addFloorCarpet(680,  820,  0x707878, 0.30); // Workstations lane-right (neutral grey)
-    this.addFloorCarpet(1060, 1260, 0xc27099, 0.35); // Zone C — Edge Security (rose)
+    this.addFloorCarpet(420,  580,  0x707878, 0.30); // Workstations lane-left
+    this.addFloorCarpet(700,  880,  0x707878, 0.30); // Workstations lane-right
 
-    // --- Ambient greenery (kept sparse; back accents already carry density). ---
+    // --- Ambient greenery. Kept clear of catwalk shadows above. ---
     this.addAmbientPlants([
-      { x: 60,   kind: 'tall' },
-      { x: 140,  kind: 'small' },
-      { x: 1260, kind: 'tall' },
+      { x: 220,  kind: 'small' },
+      { x: 460,  kind: 'tall' },
+      { x: 820,  kind: 'small' },
     ]);
 
-    // --- Zone A: Platform Team signpost (labels itself; no duplicate nameplate). ---
+    // --- Zone A: Platform Team signpost. ---
     this.addSignpost({ x: 260, label: 'PLATFORM\n   TEAM', color: '#b8e6ff' });
 
-    // --- Workstations cluster, laid out to leave clearance around the
-    //     central lift shaft at x=640. Desk + router on the left of the
-    //     shaft, rack + cables on the right. ---
+    // --- Workstations (ground). Placed between the three lift shafts so
+    //     the player can walk the full width without props blocking lift
+    //     boarding. Desk + router left of lift B, rack + cables right. ---
     this.add.image(500, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(580, G - 10, 'router').setDepth(3);
     this.add.image(740, G - 50, 'server_rack').setDepth(3);
     this.add.image(740, G - 10, 'cables').setDepth(1);
 
-    // --- Mezzanine content panels. Centred on their respective catwalk
-    //     tile span so mounting feet rest on the catwalk. ---
-    //     Left catwalk tile range: x=256..512 → panel centre 384.
-    //     Right catwalk tile range: x=768..1024 → panel centre 896.
-    this.createScalingDiagram(384, C);
-    this.createMonitoringWall(896, C);
+    // --- Mezzanine content panels, anchored to their T3 catwalk tops. ---
+    //     Left T3 catwalk:  x=160..520  → Scaling Lab centred at x=340.
+    //     Right T3 catwalk: x=760..1120 → Observability centred at x=940.
+    this.createScalingDiagram(340, T3);
+    this.createMonitoringWall(940, T3);
 
-    // --- Zone C: Web Application Firewall panel sits on the ground far
-    //     right, well clear of the right catwalk (ends at x=1024) and the
-    //     central lift. Panel width 200, centred at 1180 → spans 1080..1280. ---
-    this.createWafDiagram(1180, G - 40);
+    // --- Edge Security WAF panel on the T1 right ledge (x=1140..1280). ---
+    this.createWafDiagram(1200, PlatformTeamScene.T1_Y);
 
-    // --- Overhead station nameplates. One per station, placed above its
-    //     panel so it doesn't overlap the panel body. Platform Team is
-    //     already labelled by the signpost; the central lift is labelled
-    //     inline on the shaft graphics (see createDecorations' lift hint). ---
-    this.addStationNameplate(384,  C - 180, '[ SCALING LAB ]',   '#b8e6ff');
-    this.addStationNameplate(896,  C - 180, '[ OBSERVABILITY ]', '#b8e6ff');
-    this.addStationNameplate(1180, G - 220, '[ EDGE SECURITY ]', '#ff8fa8');
+    // --- Overhead station nameplates. ---
+    this.addStationNameplate(340,  T3 - 180, '[ SCALING LAB ]',   '#b8e6ff');
+    this.addStationNameplate(940,  T3 - 180, '[ OBSERVABILITY ]', '#b8e6ff');
+    this.addStationNameplate(1200, PlatformTeamScene.T1_Y - 220, '[ EDGE SECURITY ]', '#ff8fa8');
 
-    // --- Central lift hint — a tiny label above the lift shaft so the
-    //     player notices the vertical lift that bridges ground → catwalks.
-    //     The shaft graphics themselves are drawn by LevelScene.createRoomElevators. ---
-    this.add.text(640, C - 40, '↑↓ LIFT', {
+    // --- Central lift hint — above the T4 island so the player notices
+    //     that lift B goes all the way to the top.
+    this.add.text(640, T4 - 40, '↑↓ LIFT', {
       fontFamily: 'monospace', fontSize: '11px',
       color: '#d4f0ff', fontStyle: 'bold',
       backgroundColor: '#1a1a22',
@@ -523,70 +526,96 @@ export class PlatformTeamScene extends LevelScene {
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const C = PlatformTeamScene.CATWALK_Y;
+    const T1 = PlatformTeamScene.T1_Y;
+    const T2 = PlatformTeamScene.T2_Y;
+    const T3 = PlatformTeamScene.T3_Y;
+    const T4 = PlatformTeamScene.T4_Y;
+    const T = PlatformTeamScene.CATWALK_THICKNESS;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
-      playerStart: { x: 150, y: G - 100 },
+      playerStart: { x: 240, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
       platforms: [
-        // Ground (full room width, 10 tiles).
-        { x: 0,    y: G,   width: 10 },
-        // Left side: low stepping stone between ground and the left catwalk.
-        // Placed JUST OUTSIDE the catwalk's x-range so the step tile doesn't
-        // overlap the catwalk tile physics body (catwalk bottom y = C + TILE_SIZE).
-        { x: 128,  y: 720, width: 1 },
-        // Left catwalk — Scaling Lab mezzanine.
-        { x: 256,  y: C,   width: 2 },
-        // Right catwalk — Observability mezzanine.
-        { x: 768,  y: C,   width: 2 },
-        // NOTE: no right-side low step. Right catwalk is reached from the
-        // central lift (short jump left or right off the lift's top position).
-        // A right low step at x=1024..1152 would overlap the WAF panel
-        // visually; dropping it keeps Zone C (Edge Security) visually clean.
+        // Ground only — mezzanines use the thin `catwalks` primitive so
+        // their 16 px physics bodies don't eat the headroom below.
+        { x: 0, y: G, width: 10 },
       ],
 
-      // --- Central vertical lift — the primary fix for the "fell into the
-      //     middle and can't get out" dead zone. Reaches from the ground
-      //     (bottom parked position) up to the catwalk level. ---
+      catwalks: [
+        // Shaft x-ranges to remember:
+        //   Lift A: x=120..200  Lift B: x=600..680  Lift C: x=1060..1140
+        // Each catwalk is split around any lift shaft it would otherwise span.
+
+        // T1 — WAF right ledge. Starts just past lift C's shaft.
+        { x: 1140, y: T1, width: 140, thickness: T },
+
+        // T2 — mid catwalks. Split at each lift shaft.
+        { x: 0,   y: T2, width: 120, thickness: T }, // left-wall pad (step off lift A going left)
+        { x: 200, y: T2, width: 200, thickness: T }, // T2 left main (step off lift A going right)
+        { x: 400, y: T2, width: 180, thickness: T }, // west bridge (butts T2 left main at x=400)
+        { x: 700, y: T2, width: 180, thickness: T }, // east bridge (180 px runway to clear the 80 px lift B shaft)
+        { x: 880, y: T2, width: 180, thickness: T }, // T2 right ledge (butts east bridge at x=880)
+
+        // T3 — upper station catwalks.
+        { x: 160, y: T3, width: 360, thickness: T }, // Scaling Lab (left)
+        { x: 760, y: T3, width: 360, thickness: T }, // Observability (right)
+
+        // T4 — central island split around lift B. Player rides lift B
+        // to the top and can step off either direction onto a small pad.
+        { x: 500, y: T4, width: 100, thickness: T },
+        { x: 680, y: T4, width: 100, thickness: T },
+      ],
+
       roomElevators: [
-        { x: 640, minY: C + 6, maxY: G + 6, startY: G + 6 },
+        // Lift A — left: ground → T2. Lands between T2 left-wall pad
+        // (x=0..120) and T2 left main (x=200..400).
+        { x: 160,  minY: T2 + 6, maxY: G + 6, startY: G + 6 },
+        // Lift B — centre: ground → T4. Lands between the two T4
+        // island halves (x=500..600 and x=680..780).
+        { x: 640,  minY: T4 + 6, maxY: G + 6, startY: G + 6 },
+        // Lift C — right: ground → T1 WAF ledge. Shaft sits just LEFT
+        // of the WAF ledge (x=1140..1280), so ground boarding at
+        // x=1100 is clear of any overhead catwalk body.
+        { x: 1100, minY: T1 + 6, maxY: G + 6, startY: G + 6 },
       ],
 
       // Token indices 0..6 — disjoint from ArchitectureTeamScene (7..).
       tokens: [
-        // Ground trail.
-        { x: 192,  y: G - 40, index: 0 }, // near the signpost (entry reward)
-        { x: 660,  y: G - 40, index: 1 }, // between router (x≈580) and rack (x≈740)
-        { x: 1000, y: G - 40, index: 2 }, // clear ground between rack and WAF panel
-        // Stepping-stone reward.
-        { x: 192,  y: 680,    index: 3 }, // on top of the left low step
-        // Mezzanine trail.
-        { x: 384,  y: C - 40, index: 4 }, // left catwalk (Scaling)
-        { x: 896,  y: C - 40, index: 5 }, // right catwalk (Observability)
-        // Mid-air reward — collectable while riding the central lift up.
-        { x: 640,  y: 500,    index: 6 },
+        { x: 300,  y: G - 40, index: 0 },  // ground near signpost
+        { x: 770,  y: G - 40, index: 1 },  // ground between workstations and lift C
+        { x: 250,  y: T2 - 40, index: 2 }, // T2 left main
+        { x: 1200, y: T1 - 40, index: 3 }, // T1 WAF ledge
+        { x: 340,  y: T3 - 40, index: 4 }, // T3 Scaling Lab
+        { x: 940,  y: T3 - 40, index: 5 }, // T3 Observability
+        { x: 540,  y: T4 - 40, index: 6 }, // T4 island-left (ride lift B, step left)
       ],
 
       infoPoints: [
-        // Ground — onboarding signpost and the WAF edge station.
+        // Ground signpost. Default offsetY = -h/2 places the rect
+        // directly above the anchor (y ≈ 632..832). No catwalk body sits
+        // in that x-range/y-range.
         {
           x: 260, y: G, contentId: 'platform-engineering',
-          zone: { shape: 'rect', width: 160, height: 220 },
+          zone: { shape: 'rect', width: 160, height: 200 },
         },
+        // T3 Scaling Lab — zone above the catwalk. offsetY=-88 places
+        // rect bottom 4 px above the T3 body top (412).
         {
-          x: 1180, y: G, contentId: 'web-application-firewall',
-          zone: { shape: 'rect', width: 200, height: 220 },
+          x: 340, y: T3, contentId: 'scaling',
+          zone: { shape: 'rect', width: 260, height: 160, offsetY: -88 },
         },
-        // Mezzanine — zones centred on the catwalk walking surface.
+        // T3 Observability — mirror of Scaling Lab.
         {
-          x: 384, y: C + 10, contentId: 'scaling',
-          zone: { shape: 'rect', width: 240, height: 200 },
+          x: 940, y: T3, contentId: 'you-build-you-run',
+          zone: { shape: 'rect', width: 260, height: 160, offsetY: -88 },
         },
+        // T1 WAF ledge — zone above the ledge. Left edge at x=1100 stays
+        // east of the T2 right ledge (ends x=1060), so no T2 body clip.
         {
-          x: 896, y: C + 10, contentId: 'you-build-you-run',
-          zone: { shape: 'rect', width: 240, height: 200 },
+          x: 1200, y: T1, contentId: 'web-application-firewall',
+          zone: { shape: 'rect', width: 200, height: 140, offsetY: -78 },
         },
       ],
 
