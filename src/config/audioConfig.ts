@@ -21,7 +21,7 @@ export const SCENE_MUSIC: Record<string, string> = {
   FinanceTeamScene:        'music_floor2',
   ProductLeadershipScene:  'music_floor2',
   CustomerSuccessScene:    'music_floor2',
-  ExecutiveSuiteScene:     'music_floor2',
+  ExecutiveSuiteScene:     'music_executive',
   ProductIsyProjectControlsScene: 'music_floor2',
   ProductIsyBeskrivelseScene:     'music_floor2',
   ProductIsyRoadScene:            'music_floor2',
@@ -42,6 +42,7 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_floor2', path: 'music/8bit-chiptune/bgm_action_2.mp3' },
   { key: 'music_platform', path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz', path: 'music/retro-synth/hostile_territory-loop1.ogg' },
+  { key: 'music_executive', path: 'music/boss/bossroom-battle-431358.mp3' },
 ];
 
 export interface SoundtrackTrack {
@@ -58,6 +59,7 @@ export const SOUNDTRACK_PLAYLIST: ReadonlyArray<SoundtrackTrack> = [
   { key: 'music_floor2', label: 'FLOOR 2' },
   { key: 'music_platform', label: 'PLATFORM' },
   { key: 'music_quiz', label: 'QUIZ' },
+  { key: 'music_executive', label: 'EXECUTIVE' },
   { key: 'music_lullaby', label: 'LULLABY' },
 ];
 

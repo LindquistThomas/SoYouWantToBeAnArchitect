@@ -14,9 +14,10 @@ The tracks currently wired up in `STATIC_MUSIC_ASSETS`:
 | `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`) |
 | `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` — emitted imperatively with `music:play` during an active ride. |
 | `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) |
-| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, `ExecutiveSuiteScene`, and the Product sub-scenes (`ProductIsyProjectControlsScene`, `ProductIsyBeskrivelseScene`, `ProductIsyRoadScene`, `ProductAdminLisensScene`) (via `SCENE_MUSIC`) |
+| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (`ProductIsyProjectControlsScene`, `ProductIsyBeskrivelseScene`, `ProductIsyRoadScene`, `ProductAdminLisensScene`) (via `SCENE_MUSIC`) |
 | `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) |
 | `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` — emits `music:push` while a quiz is active, then pops back to scene music. |
+| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`) — royalty-free Bond-style spy theme from Pixabay. |
 
 ## Unused tracks present on disk
 
