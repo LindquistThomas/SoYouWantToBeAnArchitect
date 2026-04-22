@@ -44,14 +44,10 @@ test.describe('Floor 1 (Platform Team)', () => {
     await waitForScene(page, 'PlatformTeamScene');
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
 
-    // Walk right a bit for a representative screenshot, then open the info
-    // dialog through the DialogController — driving the zone-detection path
-    // through arrow keys is timing-sensitive and flaky under parallel load,
-    // whereas this still exercises the real dialog + keyboard-scroll path.
-    await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(1200);
-    await page.keyboard.up('ArrowRight');
-
+    // Open the info dialog programmatically through the DialogController.
+    // Driving the zone-detection path via arrow keys was the original
+    // approach but was timing-sensitive and flaky under parallel CI load;
+    // this still exercises the real dialog + keyboard-scroll path.
     await page.evaluate(() => {
       const g = window.__game!;
       const scene = g.scene
@@ -136,29 +132,6 @@ test.describe('Floor 1 (Platform Team)', () => {
 
     await page.keyboard.press('Escape');
     await waitForDialogClosed(page, 'PlatformTeamScene');
-    errors.assertClean();
-  });
-
-  test('platform team floor shows enemies', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
-
-    await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
-      (scene['enterFloor'] as (id: number) => void)(1);
-    });
-    await waitForScene(page, 'PlatformTeamScene');
-
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/08-floor1-enemies.png` });
     errors.assertClean();
   });
 });

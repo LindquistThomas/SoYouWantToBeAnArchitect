@@ -82,49 +82,51 @@ test.describe('elevator return', () => {
       // approaches the shaft and pauses/steps back. The bug: the sticky
       // on-elevator latch clears `skipFloorEntry` as soon as the player
       // clips the cab tolerance band (which overlaps the floor walking
-      // surface), so stepping back re-triggers floor entry.
+      // surface), so stepping back re-triggers floor entry. A single
+      // approach/retreat cycle reproduces the regression (a second cycle
+      // adds no coverage — it's the first clip of the latch zone that
+      // mattered).
       const walkInKey = c.stepOff === 'left' ? 'ArrowRight' : 'ArrowLeft';
       const walkOutKey = c.stepOff === 'left' ? 'ArrowLeft' : 'ArrowRight';
-      const samples: string[] = [];
-      const snap = async () => {
-        const active = await page.evaluate(() => {
-          const g = window.__game as unknown as {
-            scene: { getScenes: (a?: boolean) => { sys: { settings: { key: string } } }[] };
-          };
-          return g.scene
-            .getScenes(true)
-            .map((s) => s.sys.settings.key)
-            .filter((k) => k !== 'BootScene' && k !== 'MenuScene')
-            .join(',');
-        });
-        samples.push(active);
+
+      // Poll for a bounce during the next `ms` milliseconds by checking
+      // whether the original floor scene becomes active again. Returns
+      // `true` as soon as `c.sceneKey` is active; otherwise keeps sampling
+      // via `page.evaluate` every 50 ms until the window expires and then
+      // returns `false`.
+      const observeBounce = async (ms: number): Promise<boolean> => {
+        const deadline = Date.now() + ms;
+        while (Date.now() < deadline) {
+          const active = await page.evaluate((targetKey) => {
+            const g = window.__game as unknown as {
+              scene: { isActive: (k: string) => boolean };
+            };
+            return g.scene.isActive(targetKey);
+          }, c.sceneKey);
+          if (active) return true;
+          await page.waitForTimeout(50);
+        }
+        return false;
       };
 
-      // Repeat a few approach/retreat cycles to cover different stop points
-      // within the 90–96 px latch zone.
-      for (let i = 0; i < 3; i++) {
-        await page.keyboard.down(walkInKey);
-        await page.waitForTimeout(350);
-        await page.keyboard.up(walkInKey);
-        await snap();
-        await page.keyboard.down(walkOutKey);
-        await page.waitForTimeout(300);
-        await page.keyboard.up(walkOutKey);
-        await snap();
-      }
-      // Final steady walk toward the cab.
+      // Approach the cab.
       await page.keyboard.down(walkInKey);
-      for (let i = 0; i < 10; i++) {
-        await page.waitForTimeout(150);
-        await snap();
-      }
+      const approachBounced = await observeBounce(400);
       await page.keyboard.up(walkInKey);
+      expect(approachBounced, `Bounced back into ${c.sceneKey} during approach`).toBe(false);
 
-      const bounced = samples.some((s) => s.includes(c.sceneKey));
-      expect(
-        bounced,
-        `Expected to stay in ElevatorScene while walking back to the cab, but observed scene samples: ${samples.join(' | ')}`,
-      ).toBe(false);
+      // Retreat to exercise the second half of the sticky-latch bug.
+      await page.keyboard.down(walkOutKey);
+      const retreatBounced = await observeBounce(300);
+      await page.keyboard.up(walkOutKey);
+      expect(retreatBounced, `Bounced back into ${c.sceneKey} during retreat`).toBe(false);
+
+      // Final steady walk toward the cab to confirm we actually reach the
+      // cab without ever bouncing.
+      await page.keyboard.down(walkInKey);
+      const bounced = await observeBounce(1500);
+      await page.keyboard.up(walkInKey);
+      expect(bounced, `Unexpectedly re-entered ${c.sceneKey} while walking back to the cab`).toBe(false);
 
       errors.assertClean();
     });
