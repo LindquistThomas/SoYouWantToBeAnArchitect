@@ -119,6 +119,22 @@ export function drawSceneBackdrop(
   g.lineStyle(1, theme.platformColor, 0.55);
   g.strokeRect(0.5, 0.5, width - 1, height - 1);
 
+  // 5. Bottom-edge floor glow — a soft band tinted with the floor's accent
+  // color, fading from ~18% alpha at the very bottom to 0 about 100 px up.
+  // Grounds the room so platforms + props don't float over the vignette.
+  const glowHeight = 100;
+  const glowBands = 20;
+  const glowBandH = Math.ceil(glowHeight / glowBands);
+  const glowTop = height - glowHeight;
+  for (let i = 0; i < glowBands; i++) {
+    // t in (0,1]: darker at the top of the band, brightest at the bottom.
+    const t = (i + 1) / glowBands;
+    const alpha = 0.18 * Math.pow(t, 2);
+    const yTop = glowTop + i * glowBandH;
+    g.fillStyle(theme.platformColor, alpha);
+    g.fillRect(0, yTop, width, glowBandH);
+  }
+
   drawAccents?.(g);
 
   return g;
