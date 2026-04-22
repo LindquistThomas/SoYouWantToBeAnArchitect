@@ -43,10 +43,12 @@ export interface BuildingFacadeOptions {
   bands: FacadeBand[];
   /** Max twinkling windows (alpha tweens) across the whole façade, to keep the motion budget honest. */
   twinkleBudget?: number;
+  /** Max flickering windows (brief alpha dips) across the whole façade. */
+  flickerBudget?: number;
   /**
    * Vertical parallax factor applied to every façade element so the outer
    * wall reads as "behind" the shaft. 1 = scrolls with the shaft (no depth);
-   * < 1 = drifts slower than the shaft as the camera moves. Default: 0.85.
+   * < 1 = drifts slower than the shaft as the camera moves. Default: 0.72.
    * The horizontal factor is always 1 — the shaft doesn't pan horizontally.
    */
   scrollFactorY?: number;
@@ -55,6 +57,7 @@ export interface BuildingFacadeOptions {
 export interface BuildingFacadeHandle {
   objects: Phaser.GameObjects.GameObject[];
   tweens: Phaser.Tweens.Tween[];
+  timers: Phaser.Time.TimerEvent[];
 }
 
 export interface FacadeWindowSpec {
@@ -66,6 +69,8 @@ export interface FacadeWindowSpec {
   state: 'lit' | 'dim' | 'dark';
   /** Twinklers get their own GameObject + tween. */
   twinkle: boolean;
+  /** Flickerers get their own GameObject + timer chain. */
+  flicker: boolean;
 }
 
 function rng(seed: number): () => number {
@@ -88,23 +93,24 @@ export function generateFacadeWindows(
   width: number,
   height: number,
   seed: number,
-  opts: { twinkles?: number } = {},
+  opts: { twinkles?: number; flickers?: number } = {},
 ): FacadeWindowSpec[] {
   const rand = rng(seed);
-  const { twinkles = 1 } = opts;
+  const { twinkles = 1, flickers = 0 } = opts;
 
-  const winW = 8;
-  const winH = 10;
-  const gutterX = 10;
-  const gutterY = 10;
-  const marginX = 12;
-  const marginY = 16;
+  const winW = 5;
+  const winH = 7;
+  const gutterX = 7;
+  const gutterY = 8;
+  const marginX = 10;
+  const marginY = 12;
 
   const cols = Math.max(0, Math.floor((width - marginX * 2 + gutterX) / (winW + gutterX)));
   const rows = Math.max(0, Math.floor((height - marginY * 2 + gutterY) / (winH + gutterY)));
 
   const windows: FacadeWindowSpec[] = [];
   let twinklesPlaced = 0;
+  let flickersPlaced = 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -115,6 +121,10 @@ export function generateFacadeWindows(
       else state = 'dark';
 
       const canTwinkle = state === 'lit' && twinklesPlaced < twinkles && rand() < 0.18;
+      // Flickers only on windows that aren't already twinkling — avoid
+      // layered alpha animations fighting over the same rectangle.
+      const canFlicker =
+        !canTwinkle && state === 'lit' && flickersPlaced < flickers && rand() < 0.08;
       windows.push({
         x: marginX + c * (winW + gutterX),
         y: marginY + r * (winH + gutterY),
@@ -122,8 +132,10 @@ export function generateFacadeWindows(
         height: winH,
         state,
         twinkle: canTwinkle,
+        flicker: canFlicker,
       });
       if (canTwinkle) twinklesPlaced++;
+      if (canFlicker) flickersPlaced++;
     }
   }
 
@@ -135,11 +147,13 @@ export function drawBuildingFacade(
   scene: Phaser.Scene,
   opts: BuildingFacadeOptions,
 ): BuildingFacadeHandle {
-  const { sides, bands, twinkleBudget = 6, scrollFactorY = 0.85 } = opts;
+  const { sides, bands, twinkleBudget = 10, flickerBudget = 4, scrollFactorY = 0.72 } = opts;
 
   const objects: Phaser.GameObjects.GameObject[] = [];
   const tweens: Phaser.Tweens.Tween[] = [];
+  const timers: Phaser.Time.TimerEvent[] = [];
   let twinklesRemaining = twinkleBudget;
+  let flickersRemaining = flickerBudget;
 
   for (const side of sides) {
     const sideW = side.xRight - side.xLeft;
@@ -174,9 +188,12 @@ export function drawBuildingFacade(
       // pinstripe ribs and window grid carry the vertical rhythm on their own.
 
       // Window grid.
-      const windows = generateFacadeWindows(sideW, bandH, band.seed ^ (side.xLeft | 0));
+      const windows = generateFacadeWindows(sideW, bandH, band.seed ^ (side.xLeft | 0), {
+        twinkles: Math.max(0, twinklesRemaining),
+        flickers: Math.max(0, flickersRemaining),
+      });
       for (const w of windows) {
-        if (w.twinkle) continue;
+        if (w.twinkle || w.flicker) continue;
         if (w.state === 'dark') {
           // Dark frame so an "empty office" still reads as a window, not a blank wall.
           gfx.fillStyle(theme.color.bg.mid, 0.35);
@@ -220,8 +237,52 @@ export function drawBuildingFacade(
         tweens.push(tw);
         twinklesRemaining--;
       }
+
+      // Flickers: quick alpha dip (fluorescent stutter) with a long random
+      // pause in between. Implemented as a chained TimerEvent so each
+      // window keeps its own irregular cadence without a shared tween.
+      for (const w of windows) {
+        if (!w.flicker || flickersRemaining <= 0) continue;
+        const rect = scene.add
+          .rectangle(
+            side.xLeft + w.x + w.width / 2,
+            band.yTop + w.y + w.height / 2,
+            w.width,
+            w.height,
+            theme.color.sky.windowLit,
+            0.80,
+          )
+          .setDepth(0.41)
+          .setScrollFactor(1, scrollFactorY);
+        objects.push(rect);
+
+        // xorshift-ish: seed derived from window position so flicker cadence is stable.
+        const seed = (band.seed ^ (w.x * 73856093) ^ (w.y * 19349663)) >>> 0;
+        const pauseRand = rng(seed);
+        const nextPause = (): number => 4000 + Math.floor(pauseRand() * 5000);
+
+        const doFlicker = (): void => {
+          if (!rect.active) return;
+          rect.setAlpha(0.20);
+          const up = scene.time.delayedCall(60, () => {
+            if (!rect.active) return;
+            rect.setAlpha(0.80);
+            const wait = scene.time.delayedCall(nextPause(), doFlicker);
+            timers.push(wait);
+          });
+          timers.push(up);
+        };
+
+        // Stagger initial fires so they don't all pop at t=0.
+        const initial = scene.time.delayedCall(
+          1000 + Math.floor(pauseRand() * 4000),
+          doFlicker,
+        );
+        timers.push(initial);
+        flickersRemaining--;
+      }
     }
   }
 
-  return { objects, tweens };
+  return { objects, tweens, timers };
 }

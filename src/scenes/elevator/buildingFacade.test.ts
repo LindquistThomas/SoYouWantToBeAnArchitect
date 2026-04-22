@@ -54,4 +54,25 @@ describe('generateFacadeWindows', () => {
     const twinkles = windows.filter((w) => w.twinkle).length;
     expect(twinkles).toBeLessThanOrEqual(1);
   });
+
+  it('respects the flicker budget and never flickers a dark/dim window', () => {
+    const windows = generateFacadeWindows(600, 480, 9, { flickers: 3 });
+    const flickers = windows.filter((w) => w.flicker).length;
+    expect(flickers).toBeLessThanOrEqual(3);
+    for (const w of windows.filter((w) => w.flicker)) {
+      expect(w.state).toBe('lit');
+    }
+  });
+
+  it('never marks the same window as both twinkle and flicker', () => {
+    const windows = generateFacadeWindows(600, 480, 21, { twinkles: 4, flickers: 4 });
+    for (const w of windows) {
+      expect(w.twinkle && w.flicker).toBe(false);
+    }
+  });
+
+  it('defaults to zero flickers when no opts passed', () => {
+    const windows = generateFacadeWindows(600, 480, 13);
+    expect(windows.filter((w) => w.flicker).length).toBe(0);
+  });
 });
