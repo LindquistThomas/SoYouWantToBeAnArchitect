@@ -17,7 +17,14 @@ The tracks currently wired up in `STATIC_MUSIC_ASSETS`:
 | `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (`ProductIsyProjectControlsScene`, `ProductIsyBeskrivelseScene`, `ProductIsyRoadScene`, `ProductAdminLisensScene`) (via `SCENE_MUSIC`) |
 | `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) |
 | `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` — emits `music:push` while a quiz is active, then pops back to scene music. |
-| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`) — royalty-free Bond-style spy theme from Pixabay. |
+
+## Deferred tracks (lazy-loaded)
+
+Tracks declared in `DEFERRED_MUSIC_ASSETS` (also in `src/config/audioConfig.ts`). These are **not** preloaded by `BootScene`; the owning scene pulls them in via `loadDeferredMusic()` from its own `preload()` so we don't pay the startup cost for tracks only used on one floor. Use this for any track heavier than a few MB.
+
+| Asset key | File | Used by |
+| --- | --- | --- |
+| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` — royalty-free Bond-style spy theme from Pixabay, loaded lazily due to size (~6 MB). |
 
 ## Unused tracks present on disk
 
@@ -32,9 +39,9 @@ The following files are part of the library but are not currently referenced by 
 
 ## Swapping in or adding a track
 
-1. Drop the file into the appropriate subdirectory (`8bit-chiptune/`, `elevator-jazz/`, or `retro-synth/`) — or create a new pack directory.
-2. Add an entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with a `music_<name>` key and the path relative to `public/`.
-3. Point one or more scenes at the new key in `SCENE_MUSIC` (same file). `MusicPlugin` picks it up automatically on the next scene transition — no scene code changes required.
+1. Drop the file into an appropriate subdirectory under `public/music/` (current packs: `8bit-chiptune/`, `elevator-jazz/`, `retro-synth/`, `boss/` — or create a new pack directory).
+2. Add an entry to `STATIC_MUSIC_ASSETS` (loaded at boot) **or** `DEFERRED_MUSIC_ASSETS` (loaded on first scene entry) in `src/config/audioConfig.ts` with a `music_<name>` key and the path relative to `public/`. Prefer `DEFERRED_MUSIC_ASSETS` for anything heavier than a few MB that's only used on one floor.
+3. Point one or more scenes at the new key in `SCENE_MUSIC` (same file). `MusicPlugin` picks it up automatically on the next scene transition. For deferred tracks, also add `loadDeferredMusic(this, 'music_<name>')` to the owning scene's `preload()`.
 
 ## Licensing
 

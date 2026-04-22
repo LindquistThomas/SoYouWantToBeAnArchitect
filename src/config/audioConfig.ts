@@ -42,8 +42,32 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_floor2', path: 'music/8bit-chiptune/bgm_action_2.mp3' },
   { key: 'music_platform', path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz', path: 'music/retro-synth/hostile_territory-loop1.ogg' },
+];
+
+/**
+ * Large or scene-specific music assets loaded on demand by the owning
+ * scene's `preload()` rather than at BootScene startup. Keeps initial
+ * load lean when a track is only needed by a single floor. Use the
+ * `loadDeferredMusic()` helper from scene preload to pull one in.
+ */
+export const DEFERRED_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_executive', path: 'music/boss/bossroom-battle-431358.mp3' },
 ];
+
+/**
+ * Queue a deferred music asset for load on a scene's loader. Safe to
+ * call from `preload()` on every scene entry — Phaser skips audio keys
+ * that are already cached, so subsequent visits don't re-download.
+ */
+export function loadDeferredMusic(
+  scene: { load: { audio: (key: string, url: string) => unknown }; cache: { audio: { exists: (key: string) => boolean } } },
+  key: string,
+): void {
+  if (scene.cache.audio.exists(key)) return;
+  const asset = DEFERRED_MUSIC_ASSETS.find((a) => a.key === key);
+  if (!asset) return;
+  scene.load.audio(asset.key, asset.path);
+}
 
 export interface SoundtrackTrack {
   key: string;

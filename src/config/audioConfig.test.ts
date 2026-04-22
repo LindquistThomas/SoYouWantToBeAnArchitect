@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from './audioConfig';
+import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS, DEFERRED_MUSIC_ASSETS } from './audioConfig';
 
 describe('audioConfig soundtrack listen mode', () => {
   it('exposes unique soundtrack keys for menu cycling', () => {
@@ -17,6 +17,7 @@ describe('audioConfig soundtrack listen mode', () => {
   it('contains only known loaded music keys', () => {
     const knownKeys = new Set([
       ...STATIC_MUSIC_ASSETS.map((asset) => asset.key),
+      ...DEFERRED_MUSIC_ASSETS.map((asset) => asset.key),
       'music_lullaby',
     ]);
     for (const track of SOUNDTRACK_PLAYLIST) {
