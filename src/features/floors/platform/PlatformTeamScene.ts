@@ -25,7 +25,7 @@ import { enemiesForGroundY } from './enemies';
  * Lifts:
  *   A — left (x=160):   ground → T2 (Scaling Lab approach)
  *   B — centre (x=640): ground → T4 (spine; lands on the central island)
- *   C — right (x=1180): ground → T1 (Edge Security WAF ledge)
+ *   C — right (x=1100): ground → T1 (Edge Security WAF ledge)
  *
  * A sibling scene `ArchitectureTeamScene` hosts the architecture content
  * on the other side of the elevator; both scenes share FloorId
@@ -69,7 +69,7 @@ export class PlatformTeamScene extends LevelScene {
 
     // --- Floor zone carpets (thin tinted stripes at the walking surface). ---
     // Drawn BEFORE props so props sit on top. Ranges stay clear of the
-    // three lift shafts (A ~x=120..200, B ~x=600..680, C ~x=1140..1220).
+    // three lift shafts (A ~x=120..200, B ~x=600..680, C ~x=1060..1140).
     this.addFloorCarpet(80,   340,  0x4a8fbf, 0.35); // Zone A — Platform Onboarding (cyan)
     this.addFloorCarpet(420,  580,  0x707878, 0.30); // Workstations lane-left
     this.addFloorCarpet(700,  880,  0x707878, 0.30); // Workstations lane-right
@@ -539,7 +539,7 @@ export class PlatformTeamScene extends LevelScene {
 
       platforms: [
         // Ground only — mezzanines use the thin `catwalks` primitive so
-        // their 20 px physics bodies don't eat the headroom below.
+        // their 16 px physics bodies don't eat the headroom below.
         { x: 0, y: G, width: 10 },
       ],
 

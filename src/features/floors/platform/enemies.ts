@@ -4,11 +4,11 @@ type EnemyList = NonNullable<LevelConfig['enemies']>;
 
 /**
  * Platform floor enemies. `G` is the ground walking-surface y. The
- * mezzanines sit on thin catwalks at y=720 / 600 / 480 / 360 — see
- * `PlatformTeamScene.getLevelConfig` for the full geometry.
+ * mezzanines sit on thin catwalks at y=692 / 552 / 412 / 272 (T1..T4) —
+ * see `PlatformTeamScene.getLevelConfig` for the full geometry.
  *
  * Patrol ranges avoid the three lift shafts (A ≈ x=120..200,
- * B ≈ x=600..680, C ≈ x=1140..1220) so enemies never block boarding.
+ * B ≈ x=600..680, C ≈ x=1060..1140) so enemies never block boarding.
  *
  *   - Ground slime patrols the workstation lane between lift A and lift B.
  *   - A rogue deploy bot patrols the T3 Observability catwalk (y=480).
