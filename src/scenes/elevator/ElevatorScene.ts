@@ -266,10 +266,10 @@ export class ElevatorScene extends Phaser.Scene {
   private getFloorYPositions(): Record<number, number> {
     return {
       [FLOORS.LOBBY]: 2410,
-      [FLOORS.PLATFORM_TEAM]: 1880,
-      [FLOORS.PRODUCTS]: 1350,
-      [FLOORS.BUSINESS]: 820,
-      [FLOORS.EXECUTIVE]: 290,
+      [FLOORS.PLATFORM_TEAM]: 1936,
+      [FLOORS.PRODUCTS]: 1462,
+      [FLOORS.BUSINESS]: 988,
+      [FLOORS.EXECUTIVE]: 514,
     };
   }
 
