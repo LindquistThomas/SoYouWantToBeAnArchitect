@@ -322,6 +322,10 @@ export class ArchitectureTeamScene extends LevelScene {
         { x: 1200, y: G - 40, index: K + 3 },
       ],
 
+      coffees: [
+        { x: 600, y: G - 40 },
+      ],
+
       infoPoints: [
         {
           x: 230, y: G, contentId: 'architecture-team',

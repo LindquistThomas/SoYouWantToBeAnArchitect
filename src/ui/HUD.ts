@@ -33,6 +33,23 @@ export class HUD {
   private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
 
+  private caffeineIcon!: Phaser.GameObjects.Graphics;
+  private caffeineRing!: Phaser.GameObjects.Graphics;
+  /** 0 when inactive. */
+  private caffeineEndAt = 0;
+  private caffeineDuration = 0;
+  private onCaffeineStart = (durationMs: number): void => {
+    this.caffeineDuration = durationMs;
+    this.caffeineEndAt = this.scene.time.now + durationMs;
+    this.renderCaffeineIcon(1);
+  };
+  private onCaffeineEnd = (): void => {
+    this.caffeineEndAt = 0;
+    this.caffeineDuration = 0;
+    this.caffeineIcon.setVisible(false);
+    this.caffeineRing.setVisible(false);
+  };
+
   constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
     this.scene = scene;
     this.progression = progression;
@@ -86,7 +103,18 @@ export class HUD {
     this.muteHit.on('pointerdown', () => this.punchMuteIcon());
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
-    createSceneLifecycle(this.scene).bindEventBus('audio:mute-changed', this.onMuteChanged);
+
+    const CAF_X = GAME_WIDTH - 76;
+    const CAF_Y = 22;
+    this.caffeineRing = this.scene.add.graphics().setPosition(CAF_X, CAF_Y).setVisible(false);
+    this.container.add(this.caffeineRing);
+    this.caffeineIcon = this.scene.add.graphics().setPosition(CAF_X, CAF_Y).setVisible(false);
+    this.container.add(this.caffeineIcon);
+
+    const lifecycle = createSceneLifecycle(this.scene);
+    lifecycle.bindEventBus('audio:mute-changed', this.onMuteChanged);
+    lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
+    lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
 
     // Floor indicator — to the left of the mute icon
     this.floorText = this.scene.add.text(GAME_WIDTH - 48, 10, '', {
@@ -258,6 +286,37 @@ export class HUD {
     });
   }
 
+  private renderCaffeineIcon(ratio: number): void {
+    this.caffeineIcon.setVisible(true);
+    this.caffeineRing.setVisible(true);
+
+    const icon = this.caffeineIcon;
+    icon.clear();
+    icon.fillStyle(0x6b3b23, 1);
+    icon.fillRoundedRect(-6, -5, 11, 12, 2);
+    icon.fillStyle(0x3a1e10, 1);
+    icon.fillRect(-6, -5, 11, 2);
+    icon.fillStyle(0xc9a27a, 1);
+    icon.fillRect(-5, -5, 9, 1);
+    icon.lineStyle(1.5, 0x4a2b1a, 1);
+    icon.beginPath();
+    icon.arc(6, 1, 4, -Math.PI / 2, Math.PI / 2, false);
+    icon.strokePath();
+
+    const ring = this.caffeineRing;
+    ring.clear();
+    ring.lineStyle(2, 0x3b4a5c, 0.6);
+    ring.beginPath();
+    ring.arc(0, 0, 12, 0, Math.PI * 2);
+    ring.strokePath();
+    const start = -Math.PI / 2;
+    const end = start + Math.PI * 2 * Math.max(0, Math.min(1, ratio));
+    ring.lineStyle(2, 0xffb84a, 0.95);
+    ring.beginPath();
+    ring.arc(0, 0, 12, start, end);
+    ring.strokePath();
+  }
+
   private getAudio(): AudioManager | undefined {
     return this.scene.registry.get('audio') as AudioManager | undefined;
   }
@@ -324,6 +383,15 @@ export class HUD {
       this.lastProgressSig = sig;
       const target = next ? Phaser.Math.Clamp(au / next.auRequired, 0, 1) : 0;
       this.tweenProgressTo(target);
+    }
+
+    if (this.caffeineEndAt > 0 && this.caffeineDuration > 0) {
+      const remaining = this.caffeineEndAt - this.scene.time.now;
+      if (remaining <= 0) {
+        this.onCaffeineEnd();
+      } else {
+        this.renderCaffeineIcon(remaining / this.caffeineDuration);
+      }
     }
   }
 }

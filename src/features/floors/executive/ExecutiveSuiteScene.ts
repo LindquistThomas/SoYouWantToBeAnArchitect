@@ -193,6 +193,10 @@ export class ExecutiveSuiteScene extends LevelScene {
         { x: 740,  y: T1 - 40 },
       ],
 
+      coffees: [
+        { x: 680, y: T1 - 40 },
+      ],
+
       infoPoints: [
         {
           x: 380, y: G, contentId: 'executive-suite',
