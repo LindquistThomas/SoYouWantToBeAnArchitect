@@ -220,7 +220,7 @@ function generateArchitectureAstronautSprite(scene: Phaser.Scene): void {
   g.fillCircle(W / 2 - 4, 11, 1.8);
 
   // Antenna
-  g.lineStyle(1.5, 0x888, 1);
+  g.lineStyle(1.5, 0x888888, 1);
   g.beginPath();
   g.moveTo(W / 2 + 8, 6);
   g.lineTo(W / 2 + 12, 1);

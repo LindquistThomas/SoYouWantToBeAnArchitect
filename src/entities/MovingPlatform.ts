@@ -73,6 +73,13 @@ export class MovingPlatform extends Phaser.Physics.Arcade.Image {
     body.setImmovable(true);
     body.setAllowGravity(false);
     body.setSize(cfg.width, thickness, true);
+    // One-way collision — match the catwalk pattern in LevelScene.buildCatwalks:
+    // solid from above (the player lands on top), pass-through from below and
+    // the sides so a head-bonk or side-bump doesn't block jumps across a
+    // mezzanine gap.
+    body.checkCollision.down = false;
+    body.checkCollision.left = false;
+    body.checkCollision.right = false;
 
     const startPos = cfg.axis === 'x' ? cx : cy;
     const endPos = startPos + cfg.distance;
