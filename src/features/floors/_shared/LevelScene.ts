@@ -11,6 +11,7 @@ import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
+import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
@@ -58,6 +59,14 @@ export interface LevelConfig {
    */
   catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
   /**
+   * Floating platforms that move along a single axis. Unlike catwalks
+   * (static) and room elevators (player-driven), these travel under their
+   * own steam, ferrying the player between tiers. See {@link MovingPlatform}
+   * for the semantics of each mode — `bounce` = velocity bouncer,
+   * `tween` = smoothed ease-in-out path.
+   */
+  movingPlatforms?: MovingPlatformConfig[];
+  /**
    * Tokens in the room. `index` overrides the default array-position
    * index used to key into the ProgressionSystem's collected-tokens
    * state. Useful when two scenes share the same floorId and need
@@ -91,7 +100,7 @@ export interface LevelConfig {
    * `minX` / `maxX` default to ±radius around `x`.
    */
   enemies?: Array<{
-    type: 'slime' | 'bot';
+    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost';
     x: number;
     y: number;
     minX?: number;
@@ -146,6 +155,9 @@ export class LevelScene extends Phaser.Scene {
   /** Which room-lift is the player currently riding? (-1 = none) */
   private activeRoomLift = -1;
 
+  /** Auto-moving floating platforms (bounce or tween). */
+  private movingPlatforms: MovingPlatform[] = [];
+
   /**
    * On-screen lift buttons for in-room elevators.
    * These are a gameplay mechanic (not content-zone gated) so visibility
@@ -196,6 +208,7 @@ export class LevelScene extends Phaser.Scene {
     this.isTransitioning = false;
     this.roomLifts = [];
     this.activeRoomLift = -1;
+    this.movingPlatforms = [];
   }
 
   create(): void {
@@ -204,6 +217,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.createBackground();
     this.createPlatforms();
+    this.createMovingPlatforms();
     this.createRoomElevators();
     this.createDecorations();
     this.createExit();
@@ -250,6 +264,13 @@ export class LevelScene extends Phaser.Scene {
     this.tokenMgr.wireColliders();
     this.enemySpawner.wireColliders();
     this.coffeeMgr.wireColliders();
+
+    const solidEnemies = this.enemySpawner.enemies.filter((e) => e.collidesWithLevel);
+    for (const mp of this.movingPlatforms) {
+      this.physics.add.collider(this.player.sprite, mp);
+      if (solidEnemies.length > 0) this.physics.add.collider(solidEnemies, mp);
+      this.physics.add.collider(this.tokenMgr.droppedAUGroup, mp);
+    }
 
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;
@@ -488,6 +509,15 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
+  /* ---- moving platforms ---- */
+  protected createMovingPlatforms(): void {
+    const config = this.getLevelConfig();
+    if (!config.movingPlatforms?.length) return;
+    for (const cfg of config.movingPlatforms) {
+      this.movingPlatforms.push(new MovingPlatform(this, cfg));
+    }
+  }
+
   /* ---- in-room elevators ---- */
   protected createRoomElevators(): void {
     const config = this.getLevelConfig();
@@ -641,15 +671,18 @@ export class LevelScene extends Phaser.Scene {
     // Other gameplay systems (enemies, room-lifts, zones, exit-proximity)
     // intentionally pause — the player is just reading the dialog.
     if (this.dialogs.isOpen) {
+      for (const mp of this.movingPlatforms) mp.pause();
       this.player.update(delta);
       this.hud.update();
       this.updateAtmosphericFx();
       return;
     }
+    for (const mp of this.movingPlatforms) mp.resume();
 
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
+    for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
     this.updateAtmosphericFx();
 

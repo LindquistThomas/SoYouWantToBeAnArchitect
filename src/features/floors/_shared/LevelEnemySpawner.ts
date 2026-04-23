@@ -3,6 +3,9 @@ import { FLOORS, FloorId } from '../../../config/gameConfig';
 import { Enemy } from '../../../entities/Enemy';
 import { Slime } from '../../../entities/enemies/Slime';
 import { BureaucracyBot } from '../../../entities/enemies/BureaucracyBot';
+import { ScopeCreep } from '../../../entities/enemies/ScopeCreep';
+import { ArchitectureAstronaut } from '../../../entities/enemies/ArchitectureAstronaut';
+import { TechDebtGhost } from '../../../entities/enemies/TechDebtGhost';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { Player } from '../../../entities/Player';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
@@ -35,9 +38,24 @@ export class LevelEnemySpawner {
       const minX = e.minX ?? e.x - 160;
       const maxX = e.maxX ?? e.x + 160;
       const opts = { minX, maxX, speed: e.speed };
-      const enemy: Enemy = e.type === 'slime'
-        ? new Slime(this.deps.scene, e.x, e.y, opts)
-        : new BureaucracyBot(this.deps.scene, e.x, e.y, opts);
+      let enemy: Enemy;
+      switch (e.type) {
+        case 'slime':
+          enemy = new Slime(this.deps.scene, e.x, e.y, opts);
+          break;
+        case 'bot':
+          enemy = new BureaucracyBot(this.deps.scene, e.x, e.y, opts);
+          break;
+        case 'scope-creep':
+          enemy = new ScopeCreep(this.deps.scene, e.x, e.y, opts);
+          break;
+        case 'astronaut':
+          enemy = new ArchitectureAstronaut(this.deps.scene, e.x, e.y, opts);
+          break;
+        case 'tech-debt-ghost':
+          enemy = new TechDebtGhost(this.deps.scene, e.x, e.y, opts);
+          break;
+      }
       this.enemies.push(enemy);
     }
   }
@@ -46,7 +64,8 @@ export class LevelEnemySpawner {
   wireColliders(): void {
     if (this.enemies.length === 0) return;
     const physics = this.deps.scene.physics;
-    physics.add.collider(this.enemies, this.deps.platformGroup);
+    const solid = this.enemies.filter((e) => e.collidesWithLevel);
+    if (solid.length > 0) physics.add.collider(solid, this.deps.platformGroup);
     physics.add.overlap(
       this.deps.player.sprite,
       this.enemies,

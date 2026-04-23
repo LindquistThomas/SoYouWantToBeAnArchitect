@@ -48,7 +48,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     sceneKey: 'PlatformTeamScene',
     auRequired: 0,
     auLabel: 'Infrastructure AU',
-    totalAU: 8,
+    totalAU: 15,
     rooms: { left: 'Platform Team', right: 'Architecture Team' },
     theme: {
       platformColor: 0x2d6a4f,
