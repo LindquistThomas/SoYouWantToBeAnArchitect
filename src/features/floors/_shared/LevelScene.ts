@@ -706,11 +706,15 @@ export class LevelScene extends Phaser.Scene {
       lift.platform.setVelocityY(0);
     }
 
-    if (lift.platform.y <= lift.minY) {
+    // Only clamp when moving out of bounds — otherwise starting at a
+    // boundary (startY === maxY) would zero velocity every frame and
+    // block motion back into range. Same tripwire as src/entities/Elevator.ts.
+    const vy = (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y;
+    if (lift.platform.y <= lift.minY && vy < 0) {
       lift.platform.y = lift.minY;
       lift.platform.setVelocityY(0);
     }
-    if (lift.platform.y >= lift.maxY) {
+    if (lift.platform.y >= lift.maxY && vy > 0) {
       lift.platform.y = lift.maxY;
       lift.platform.setVelocityY(0);
     }
