@@ -21,6 +21,16 @@ export class ArchitectureTeamScene extends LevelScene {
   /** First token index used in this room — must not overlap PlatformTeamScene. */
   private static readonly TOKEN_INDEX_OFFSET = 7;
 
+  /**
+   * Catwalk tiers match PlatformTeamScene so the jump physics carry
+   * across rooms on the same floor. Single jump from ground (G=832,
+   * gravity=900, jump=-520) clears ~150 px, and each tier sits 140 px
+   * above the one below.
+   */
+  private static readonly MID_Y = 692;
+  private static readonly UP_Y = 552;
+  private static readonly CAT_T = 20;
+
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
     this.returnSide = 'right';
@@ -302,6 +312,9 @@ export class ArchitectureTeamScene extends LevelScene {
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
     const K = ArchitectureTeamScene.TOKEN_INDEX_OFFSET;
+    const MID = ArchitectureTeamScene.MID_Y;
+    const UP = ArchitectureTeamScene.UP_Y;
+    const T = ArchitectureTeamScene.CAT_T;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
@@ -312,18 +325,74 @@ export class ArchitectureTeamScene extends LevelScene {
         { x: 0, y: G, width: 10 },
       ],
 
+      // Mezzanines placed in the horizontal gaps between the four ground
+      // info zones so the 220-px-tall rect zones stay unobstructed.
+      // Gaps: 310..380, 600..710, 890..1000, 1160..1280.
+      catwalks: [
+        // Mid tier (reachable from ground in one jump).
+        { x: 310,  y: MID, width: 70,  thickness: T },
+        { x: 600,  y: MID, width: 110, thickness: T },
+        { x: 890,  y: MID, width: 110, thickness: T },
+        { x: 1160, y: MID, width: 120, thickness: T },
+        // Upper tier (reachable from mid in one jump). Only two — the
+        // horizontal tween bridges the long gap between them.
+        { x: 600,  y: UP,  width: 110, thickness: T },
+        { x: 1020, y: UP,  width: 100, thickness: T },
+      ],
+
+      movingPlatforms: [
+        // 1. Horizontal bouncer on mid-tier, ferrying between Cat-mid-L
+        // (x=310..380) and Cat-mid-C1 (x=600..710) *over* the c4 info zone.
+        {
+          x: 380, y: MID, width: 80, thickness: T,
+          axis: 'x', distance: 240, mode: 'bounce', speed: 70,
+        },
+        // 2. Vertical bouncer, mid → upper on the right side. Travels
+        // between y=MID (aligns with Cat-mid gap) and y=UP (Cat-up-R).
+        {
+          x: 1040, y: MID, width: 80, thickness: T,
+          axis: 'y', distance: UP - MID, mode: 'bounce', speed: 55,
+        },
+        // 3. Tween-driven bridge on upper tier: smooth Sine ease between
+        // Cat-up-C (600..710) and Cat-up-R (1020..1120). The only tween
+        // platform on the floor — deliberately the easiest to time.
+        {
+          x: 710, y: UP, width: 100, thickness: T,
+          axis: 'x', distance: 210, mode: 'tween', duration: 2400, ease: 'Sine.inOut',
+        },
+      ],
+
       roomElevators: [],
 
-      // Tokens arranged between anchors, reachable without overlapping info rects.
+      // Ground tokens 7..10 unchanged; new tokens 11..14 reward the
+      // mezzanine/mover chain.
       tokens: [
-        { x: 360,  y: G - 40, index: K + 0 },
-        { x: 670,  y: G - 40, index: K + 1 },
-        { x: 960,  y: G - 40, index: K + 2 },
-        { x: 1200, y: G - 40, index: K + 3 },
+        { x: 360,  y: G - 40,  index: K + 0 },
+        { x: 670,  y: G - 40,  index: K + 1 },
+        { x: 960,  y: G - 40,  index: K + 2 },
+        { x: 1200, y: G - 40,  index: K + 3 },
+        // Mid-tier: one on Cat-mid-L, one mid-air along the bouncer path
+        // (player collects while riding).
+        { x: 345,  y: MID - 40, index: K + 4 },
+        { x: 500,  y: MID - 40, index: K + 5 },
+        // Upper-tier: one on Cat-up-C, one on Cat-up-R (across the tween).
+        { x: 655,  y: UP  - 40, index: K + 6 },
+        { x: 1070, y: UP  - 40, index: K + 7 },
       ],
 
       coffees: [
         { x: 600, y: G - 40 },
+      ],
+
+      enemies: [
+        // Scope Creep — ground-level patrol in the c4↔vertical-slice gap.
+        { type: 'scope-creep', x: 660, y: G - 20, minX: 620, maxX: 700, speed: 35 },
+        // Architecture Astronaut — hovering above mid-tier catwalks, at
+        // a y the player can reach with a jump from mid-tier for stomping.
+        { type: 'astronaut', x: 500, y: 620, minX: 250, maxX: 900, speed: 65 },
+        // Tech Debt Ghost — drifts across the upper half, phases through
+        // catwalks so retreating upstairs is no escape.
+        { type: 'tech-debt-ghost', x: 700, y: 420, minX: 300, maxX: 1100, speed: 40 },
       ],
 
       infoPoints: [

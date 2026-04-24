@@ -27,6 +27,13 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   /** True once onStomp() or similar kills the enemy. Overlap callback must check this. */
   public defeated = false;
 
+  /**
+   * When false, this enemy is skipped from the level's platform/moving-
+   * platform colliders — it phases through walls and catwalks. Player
+   * overlap (damage) is unaffected.
+   */
+  public collidesWithLevel = true;
+
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
     super(scene, x, y, texture);
     scene.add.existing(this);

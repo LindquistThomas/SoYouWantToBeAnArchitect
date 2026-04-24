@@ -4,6 +4,7 @@ import { generateTileSprites } from './sprites/tiles';
 import { generateAUTokenSprites } from './sprites/token';
 import { generateElevatorSprites } from './sprites/elevator';
 import { generateRoomElevatorSprite } from './sprites/roomElevator';
+import { generateMovingPlatformSprite } from './sprites/movingPlatform';
 import { generateDoorSprites } from './sprites/doors';
 import { generateParticleSprite } from './sprites/particles';
 import { generatePlantSprites } from './sprites/plants';
@@ -28,6 +29,7 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateAUTokenSprites(scene);
   generateElevatorSprites(scene);
   generateRoomElevatorSprite(scene);
+  generateMovingPlatformSprite(scene);
   generateDoorSprites(scene);
   generateParticleSprite(scene);
   generatePlantSprites(scene);
