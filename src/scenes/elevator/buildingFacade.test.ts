@@ -42,11 +42,10 @@ describe('generateFacadeWindows', () => {
   it('emits all three tints across a decent sample', () => {
     const windows = generateFacadeWindows(600, 480, 101);
     const tints = new Set(windows.map((w) => w.tint));
-    // Not strictly guaranteed for tiny samples, but 600x480 produces plenty.
+    // Fixed seed + large sample reliably exercises every supported tint.
     expect(tints.has('warm')).toBe(true);
-    // Cool/green are rarer; assert at least one of the two appears to catch
-    // a regression where pickTint returned a single value.
-    expect(tints.has('cool') || tints.has('green')).toBe(true);
+    expect(tints.has('cool')).toBe(true);
+    expect(tints.has('green')).toBe(true);
   });
 
   it('emits a plausible mix of states (dark is majority)', () => {

@@ -90,7 +90,7 @@ export interface FacadeWindowSpec {
   width: number;
   height: number;
   state: 'lit' | 'dim' | 'dark';
-  /** Colour family for lit/dim windows. Ignored visually for `dark`. */
+  /** Colour family for lit windows only. Ignored visually for `dim` + `dark`. */
   tint: FacadeWindowTint;
   /** Rendering variant for lit windows. `dim` + `dark` always read as plain. */
   kind: FacadeWindowKind;
@@ -431,9 +431,9 @@ export function drawBuildingFacade(
           objects.push(offPatch, offFrame);
           const fire = (): void => {
             if (!offPatch.active) return;
-            const on = offPatch.visible;
-            offPatch.setVisible(!on);
-            offFrame.setVisible(!on);
+            const isOffVisible = offPatch.visible;
+            offPatch.setVisible(!isOffVisible);
+            offFrame.setVisible(!isOffVisible);
           };
           timers.push(
             scene.time.addEvent({
@@ -471,9 +471,11 @@ export function drawBuildingFacade(
           continue;
         }
 
-        // Animated blinds — overlay scales between closed (1) and nearly
-        // open (0.1) with a long random repeat delay so it reads as
-        // "someone occasionally adjusts their shade", not a constant tween.
+        // Animated blinds — a solid shade block occasionally slides from
+        // fully closed (scaleY 1) to nearly open (scaleY 0.1) with a long
+        // random repeat delay so it reads as "someone occasionally adjusts
+        // their shade", not a constant tween. Static stripe detail is
+        // already baked into the underlying window by the paint pass.
         if (
           blindsAnimsRemaining > 0 &&
           w.kind === 'blinds' &&
@@ -524,13 +526,14 @@ export function drawBuildingFacade(
             const toX = direction === 1 ? rightEdge : leftEdge;
             figure.x = fromX;
             figure.setVisible(true);
-            scene.tweens.add({
+            const tween = scene.tweens.add({
               targets: figure,
               x: toX,
               duration: 1000 + Math.floor(Math.random() * 900),
               ease: 'Linear',
               onComplete: () => figure.setVisible(false),
             });
+            tweens.push(tween);
           };
           timers.push(
             scene.time.addEvent({
