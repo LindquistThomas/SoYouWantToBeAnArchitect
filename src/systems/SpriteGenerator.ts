@@ -4,6 +4,7 @@ import { generateTileSprites } from './sprites/tiles';
 import { generateAUTokenSprites } from './sprites/token';
 import { generateElevatorSprites } from './sprites/elevator';
 import { generateRoomElevatorSprite } from './sprites/roomElevator';
+import { generateMovingPlatformSprite } from './sprites/movingPlatform';
 import { generateDoorSprites } from './sprites/doors';
 import { generateParticleSprite } from './sprites/particles';
 import { generatePlantSprites } from './sprites/plants';
@@ -13,6 +14,7 @@ import { generateInfraSprites } from './sprites/infra';
 import { generateEnemySprites } from './sprites/enemies';
 import { generateGeirSprite } from './sprites/npcGeir';
 import { generateReceptionistSprite } from './sprites/receptionist';
+import { generateCoffeeSprites } from './sprites/coffee';
 
 /**
  * Composition root for runtime sprite generation.
@@ -27,6 +29,7 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateAUTokenSprites(scene);
   generateElevatorSprites(scene);
   generateRoomElevatorSprite(scene);
+  generateMovingPlatformSprite(scene);
   generateDoorSprites(scene);
   generateParticleSprite(scene);
   generatePlantSprites(scene);
@@ -36,4 +39,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateEnemySprites(scene);
   generateGeirSprite(scene);
   generateReceptionistSprite(scene);
+  generateCoffeeSprites(scene);
 }

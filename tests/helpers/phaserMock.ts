@@ -105,7 +105,7 @@ interface PendingCall { at: number; cb: () => void }
 
 export interface FakeScene {
   time: { now: number; delayedCall: (ms: number, cb: () => void) => void };
-  tweens: { add: (config: Record<string, unknown>) => { stop: () => void; targets: unknown; onComplete?: () => void } };
+  tweens: { add: (config: Record<string, unknown>) => { stop: () => void; targets: unknown; onComplete?: () => void }; killTweensOf: (targets: unknown) => void };
   anims: {
     exists: (key: string) => boolean;
     create: (config: Record<string, unknown>) => void;
@@ -122,6 +122,7 @@ export interface FakeScene {
     existing: (obj: unknown) => unknown;
     graphics: () => { clear: () => void; setDepth: (n: number) => unknown; lineStyle: (...a: unknown[]) => unknown; fillStyle: (...a: unknown[]) => unknown; fillRect: (...a: unknown[]) => unknown; strokeRect: (...a: unknown[]) => unknown; fillCircle: (...a: unknown[]) => unknown; strokeCircle: (...a: unknown[]) => unknown; fillTriangle: (...a: unknown[]) => unknown; lineBetween: (...a: unknown[]) => unknown };
     particles: () => { setDepth: (n: number) => unknown; setPosition: (x: number, y: number) => unknown; explode: (n: number) => unknown };
+    image: (x: number, y: number, key: string) => { x: number; y: number; setDepth: (n: number) => unknown; setAlpha: (a: number) => unknown; setTint: (t: number) => unknown; setScale: (s: number) => unknown; setScrollFactor: (s: number) => unknown; destroy: () => void };
   };
   textures: { exists: (key: string) => boolean };
   inputs: { horizontal: () => number; justPressed: (action: string) => boolean };
@@ -157,6 +158,7 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
         targets: config['targets'],
         onComplete: config['onComplete'] as (() => void) | undefined,
       })),
+      killTweensOf: vi.fn(),
     },
     anims: {
       exists: () => false,
@@ -178,6 +180,19 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
         setPosition: vi.fn(),
         explode: vi.fn(),
       }),
+      image: (x: number, y: number, _key: string) => {
+        const img = {
+          x,
+          y,
+          setDepth: vi.fn(() => img),
+          setAlpha: vi.fn(() => img),
+          setTint: vi.fn(() => img),
+          setScale: vi.fn(() => img),
+          setScrollFactor: vi.fn(() => img),
+          destroy: vi.fn(),
+        };
+        return img;
+      },
     },
     textures: { exists: () => true },
     inputs: {

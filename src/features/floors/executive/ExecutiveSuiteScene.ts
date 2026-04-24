@@ -5,6 +5,7 @@ import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
 import { InteractiveDoor } from '../../../ui/InteractiveDoor';
+import { loadDeferredMusic } from '../../../config/audioConfig';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -35,6 +36,13 @@ export class ExecutiveSuiteScene extends LevelScene {
 
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
+  }
+
+  preload(): void {
+    // Spy-theme MP3 is large (~6MB) — load on first suite entry instead
+    // of during BootScene to keep initial startup lean. Phaser caches
+    // by key, so subsequent visits skip the network round-trip.
+    loadDeferredMusic(this, 'music_executive');
   }
 
   override init(data?: { fromDoor?: string }): void {
@@ -183,6 +191,10 @@ export class ExecutiveSuiteScene extends LevelScene {
         { x: 460,  y: T1 - 40 },
         { x: 600,  y: T1 - 40 },
         { x: 740,  y: T1 - 40 },
+      ],
+
+      coffees: [
+        { x: 680, y: T1 - 40 },
       ],
 
       infoPoints: [

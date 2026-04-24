@@ -23,11 +23,36 @@ export class HUD {
   private muteHit!: Phaser.GameObjects.Zone;
   private bg!: Phaser.GameObjects.Graphics;
   private coinIcon!: Phaser.GameObjects.Graphics;
+  private coinShine!: Phaser.GameObjects.Graphics;
   private progressStrip!: Phaser.GameObjects.Graphics;
+  private auPill!: Phaser.GameObjects.Graphics;
+  private floorPill!: Phaser.GameObjects.Graphics;
+  private floorLabel!: Phaser.GameObjects.Text;
+  private muteHovered = false;
   private lastAU = 0;
   private lastFloor: FloorId | -1 = -1;
   private lastProgressSig = '';
+  /** Animated progress-strip ratio (tweened toward the target). */
+  private progressRatio = 0;
+  private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
+
+  private caffeineIcon!: Phaser.GameObjects.Graphics;
+  private caffeineRing!: Phaser.GameObjects.Graphics;
+  /** 0 when inactive. */
+  private caffeineEndAt = 0;
+  private caffeineDuration = 0;
+  private onCaffeineStart = (durationMs: number): void => {
+    this.caffeineDuration = durationMs;
+    this.caffeineEndAt = this.scene.time.now + durationMs;
+    this.renderCaffeineIcon(1);
+  };
+  private onCaffeineEnd = (): void => {
+    this.caffeineEndAt = 0;
+    this.caffeineDuration = 0;
+    this.caffeineIcon.setVisible(false);
+    this.caffeineRing.setVisible(false);
+  };
 
   constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
     this.scene = scene;
@@ -41,6 +66,15 @@ export class HUD {
     this.bg = this.scene.add.graphics();
     this.container.add(this.bg);
 
+    // AU pill — static rounded background behind coin + text + progress strip.
+    this.auPill = this.scene.add.graphics();
+    this.container.add(this.auPill);
+    this.redrawAuPill();
+
+    // Floor pill — repainted per floor via redrawBackground().
+    this.floorPill = this.scene.add.graphics();
+    this.container.add(this.floorPill);
+
     // AU icon (gold coin) — drawn centered at (0,0) so scale tweens pivot on center.
     this.coinIcon = this.scene.add.graphics();
     this.coinIcon.fillStyle(COLORS.token);
@@ -49,6 +83,16 @@ export class HUD {
     this.coinIcon.fillCircle(-1, -1, 8);
     this.coinIcon.setPosition(COIN_X, COIN_Y);
     this.container.add(this.coinIcon);
+
+    // Shimmer band swept across the coin periodically — small live-UI cue
+    // so the HUD doesn't read as static when idling. Drawn as a separate
+    // graphics so the tween can slide it without re-rendering the coin.
+    this.coinShine = this.scene.add.graphics();
+    this.coinShine.fillStyle(0xffffff, 0.6);
+    this.coinShine.fillRect(-1, -10, 2, 20);
+    this.coinShine.setPosition(COIN_X - 14, COIN_Y).setAlpha(0);
+    this.container.add(this.coinShine);
+    this.scheduleCoinShimmer();
 
     // AU label + counter
     this.auText = this.scene.add.text(46, 6, 'AU: 0', {
@@ -69,9 +113,36 @@ export class HUD {
     this.container.add(this.muteIcon);
     this.muteHit = this.scene.add.zone(muteX, muteY, 32, 32).setInteractive({ useHandCursor: true });
     this.muteHit.on('pointerup', () => eventBus.emit('audio:toggle-mute'));
+    this.muteHit.on('pointerdown', () => this.punchMuteIcon());
+    this.muteHit.on('pointerover', () => {
+      this.muteHovered = true;
+      this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
+    });
+    this.muteHit.on('pointerout', () => {
+      this.muteHovered = false;
+      this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
+    });
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
-    createSceneLifecycle(this.scene).bindEventBus('audio:mute-changed', this.onMuteChanged);
+
+    const CAF_X = GAME_WIDTH - 76;
+    const CAF_Y = 22;
+    this.caffeineRing = this.scene.add.graphics().setPosition(CAF_X, CAF_Y).setVisible(false);
+    this.container.add(this.caffeineRing);
+    this.caffeineIcon = this.scene.add.graphics().setPosition(CAF_X, CAF_Y).setVisible(false);
+    this.container.add(this.caffeineIcon);
+
+    const lifecycle = createSceneLifecycle(this.scene);
+    lifecycle.bindEventBus('audio:mute-changed', this.onMuteChanged);
+    lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
+    lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
+
+    // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
+    this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {
+      fontFamily: 'monospace', fontSize: '9px',
+      color: theme.color.css.textQuizHint, fontStyle: 'bold',
+    }).setOrigin(0, 0);
+    this.container.add(this.floorLabel);
 
     // Floor indicator — to the left of the mute icon
     this.floorText = this.scene.add.text(GAME_WIDTH - 48, 10, '', {
@@ -79,11 +150,12 @@ export class HUD {
     }).setOrigin(1, 0);
     this.container.add(this.floorText);
 
-    // Game title (center)
+    // Game title (center) — restyled as subdued chrome.
     this.container.add(
-      this.scene.add.text(GAME_WIDTH / 2, 9, 'SO YOU WANT TO BE AN ARCHITECT', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#b8c8dc', fontStyle: 'bold',
-      }).setOrigin(0.5, 0),
+      this.scene.add.text(GAME_WIDTH / 2, 14, 'SO YOU WANT TO BE AN ARCHITECT', {
+        fontFamily: 'monospace', fontSize: '13px',
+        color: theme.color.css.textQuizMuted, fontStyle: 'bold',
+      }).setOrigin(0.5, 0).setAlpha(0.6),
     );
 
     this.lastAU = this.progression.getTotalAU();
@@ -105,9 +177,44 @@ export class HUD {
     // Phaser 3.60+: fillGradientStyle + fillRect produces a 4-corner gradient.
     g.fillGradientStyle(top, top, bottom, bottom, alpha);
     g.fillRect(0, 0, GAME_WIDTH, HUD_HEIGHT);
+    // 1px top inset highlight gives the bar a sense of depth.
+    g.fillStyle(0xffffff, 0.06);
+    g.fillRect(0, 0, GAME_WIDTH, 1);
+    // Faint vertical dividers mark the three visual groups (AU | title | floor).
+    g.fillStyle(0xffffff, 0.04);
+    g.fillRect(216, 10, 1, HUD_HEIGHT - 20);
+    g.fillRect(GAME_WIDTH - 220, 10, 1, HUD_HEIGHT - 20);
     // Accent line (1px) — use the floor theme color so it shifts per floor.
     g.fillStyle(accent, 0.9);
     g.fillRect(0, HUD_HEIGHT - 1, GAME_WIDTH, 1);
+
+    this.redrawFloorPill(fd);
+  }
+
+  /** Static AU pill — painted once in create(). */
+  private redrawAuPill(): void {
+    const g = this.auPill;
+    g.clear();
+    g.fillStyle(this.lighten(theme.color.ui.panel, 0.25), 0.55);
+    g.fillRoundedRect(8, 4, 196, 36, 8);
+    g.fillStyle(theme.color.ui.panel, 0.35);
+    g.fillRoundedRect(9, 5, 194, 34, 7);
+    g.fillStyle(0xffffff, 0.05);
+    g.fillRect(10, 5, 192, 1);
+  }
+
+  /** Floor pill — re-tinted per floor from redrawBackground(). */
+  private redrawFloorPill(fd: typeof LEVEL_DATA[FloorId] | undefined): void {
+    const g = this.floorPill;
+    g.clear();
+    if (!fd) return;
+    const base = fd.theme.platformColor;
+    g.fillStyle(this.lighten(base, 0.45), 0.55);
+    g.fillRoundedRect(GAME_WIDTH - 216, 4, 174, 36, 8);
+    g.fillStyle(this.lighten(base, 0.1), 0.22);
+    g.fillRoundedRect(GAME_WIDTH - 215, 5, 172, 34, 7);
+    g.fillStyle(0xffffff, 0.05);
+    g.fillRect(GAME_WIDTH - 214, 5, 170, 1);
   }
 
   /** Lighten a 0xRRGGBB int by `amount` (0..1) toward white. */
@@ -137,21 +244,89 @@ export class HUD {
     g.clear();
     const next = this.findNextUnlockFloor();
     if (!next) return;
-    const au = this.progression.getTotalAU();
-    const ratio = Phaser.Math.Clamp(au / next.auRequired, 0, 1);
     const x = 46;
     const y = 30;
     const floor = this.progression.getCurrentFloor();
     const fillColor = LEVEL_DATA[floor]?.theme.platformColor ?? theme.color.ui.accent;
-    // Background track
-    g.fillStyle(0x1a2a3a, 0.6);
-    g.fillRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT);
-    // Fill
-    const fillW = Math.round(ratio * PROGRESS_STRIP_WIDTH);
+    // Background track — rounded, darker inset against the AU pill wash.
+    g.fillStyle(0x0a1422, 0.7);
+    g.fillRoundedRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT, 3);
+    // Fill — uses the tweened `progressRatio`, not the raw AU ratio, so
+    // changes animate instead of snapping.
+    const fillW = Math.round(this.progressRatio * PROGRESS_STRIP_WIDTH);
     if (fillW > 0) {
       g.fillStyle(this.lighten(fillColor, 0.25), 0.95);
-      g.fillRect(x, y, fillW, PROGRESS_STRIP_HEIGHT);
+      g.fillRoundedRect(x, y, fillW, PROGRESS_STRIP_HEIGHT, 3);
+      if (fillW >= 4) {
+        g.fillStyle(0xffffff, 0.18);
+        g.fillRect(x + 1, y + 1, fillW - 2, 1);
+      }
     }
+  }
+
+  /** Tween `progressRatio` toward the current AU/required ratio, repainting each frame. */
+  private tweenProgressTo(target: number): void {
+    this.progressTween?.stop();
+    this.progressTween = this.scene.tweens.add({
+      targets: this,
+      progressRatio: target,
+      duration: 260,
+      ease: 'Cubic.easeOut',
+      onUpdate: () => this.redrawProgressStrip(),
+      onComplete: () => this.redrawProgressStrip(),
+    });
+  }
+
+  /** Crossfade the floor label between old and new text. */
+  private crossfadeFloorLabel(nextText: string): void {
+    const g = this.floorText;
+    this.scene.tweens.add({
+      targets: g,
+      alpha: 0,
+      y: g.y - 6,
+      duration: 100,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        g.setText(nextText).setY(g.y + 12).setAlpha(0);
+        this.scene.tweens.add({
+          targets: g,
+          alpha: 1,
+          y: g.y - 6,
+          duration: 140,
+          ease: 'Quad.easeOut',
+        });
+      },
+    });
+  }
+
+  /** Schedule a 2s shimmer sweep across the coin, looping every ~6s. */
+  private scheduleCoinShimmer(): void {
+    const fire = (): void => {
+      if (!this.coinShine.scene) return;
+      this.coinShine.setX(COIN_X - 14).setAlpha(0.8);
+      this.scene.tweens.add({
+        targets: this.coinShine,
+        x: COIN_X + 14,
+        alpha: { from: 0.8, to: 0 },
+        duration: 600,
+        ease: 'Sine.easeInOut',
+        onComplete: () => this.coinShine.setAlpha(0),
+      });
+    };
+    // Kick off the first sweep after a short delay, then repeat.
+    this.scene.time.delayedCall(3000, fire);
+    this.scene.time.addEvent({ delay: 6000, loop: true, callback: fire });
+  }
+
+  /** Scale-punch + tint pulse on mute icon press. */
+  private punchMuteIcon(): void {
+    this.scene.tweens.add({
+      targets: this.muteIcon,
+      scale: { from: 1, to: 0.85 },
+      duration: 90,
+      ease: 'Quad.easeOut',
+      yoyo: true,
+    });
   }
 
   /** Punch coin + float "+N" on AU gain. */
@@ -179,6 +354,37 @@ export class HUD {
     });
   }
 
+  private renderCaffeineIcon(ratio: number): void {
+    this.caffeineIcon.setVisible(true);
+    this.caffeineRing.setVisible(true);
+
+    const icon = this.caffeineIcon;
+    icon.clear();
+    icon.fillStyle(0x6b3b23, 1);
+    icon.fillRoundedRect(-6, -5, 11, 12, 2);
+    icon.fillStyle(0x3a1e10, 1);
+    icon.fillRect(-6, -5, 11, 2);
+    icon.fillStyle(0xc9a27a, 1);
+    icon.fillRect(-5, -5, 9, 1);
+    icon.lineStyle(1.5, 0x4a2b1a, 1);
+    icon.beginPath();
+    icon.arc(6, 1, 4, -Math.PI / 2, Math.PI / 2, false);
+    icon.strokePath();
+
+    const ring = this.caffeineRing;
+    ring.clear();
+    ring.lineStyle(2, 0x3b4a5c, 0.6);
+    ring.beginPath();
+    ring.arc(0, 0, 12, 0, Math.PI * 2);
+    ring.strokePath();
+    const start = -Math.PI / 2;
+    const end = start + Math.PI * 2 * Math.max(0, Math.min(1, ratio));
+    ring.lineStyle(2, 0xffb84a, 0.95);
+    ring.beginPath();
+    ring.arc(0, 0, 12, start, end);
+    ring.strokePath();
+  }
+
   private getAudio(): AudioManager | undefined {
     return this.scene.registry.get('audio') as AudioManager | undefined;
   }
@@ -187,7 +393,7 @@ export class HUD {
   private renderMuteIcon(muted: boolean): void {
     const g = this.muteIcon;
     g.clear();
-    const color = muted ? 0x808080 : theme.color.ui.accent;
+    const color = muted ? 0x808080 : (this.muteHovered ? theme.color.ui.hover : theme.color.ui.accent);
     // Note stem
     g.lineStyle(2, color, 1);
     g.beginPath();
@@ -219,11 +425,19 @@ export class HUD {
 
     const floor = this.progression.getCurrentFloor();
     const fd = LEVEL_DATA[floor];
-    if (fd) this.floorText.setText(`F${fd.id}: ${fd.name}`);
+    const nextFloorLabel = fd ? `F${fd.id}: ${fd.name}` : '';
 
     if (floor !== this.lastFloor) {
+      const isFirstRender = this.lastFloor === -1;
       this.lastFloor = floor;
       this.redrawBackground();
+      if (isFirstRender || !fd) {
+        this.floorText.setText(nextFloorLabel);
+      } else {
+        this.crossfadeFloorLabel(nextFloorLabel);
+      }
+    } else if (fd && this.floorText.text !== nextFloorLabel) {
+      this.floorText.setText(nextFloorLabel);
     }
 
     if (au > this.lastAU) {
@@ -235,7 +449,17 @@ export class HUD {
     const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
     if (sig !== this.lastProgressSig) {
       this.lastProgressSig = sig;
-      this.redrawProgressStrip();
+      const target = next ? Phaser.Math.Clamp(au / next.auRequired, 0, 1) : 0;
+      this.tweenProgressTo(target);
+    }
+
+    if (this.caffeineEndAt > 0 && this.caffeineDuration > 0) {
+      const remaining = this.caffeineEndAt - this.scene.time.now;
+      if (remaining <= 0) {
+        this.onCaffeineEnd();
+      } else {
+        this.renderCaffeineIcon(remaining / this.caffeineDuration);
+      }
     }
   }
 }

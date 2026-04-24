@@ -23,8 +23,10 @@ import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
+import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
+import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
@@ -54,6 +56,28 @@ export interface RoomElevator {
 export interface LevelConfig {
   floorId: FloorId;
   platforms: Array<{ x: number; y: number; width: number }>;
+  /**
+   * Thin catwalks / walkways.
+   *
+   * Unlike `platforms` (which use the 128×128 floor tile as both visual
+   * and physics body — great for the ground, terrible for mezzanines
+   * because the tile body extends 128 px downward and crushes the
+   * headroom beneath), catwalks are a ~20 px thin rectangle with a
+   * matching graphic on top. Use these for any floating walkway.
+   *
+   * `x`, `y` = top-left of the walking surface (same semantics as
+   * `platforms.y` — the top of the slab, not its centre). `width` is in
+   * pixels. `thickness` defaults to 20.
+   */
+  catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
+  /**
+   * Floating platforms that move along a single axis. Unlike catwalks
+   * (static) and room elevators (player-driven), these travel under their
+   * own steam, ferrying the player between tiers. See {@link MovingPlatform}
+   * for the semantics of each mode — `bounce` = velocity bouncer,
+   * `tween` = smoothed ease-in-out path.
+   */
+  movingPlatforms?: MovingPlatformConfig[];
   /**
    * Tokens in the room. `index` overrides the default array-position
    * index used to key into the ProgressionSystem's collected-tokens
@@ -88,13 +112,15 @@ export interface LevelConfig {
    * `minX` / `maxX` default to ±radius around `x`.
    */
   enemies?: Array<{
-    type: 'slime' | 'bot';
+    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost';
     x: number;
     y: number;
     minX?: number;
     maxX?: number;
     speed?: number;
   }>;
+  /** Consumable — not persisted, respawns every scene entry. */
+  coffees?: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -141,6 +167,9 @@ export class LevelScene extends Phaser.Scene {
   /** Which room-lift is the player currently riding? (-1 = none) */
   private activeRoomLift = -1;
 
+  /** Auto-moving floating platforms (bounce or tween). */
+  private movingPlatforms: MovingPlatform[] = [];
+
   /**
    * On-screen lift buttons for in-room elevators.
    * These are a gameplay mechanic (not content-zone gated) so visibility
@@ -153,7 +182,13 @@ export class LevelScene extends Phaser.Scene {
 
   private enemySpawner!: LevelEnemySpawner;
   private tokenMgr!: LevelTokenManager;
+  private coffeeMgr!: LevelCoffeeManager;
   private zones!: LevelZoneSetup;
+
+  /** Grounding shadow tracked to the player each frame. */
+  private playerShadow?: Phaser.GameObjects.Image;
+  /** Shadows tracked to each spawned enemy (same index as enemies[]). */
+  private enemyShadows: Array<Phaser.GameObjects.Image | undefined> = [];
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -185,6 +220,7 @@ export class LevelScene extends Phaser.Scene {
     this.isTransitioning = false;
     this.roomLifts = [];
     this.activeRoomLift = -1;
+    this.movingPlatforms = [];
   }
 
   create(): void {
@@ -193,6 +229,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.createBackground();
     this.createPlatforms();
+    this.createMovingPlatforms();
     this.createRoomElevators();
     this.createDecorations();
     this.createExit();
@@ -218,6 +255,10 @@ export class LevelScene extends Phaser.Scene {
       droppedAUGroup: this.tokenMgr.droppedAUGroup,
       camera: this.cameras.main,
     });
+    this.coffeeMgr = new LevelCoffeeManager({
+      scene: this,
+      player: this.player,
+    });
     this.zones = new LevelZoneSetup({
       scene: this,
       player: this.player,
@@ -228,11 +269,20 @@ export class LevelScene extends Phaser.Scene {
     const cfg = this.getLevelConfig();
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
+    this.coffeeMgr.spawn(cfg);
     this.zones.create(cfg);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
     this.tokenMgr.wireColliders();
     this.enemySpawner.wireColliders();
+    this.coffeeMgr.wireColliders();
+
+    const solidEnemies = this.enemySpawner.enemies.filter((e) => e.collidesWithLevel);
+    for (const mp of this.movingPlatforms) {
+      this.physics.add.collider(this.player.sprite, mp);
+      if (solidEnemies.length > 0) this.physics.add.collider(solidEnemies, mp);
+      this.physics.add.collider(this.tokenMgr.droppedAUGroup, mp);
+    }
 
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;
@@ -244,6 +294,93 @@ export class LevelScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, 0);
     this.showFloorBanner();
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.createAtmosphericFx();
+  }
+
+  /**
+   * Atmospheric layer added on top of the backdrop but behind gameplay:
+   *   - Per-floor color grading overlay (very low alpha, theme-tinted).
+   *   - Ambient floating motes (6–10 drifting particles).
+   *   - Drop shadow tracked to the player.
+   *   - Drop shadows tracked to each spawned enemy.
+   */
+  private createAtmosphericFx(): void {
+    // 1. Color grading overlay — full-screen rect tinted with the floor's
+    // token color (which reads as the floor's brand color) at 0.05 alpha.
+    // Placed above backdrop (depth 0) and tiles (depth 2) but below the
+    // player (depth 10) so platforms + decor stay legible.
+    const gradeOverlay = this.add.graphics().setDepth(5.5).setScrollFactor(0);
+    gradeOverlay.fillStyle(this.floorData.theme.tokenColor, 0.05);
+    gradeOverlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // 2. Ambient motes — slow-drifting tinted particles.
+    if (this.textures.exists('particle')) {
+      const motes = this.add.particles(0, 0, 'particle', {
+        x: { min: 0, max: GAME_WIDTH },
+        y: { min: 0, max: GAME_HEIGHT - 64 },
+        speedY: { min: -12, max: -4 },
+        speedX: { min: -8, max: 8 },
+        scale: { start: 0.35, end: 0.1 },
+        alpha: { start: 0.18, end: 0 },
+        lifespan: { min: 6000, max: 11000 },
+        frequency: 1200,
+        quantity: 1,
+        tint: this.floorData.theme.tokenColor,
+      });
+      motes.setDepth(1.5);
+    }
+
+    // 3. Player drop shadow — a dark ellipse tracked each frame so it
+    // shrinks while airborne for height cueing.
+    if (this.textures.exists('shadow_blob')) {
+      this.playerShadow = this.add
+        .image(this.player.sprite.x, this.player.sprite.y + 70, 'shadow_blob')
+        .setDepth(9.5);
+    }
+
+    // 4. Enemy drop shadows, one per enemy, parented-by-index.
+    for (const enemy of this.enemySpawner.enemies) {
+      if (!this.textures.exists('shadow_blob')) break;
+      const sh = this.add.image(enemy.x, enemy.y + 28, 'shadow_blob').setDepth(5.5).setScale(0.7);
+      this.enemyShadows.push(sh);
+    }
+  }
+
+  private updateAtmosphericFx(): void {
+    // Player shadow: follow x, lock to ~feet y when grounded, otherwise
+    // project down to the nearest surface below with a height-faded scale.
+    if (this.playerShadow) {
+      const p = this.player.sprite;
+      const body = p.body as Phaser.Physics.Arcade.Body;
+      const onGround = body.blocked.down || body.touching.down;
+      this.playerShadow.setPosition(p.x, p.y + 70);
+      if (onGround) {
+        this.playerShadow.setAlpha(1).setScale(1);
+      } else {
+        // Fade + shrink with upward velocity for an airborne cue.
+        const vy = body.velocity.y;
+        const fade = Phaser.Math.Clamp(1 - Math.abs(vy) / 600, 0.3, 1);
+        this.playerShadow.setAlpha(fade * 0.85).setScale(fade);
+      }
+    }
+
+    // Enemy shadows: follow x, pin y to the body's bottom with a small
+    // fixed offset. If an enemy has been destroyed, drop its shadow too.
+    const enemies = this.enemySpawner.enemies;
+    for (let i = 0; i < this.enemyShadows.length; i++) {
+      const sh = this.enemyShadows[i];
+      if (!sh) continue;
+      const en = enemies[i];
+      if (!en || en.defeated || !en.active) {
+        sh.destroy();
+        this.enemyShadows[i] = undefined;
+        continue;
+      }
+      const body = en.body as Phaser.Physics.Arcade.Body | null;
+      const footY = body ? body.bottom : en.y + 28;
+      sh.setPosition(en.x, footY + 2);
+    }
   }
 
   /** Construct the DialogController and stash it on this.dialogs. */
@@ -305,7 +442,9 @@ export class LevelScene extends Phaser.Scene {
   /* ---- platforms ---- */
   protected createPlatforms(): void {
     this.platformGroup = this.physics.add.staticGroup();
-    this.buildPlatforms(this.getLevelConfig());
+    const config = this.getLevelConfig();
+    this.buildPlatforms(config);
+    this.buildCatwalks(config);
   }
 
   protected buildPlatforms(config: LevelConfig): void {
@@ -313,11 +452,81 @@ export class LevelScene extends Phaser.Scene {
     for (const plat of config.platforms) {
       for (let i = 0; i < plat.width; i++) {
         // plat.y is the walking surface; shift tile center down so tile top = plat.y
-        const t = this.platformGroup.create(
-          plat.x + i * TILE_SIZE + TILE_SIZE / 2, plat.y + TILE_SIZE / 2, tileKey,
-        ) as Phaser.Physics.Arcade.Image;
+        const tx = plat.x + i * TILE_SIZE + TILE_SIZE / 2;
+        const ty = plat.y + TILE_SIZE / 2;
+        const t = this.platformGroup.create(tx, ty, tileKey) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
+        // Deterministic scuff overlay on ~25% of placed tiles — picks the
+        // same tiles across reloads so layout reads as authored, not random.
+        // Hash: mix floor id + grid coords so every floor gets its own pattern.
+        const hash = ((plat.x + i * 7) * 31 + plat.y * 17 + this.floorId * 53) & 0xff;
+        if (hash < 64 && this.textures.exists('tile_detail_overlay')) {
+          this.add.image(tx, ty, 'tile_detail_overlay').setDepth(2.5);
+        }
       }
+    }
+  }
+
+  /**
+   * Thin floating walkways. A ~20 px rectangle with a static physics body is
+   * added to the same platformGroup the ground tiles use, so every existing
+   * collider (player, enemies, dropped AU, etc.) just works. On top, a small
+   * graphic draws the slab face, a top rim, and subtle rivets so the catwalk
+   * reads as a metal grating rather than a floating block.
+   *
+   * Using a thin body — rather than re-using the 128 px ground tile — keeps
+   * headroom clear under mezzanines, which is the whole point of the primitive.
+   */
+  protected buildCatwalks(config: LevelConfig): void {
+    if (!config.catwalks?.length) return;
+    for (const c of config.catwalks) {
+      const thickness = c.thickness ?? 20;
+      const cx = c.x + c.width / 2;
+      const cy = c.y + thickness / 2;
+
+      // Physics body (invisible rectangle, added to platformGroup).
+      const body = this.add.rectangle(cx, cy, c.width, thickness, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.platformGroup.add(body);
+
+      // One-way: only collide from above, so the player can jump up
+      // through a catwalk and land on top of it. Without this, the thin
+      // body blocks a rising head even when there's plenty of room to
+      // land on top (the classic platformer "jump-through" behaviour).
+      const pbody = body.body as Phaser.Physics.Arcade.StaticBody;
+      pbody.checkCollision.down = false;
+      pbody.checkCollision.left = false;
+      pbody.checkCollision.right = false;
+
+      // Decorative face. Depth sits just above ground tiles (2) but below
+      // props (3) so desks/diagrams in front still overlap correctly.
+      const g = this.add.graphics().setDepth(2.2);
+      const x = c.x, y = c.y, w = c.width, h = thickness;
+      // Slab.
+      g.fillStyle(0x4a5560, 1).fillRect(x, y, w, h);
+      // Top rim — lighter stripe to read as a walking surface.
+      g.fillStyle(0x8fa0b3, 1).fillRect(x, y, w, 3);
+      // Bottom shadow edge.
+      g.fillStyle(0x2a323c, 1).fillRect(x, y + h - 2, w, 2);
+      // Rivets every ~32 px.
+      g.fillStyle(0x1a2028, 1);
+      for (let rx = x + 10; rx < x + w - 6; rx += 32) {
+        g.fillRect(rx, y + 6, 2, 2);
+        g.fillRect(rx, y + h - 8, 2, 2);
+      }
+      // Side caps so the end of the walkway reads as a thick edge piece.
+      g.fillStyle(0x2a323c, 1);
+      g.fillRect(x, y, 2, h);
+      g.fillRect(x + w - 2, y, 2, h);
+    }
+  }
+
+  /* ---- moving platforms ---- */
+  protected createMovingPlatforms(): void {
+    const config = this.getLevelConfig();
+    if (!config.movingPlatforms?.length) return;
+    for (const cfg of config.movingPlatforms) {
+      this.movingPlatforms.push(new MovingPlatform(this, cfg));
     }
   }
 
@@ -508,15 +717,20 @@ export class LevelScene extends Phaser.Scene {
     // Other gameplay systems (enemies, room-lifts, zones, exit-proximity)
     // intentionally pause — the player is just reading the dialog.
     if (this.dialogs.isOpen) {
+      for (const mp of this.movingPlatforms) mp.pause();
       this.player.update(delta);
       this.hud.update();
+      this.updateAtmosphericFx();
       return;
     }
+    for (const mp of this.movingPlatforms) mp.resume();
 
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
+    for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
+    this.updateAtmosphericFx();
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();

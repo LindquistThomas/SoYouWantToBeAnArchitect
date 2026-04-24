@@ -21,7 +21,7 @@ export const SCENE_MUSIC: Record<string, string> = {
   FinanceTeamScene:        'music_floor2',
   ProductLeadershipScene:  'music_floor2',
   CustomerSuccessScene:    'music_floor2',
-  ExecutiveSuiteScene:     'music_floor2',
+  ExecutiveSuiteScene:     'music_executive',
   ProductIsyProjectControlsScene: 'music_floor2',
   ProductIsyBeskrivelseScene:     'music_floor2',
   ProductIsyRoadScene:            'music_floor2',
@@ -44,6 +44,31 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_quiz', path: 'music/retro-synth/hostile_territory-loop1.ogg' },
 ];
 
+/**
+ * Large or scene-specific music assets loaded on demand by the owning
+ * scene's `preload()` rather than at BootScene startup. Keeps initial
+ * load lean when a track is only needed by a single floor. Use the
+ * `loadDeferredMusic()` helper from scene preload to pull one in.
+ */
+export const DEFERRED_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
+  { key: 'music_executive', path: 'music/boss/bossroom-battle-431358.mp3' },
+];
+
+/**
+ * Queue a deferred music asset for load on a scene's loader. Safe to
+ * call from `preload()` on every scene entry — Phaser skips audio keys
+ * that are already cached, so subsequent visits don't re-download.
+ */
+export function loadDeferredMusic(
+  scene: { load: { audio: (key: string, url: string) => unknown }; cache: { audio: { exists: (key: string) => boolean } } },
+  key: string,
+): void {
+  if (scene.cache.audio.exists(key)) return;
+  const asset = DEFERRED_MUSIC_ASSETS.find((a) => a.key === key);
+  if (!asset) return;
+  scene.load.audio(asset.key, asset.path);
+}
+
 export interface SoundtrackTrack {
   key: string;
   label: string;
@@ -58,6 +83,7 @@ export const SOUNDTRACK_PLAYLIST: ReadonlyArray<SoundtrackTrack> = [
   { key: 'music_floor2', label: 'FLOOR 2' },
   { key: 'music_platform', label: 'PLATFORM' },
   { key: 'music_quiz', label: 'QUIZ' },
+  { key: 'music_executive', label: 'EXECUTIVE' },
   { key: 'music_lullaby', label: 'LULLABY' },
 ];
 
@@ -76,6 +102,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:stomp':        'stomp',
   'sfx:drop_au':      'drop_au',
   'sfx:recover_au':   'recover_au',
+  'sfx:coffee_sip':   'coffee_sip',
 };
 
 /** Default volume for background music (0–1). */
