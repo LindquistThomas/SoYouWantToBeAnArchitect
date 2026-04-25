@@ -24,6 +24,7 @@ export class Toast {
   private readonly bg: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
   private dismissTimer?: Phaser.Time.TimerEvent;
+  private activeTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -34,7 +35,9 @@ export class Toast {
     this.container = scene.add
       .container(x, y)
       .setDepth(TOAST_DEPTH)
-      .setScrollFactor(0);
+      .setScrollFactor(0)
+      .setAlpha(0)
+      .setVisible(false);
 
     this.bg = scene.add.graphics();
     this.label = scene.add.text(TOAST_PADDING_X, TOAST_HEIGHT / 2, '', {
@@ -45,9 +48,6 @@ export class Toast {
     }).setOrigin(0, 0.5);
 
     this.container.add([this.bg, this.label]);
-
-    // Start invisible
-    this.container.setVisible(false);
   }
 
   /** Display `message` for {@link TOAST_DURATION_MS} ms. Resets if already showing. */
@@ -55,10 +55,13 @@ export class Toast {
     this.label.setText(message);
     this.redrawBg();
 
+    // Cancel any in-flight fade tween so it can't race with the new one.
+    this.activeTween?.stop();
     this.dismissTimer?.remove();
-    this.container.setVisible(true);
 
-    this.scene.tweens.add({
+    this.container.setAlpha(0).setVisible(true);
+
+    this.activeTween = this.scene.tweens.add({
       targets: this.container,
       alpha: 1,
       duration: TOAST_FADE_IN_MS,
@@ -66,7 +69,7 @@ export class Toast {
     });
 
     this.dismissTimer = this.scene.time.delayedCall(TOAST_DURATION_MS, () => {
-      this.scene.tweens.add({
+      this.activeTween = this.scene.tweens.add({
         targets: this.container,
         alpha: 0,
         duration: TOAST_FADE_OUT_MS,

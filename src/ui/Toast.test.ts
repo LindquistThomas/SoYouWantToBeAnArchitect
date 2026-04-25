@@ -25,6 +25,7 @@ function makeScene() {
         };
         c.setDepth = vi.fn().mockReturnValue(c);
         c.setScrollFactor = vi.fn().mockReturnValue(c);
+        c.setAlpha = vi.fn((a: number) => { (c as { alpha: number }).alpha = a; return c; });
         c.setVisible = vi.fn((v: boolean) => { (c as { visible: boolean }).visible = v; return c; });
         c.add = vi.fn().mockReturnValue(c);
         return c;
@@ -75,9 +76,12 @@ describe('Toast', () => {
     vi.clearAllMocks();
   });
 
-  it('starts hidden (container.visible = false)', () => {
+  it('starts hidden with alpha 0 (container.visible = false)', () => {
     const toast = new Toast(scene as unknown as Phaser.Scene);
     expect(toast.isVisible()).toBe(false);
+    // Alpha must be 0 so the fade-in actually animates from transparent
+    const container = scene.add.container.mock.results[0]?.value as { alpha: number };
+    expect(container.alpha).toBe(0);
   });
 
   it('shows the message after show() and sets container visible', () => {
@@ -88,6 +92,19 @@ describe('Toast', () => {
     expect(toast.getMessage()).toBe('Storage full — close other tabs.');
   });
 
+  it('resets container alpha to 0 before the fade-in tween so animation is visible', () => {
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    // Manually set alpha to 1 to simulate a partially-faded state
+    const container = scene.add.container.mock.results[0]?.value as { alpha: number };
+    (container as Record<string, unknown>).alpha = 1;
+
+    toast.show('Test message');
+
+    // setAlpha(0) should have been called during show() to reset before tweening
+    const setAlpha = (container as Record<string, unknown>).setAlpha as ReturnType<typeof vi.fn>;
+    expect(setAlpha).toHaveBeenCalledWith(0);
+  });
+
   it('starts a fade-in tween when show() is called', () => {
     const toast = new Toast(scene as unknown as Phaser.Scene);
     toast.show('Test message');
@@ -95,6 +112,19 @@ describe('Toast', () => {
     // A tween with alpha: 1 (fade-in) should be registered
     const fadeIn = scene._tweens.find((t) => t.cfg.alpha === 1);
     expect(fadeIn).toBeDefined();
+  });
+
+  it('stops the in-flight tween when show() is called again to prevent race with fade-out', () => {
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('First message');
+
+    const firstTweenStub = scene._tweens[0]?.stub;
+    expect(firstTweenStub).toBeDefined();
+
+    toast.show('Second message');
+
+    // The first tween must have been stopped
+    expect(firstTweenStub!.stop).toHaveBeenCalled();
   });
 
   it('schedules a dismiss timer of 5000 ms', () => {

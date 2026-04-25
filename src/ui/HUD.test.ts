@@ -105,6 +105,7 @@ function makeScene(muted = false) {
         add: vi.fn(),
         setDepth: vi.fn().mockReturnThis(),
         setScrollFactor: vi.fn().mockReturnThis(),
+        setAlpha: vi.fn().mockReturnThis(),
         setVisible: vi.fn().mockReturnThis(),
         alpha: 1,
       })),

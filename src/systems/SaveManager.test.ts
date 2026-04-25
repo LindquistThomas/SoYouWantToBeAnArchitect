@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
 import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData } from './SaveManager';
 import { eventBus } from './EventBus';
 
@@ -205,6 +205,10 @@ describe('SaveManager — persistence:failed events', () => {
 
   afterEach(() => {
     eventBus.removeAllListeners();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
   });
 
   it('emits persistence:failed with reason "quota" when setItem throws a QuotaExceededError DOMException', () => {

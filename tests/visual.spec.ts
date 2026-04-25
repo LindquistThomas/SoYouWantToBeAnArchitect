@@ -144,7 +144,7 @@ test.describe('Visual regression (static UI)', () => {
     errors.assertClean();
   });
 
-  test('Toast — persistence:failed quota toast renders for ≥ 3 s', async ({ page }) => {
+  test('Toast — persistence:failed quota toast visible after fade-in', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 
     await seedFullProgressSave(page);
