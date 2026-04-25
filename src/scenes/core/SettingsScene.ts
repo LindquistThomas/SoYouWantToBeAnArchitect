@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
-import { settingsStore, type MusicStyle } from '../../systems/SettingsStore';
+import { settingsStore } from '../../systems/SettingsStore';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
@@ -15,22 +15,14 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
  * Navigation:
  *   Up / Down — move between items
  *   Left / Right — adjust sliders / cycle options
- *   Enter / Space — toggle boolean items
+ *   Enter / Confirm — toggle boolean items
  *   Escape — back to caller
  */
 
 type SettingsItem =
   | { kind: 'slider'; label: string; get: () => number; set: (v: number) => void; step: number }
   | { kind: 'toggle'; label: string; get: () => boolean; set: (v: boolean) => void }
-  | { kind: 'cycle'; label: string; options: string[]; get: () => string; set: (v: string) => void }
   | { kind: 'action'; label: string; action: () => void };
-
-const MUSIC_STYLES: MusicStyle[] = ['8bit-chiptune', 'retro-synth', 'elevator-jazz'];
-const MUSIC_STYLE_LABELS: Record<MusicStyle, string> = {
-  '8bit-chiptune': '8-BIT CHIPTUNE',
-  'retro-synth': 'RETRO SYNTH',
-  'elevator-jazz': 'ELEVATOR JAZZ',
-};
 
 export class SettingsScene extends Phaser.Scene {
   private items: SettingsItem[] = [];
@@ -93,19 +85,6 @@ export class SettingsScene extends Phaser.Scene {
         label: 'MUTE ALL  [M]',
         get: () => settingsStore.read().muteAll,
         set: (v) => settingsStore.setMuteAll(v),
-      },
-      {
-        kind: 'cycle',
-        label: 'MUSIC STYLE',
-        options: MUSIC_STYLES,
-        get: () => settingsStore.read().musicStyle,
-        set: (v) => settingsStore.setMusicStyle(v as MusicStyle),
-      },
-      {
-        kind: 'toggle',
-        label: 'REDUCED MOTION',
-        get: () => settingsStore.read().reducedMotion,
-        set: (v) => settingsStore.setReducedMotion(v),
       },
       {
         kind: 'action',
@@ -230,10 +209,6 @@ export class SettingsScene extends Phaser.Scene {
       } else if (item.kind === 'toggle') {
         const on = item.get();
         valText.setText(on ? 'ON' : 'OFF').setColor(on ? theme.color.css.textAccent : theme.color.css.textMuted);
-      } else if (item.kind === 'cycle') {
-        const style = item.get() as MusicStyle;
-        const lbl = MUSIC_STYLE_LABELS[style] ?? style.toUpperCase();
-        valText.setText(`< ${lbl} >`).setColor(theme.color.css.textPanel);
       } else if (item.kind === 'action') {
         valText.setText('');
         if (isSelected) {
@@ -247,7 +222,7 @@ export class SettingsScene extends Phaser.Scene {
   // Navigation / input
 
   private setupNavigation(): void {
-    const contextToken = pushContext('menu');
+    const contextToken = pushContext('modal');
     const lifecycle = createSceneLifecycle(this);
     lifecycle.add(() => popContext(contextToken));
 
@@ -276,11 +251,6 @@ export class SettingsScene extends Phaser.Scene {
       item.set(item.get() + delta * item.step);
     } else if (item.kind === 'toggle') {
       item.set(!item.get());
-    } else if (item.kind === 'cycle') {
-      const idx = item.options.indexOf(item.get());
-      const next = (idx + delta + item.options.length) % item.options.length;
-      const opt = item.options[next];
-      if (opt !== undefined) item.set(opt);
     }
     this.refreshAll();
   }
@@ -292,8 +262,6 @@ export class SettingsScene extends Phaser.Scene {
     if (item.kind === 'toggle') {
       item.set(!item.get());
       this.refreshAll();
-    } else if (item.kind === 'cycle') {
-      this.adjust(1);
     } else if (item.kind === 'action') {
       item.action();
     }

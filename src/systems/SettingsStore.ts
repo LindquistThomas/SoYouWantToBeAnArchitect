@@ -6,8 +6,9 @@
  * existing players keep their mute preference. The legacy key is removed
  * after migration.
  *
- * All mutations emit `audio:volume-changed` on the global EventBus so
- * AudioManager can react immediately.
+ * Audio-related mutations (masterVolume, musicVolume, sfxVolume, muteAll) emit
+ * `audio:volume-changed` so AudioManager can react immediately.
+ * Non-audio mutations (musicStyle, reducedMotion) only persist, without emitting.
  */
 
 import { createPersistedStore } from './PersistedStore';
@@ -120,12 +121,22 @@ export const settingsStore = {
   },
 
   /**
-   * Apply a transform to the current settings, persist, and notify listeners.
-   * `audio:volume-changed` is emitted so AudioManager can react immediately.
+   * Apply a transform to the current **audio** settings, persist, and notify
+   * AudioManager via `audio:volume-changed`. Use this only for fields that
+   * AudioManager must react to (masterVolume, musicVolume, sfxVolume, muteAll).
    */
   update(fn: (prev: SettingsData) => SettingsData): void {
     store.update(fn);
     eventBus.emit('audio:volume-changed');
+  },
+
+  /**
+   * Apply a transform to **non-audio** settings and persist without emitting
+   * `audio:volume-changed`. Use for fields that don't affect AudioManager
+   * (musicStyle, reducedMotion).
+   */
+  updateNonAudio(fn: (prev: SettingsData) => SettingsData): void {
+    store.update(fn);
   },
 
   setMuteAll(muted: boolean): void {
@@ -149,11 +160,11 @@ export const settingsStore = {
   },
 
   setMusicStyle(style: MusicStyle): void {
-    this.update((prev) => ({ ...prev, musicStyle: style }));
+    this.updateNonAudio((prev) => ({ ...prev, musicStyle: style }));
   },
 
   setReducedMotion(reduced: boolean): void {
-    this.update((prev) => ({ ...prev, reducedMotion: reduced }));
+    this.updateNonAudio((prev) => ({ ...prev, reducedMotion: reduced }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

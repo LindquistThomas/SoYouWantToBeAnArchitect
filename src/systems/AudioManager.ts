@@ -65,7 +65,9 @@ export class AudioManager {
   /** Play a one-shot sound effect. */
   private playSfx(key: string): void {
     const s = settingsStore.read();
-    const vol = this.scaleVolume(1, s.masterVolume) * this.scaleVolume(1, s.sfxVolume);
+    // masterVolume is applied at the sound-manager level (sound.volume),
+    // so per-sound volume only needs to scale by the SFX channel preference.
+    const vol = this.scaleVolume(1, s.sfxVolume);
     this.sound.play(key, { volume: vol });
   }
 
@@ -141,6 +143,8 @@ export class AudioManager {
    */
   private applyVolumeSettings(): void {
     const s = settingsStore.read();
+    const prevMute = this.sound.mute;
+
     this.sound.mute = s.muteAll;
     this.sound.volume = s.masterVolume / 100;
 
@@ -151,7 +155,10 @@ export class AudioManager {
       (this.currentAmbience as SoundWithVolume).setVolume(this.effectiveAmbienceVolume());
     }
 
-    eventBus.emit('audio:mute-changed', s.muteAll);
+    // Only emit when mute state actually changed to avoid redundant UI updates.
+    if (s.muteAll !== prevMute) {
+      eventBus.emit('audio:mute-changed', s.muteAll);
+    }
   }
 
   /**

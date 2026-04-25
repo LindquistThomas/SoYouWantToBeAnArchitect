@@ -209,6 +209,16 @@ describe('AudioManager', () => {
       expect(listener).toHaveBeenLastCalledWith(false);
     });
 
+    it('does NOT emit audio:mute-changed when only volume (not mute) changes', () => {
+      const muteListener = vi.fn();
+      eventBus.on('audio:mute-changed', muteListener);
+      // Volume change should not trigger audio:mute-changed
+      settingsStore.setMasterVolume(50);
+      settingsStore.setMusicVolume(60);
+      settingsStore.setSfxVolume(40);
+      expect(muteListener).not.toHaveBeenCalled();
+    });
+
     it('restores persisted mute preference from settings store on construction', () => {
       settingsStore.setMuteAll(true);
       const sound = makeFakeSoundManager();

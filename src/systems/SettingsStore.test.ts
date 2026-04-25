@@ -174,12 +174,20 @@ describe('SettingsStore', () => {
   });
 
   describe('audio:volume-changed event', () => {
-    it('emits audio:volume-changed whenever settings are updated', () => {
+    it('emits audio:volume-changed for audio settings (masterVolume, muteAll)', () => {
       const listener = vi.fn();
       eventBus.on('audio:volume-changed', listener);
       settingsStore.setMasterVolume(50);
       settingsStore.setMuteAll(true);
       expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it('does NOT emit audio:volume-changed for non-audio settings (musicStyle, reducedMotion)', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:volume-changed', listener);
+      settingsStore.setMusicStyle('retro-synth');
+      settingsStore.setReducedMotion(true);
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 
