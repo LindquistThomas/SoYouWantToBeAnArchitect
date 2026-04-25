@@ -20,22 +20,32 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── brand/                # Norconsult Digital wordmark SVG (loaded as `lobby_logo` at boot)
 │   └── music/                # MP3/OGG music tracks loaded in BootScene
 ├── src/
-│   ├── main.ts               # Phaser.Game config + scene registration
-│   ├── config/               # gameConfig, levelData, audioConfig; info/ and quiz/ barrel dirs
-│   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator
-│   ├── features/floors/      # _shared/LevelScene + helpers, one dir per floor team scene
-│   ├── input/                # Typed action bindings (actions.ts, bindings.ts, InputService)
-│   ├── plugins/              # MusicPlugin, DebugPlugin (Phaser ScenePlugins)
-│   ├── scenes/               # core/ (BootScene, MenuScene), elevator/, NavigationContext
-│   ├── systems/              # ProgressionSystem, EventBus, ZoneManager, AudioManager,
-│   │                         # QuizManager, InfoDialogManager, SaveManager,
-│   │                         # SpriteGenerator, SoundGenerator
-│   └── ui/                   # InfoDialog, ModalBase, ElevatorButtons, InfoIcon, HUD, …
+│   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
+│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry; info/ and quiz/ barrels
+│   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
+│   │                         # MovingPlatform, Coffee, EnergyDrinkFridge
+│   ├── features/
+│   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, floorAccents/Patterns,
+│   │   │                       sceneBackdrop), one dir per floor (lobby/, platform/, architecture/,
+│   │   │                       finance/, product/, customer/, executive/)
+│   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
+│   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
+│   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
+│   ├── scenes/               # core/ (BootScene, MenuScene, PauseScene, SettingsScene),
+│   │                         # elevator/, NavigationContext, sceneRegistry
+│   ├── style/                # theme.ts — colour + spacing token catalogue
+│   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
+│   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
+│   │                         # PersistedStore, sceneLifecycle, SpriteGenerator, SoundGenerator
+│   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
+│                               InfoIcon, HUD, DialogController, …
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
     ├── copilot-instructions.md   # This file
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
+
+See `docs/architecture.md` for the full module map.
 
 There is **no** `public/assets/` directory. Static files: `public/music/` (MP3/OGG tracks loaded in `BootScene.preload()`) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo`). Sprites and SFX are still generated procedurally by `SpriteGenerator` / `SoundGenerator`.
 
