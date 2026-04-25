@@ -102,6 +102,10 @@ initAriaLive();
 // synchronously by this point.
 game.events.once(Phaser.Core.Events.READY, () => {
   const canvas = game.canvas;
+  // Only set tabIndex when Phaser hasn't already assigned a non-negative
+  // value (which would indicate it was intentionally configured elsewhere).
+  // tabIndex=0 makes the canvas part of the natural tab order so keyboard
+  // users can reach it without a pointer click.
   if (canvas && canvas.tabIndex < 0) {
     canvas.tabIndex = 0;
   }

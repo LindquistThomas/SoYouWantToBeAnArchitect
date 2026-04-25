@@ -7,6 +7,8 @@
  * are type-checked automatically.
  */
 
+import type { FloorId } from '../config/gameConfig';
+
 /** Event name → payload tuple. Each event's handler arguments are derived from this map. */
 export interface GameEvents {
   'music:play': [key: string];
@@ -64,10 +66,10 @@ export interface GameEvents {
   'persistence:error': [storageKey: string, message: string];
 
   /**
-   * A new floor was unlocked via AU progression. Payload is the numeric floor ID.
+   * A new floor was unlocked via AU progression. Payload is the floor ID.
    * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
    */
-  'progression:floor_unlocked': [floorId: number];
+  'progression:floor_unlocked': [floorId: FloorId];
 
   /**
    * The player's total AU has crossed a multiple-of-50 milestone.

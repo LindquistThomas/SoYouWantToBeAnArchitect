@@ -50,6 +50,9 @@ export function initAriaLive(): void {
   });
 
   eventBus.on('progression:floor_unlocked', (floorId) => {
+    // LEVEL_DATA covers every valid FloorId, so the fallback should never
+    // be reached in practice. It exists only as a belt-and-suspenders guard
+    // against a future misconfiguration or test seam.
     const entry = Object.values(LEVEL_DATA).find(d => d.id === floorId);
     const name = entry?.name ?? 'a new floor';
     announce(`${name} unlocked!`);
