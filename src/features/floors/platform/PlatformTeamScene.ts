@@ -92,8 +92,8 @@ export class PlatformTeamScene extends LevelScene {
     this.add.image(740, G - 50, 'server_rack').setDepth(3);
     this.add.image(740, G - 10, 'cables').setDepth(1);
 
-    // --- Rubber duck on the workbench to the right of the server rack.
-    //     The duck is a debugging mascot; approach it to read its wisdom. ---
+    // --- Rubber duck on the ground to the right of the server rack,
+    //     between the rack and lift C. Approach it to read its wisdom. ---
     this.add.image(870, G, 'npc_rubber_duck').setOrigin(0.5, 1).setDepth(3);
 
     // --- Mezzanine content panels, anchored to their T3 catwalk tops. ---

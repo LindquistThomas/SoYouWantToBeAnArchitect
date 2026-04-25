@@ -236,7 +236,7 @@ export const INFO_PLATFORM: Record<string, InfoPointDef> = {
     floorId: FLOORS.PLATFORM_TEAM,
     content: {
       id: 'rubber-duck-debugging',
-      title: '🦆 The Rubber Duck',
+      title: 'The Rubber Duck',
       body:
         'Quack.\n\n' +
         'Rubber-duck debugging is the practice of explaining your code, line ' +
