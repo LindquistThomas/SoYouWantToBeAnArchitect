@@ -95,10 +95,10 @@ Short index of where things live. Reach for these instead of re-implementing.
 ## How to extend
 
 ### Add a scene
-Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
+Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` spreads `SCENE_CLASSES` from there; do **not** edit the `scene:` array in `main.ts` directly), and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
 
 ### Add a floor / level
-Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.
+Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a `{ key: 'NameScene', cls: NameScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
 
 ### Add an enemy
 Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot', x, y, minX, maxX, speed }`. Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
