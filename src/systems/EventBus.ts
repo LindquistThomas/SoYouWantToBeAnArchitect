@@ -53,6 +53,13 @@ export interface GameEvents {
   'buff:caffeine_start': [durationMs: number];
   /** Caffeine buff expired. */
   'buff:caffeine_end': [];
+
+  /**
+   * A persisted-store write failed (quota exceeded, storage unavailable,
+   * or serialisation error). HUD can surface a toast to the player.
+   * Payload: storage key that failed, and the human-readable error message.
+   */
+  'persistence:error': [storageKey: string, message: string];
 }
 
 export type GameEventName = keyof GameEvents;

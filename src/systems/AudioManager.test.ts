@@ -196,9 +196,9 @@ describe('AudioManager', () => {
 
     it('persists mute state to localStorage on toggle', () => {
       eventBus.emit('audio:toggle-mute');
-      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('1');
+      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('true');
       eventBus.emit('audio:toggle-mute');
-      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('0');
+      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('false');
     });
 
     it('emits audio:mute-changed with new state when toggled', () => {
@@ -211,18 +211,30 @@ describe('AudioManager', () => {
     });
 
     it('restores persisted mute preference from localStorage on construction', () => {
-      localStorage.setItem(MUTE_STORAGE_KEY, '1');
+      localStorage.setItem(MUTE_STORAGE_KEY, 'true');
       const sound = makeFakeSoundManager();
       const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
       expect(m.isMuted()).toBe(true);
       expect(sound.mute).toBe(true);
     });
 
-    it('does not mute on construction if persisted value is not "1"', () => {
-      localStorage.setItem(MUTE_STORAGE_KEY, '0');
+    it('does not mute on construction if persisted value is "false"', () => {
+      localStorage.setItem(MUTE_STORAGE_KEY, 'false');
       const sound = makeFakeSoundManager();
       const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
       expect(m.isMuted()).toBe(false);
+    });
+
+    it('honours the legacy "1" / "0" encoding on read for backward compat', () => {
+      localStorage.setItem(MUTE_STORAGE_KEY, '1');
+      const sound = makeFakeSoundManager();
+      const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
+      expect(m.isMuted()).toBe(true);
+
+      localStorage.setItem(MUTE_STORAGE_KEY, '0');
+      const sound2 = makeFakeSoundManager();
+      const m2 = new AudioManager(sound2 as unknown as Phaser.Sound.BaseSoundManager);
+      expect(m2.isMuted()).toBe(false);
     });
   });
 });

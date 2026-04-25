@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { eventBus } from './EventBus';
 import { SFX_EVENTS, MUSIC_VOLUME, AMBIENCE_VOLUME } from '../config/audioConfig';
+import { createPersistedStore } from './PersistedStore';
 
 /**
  * Thin wrapper around Phaser's sound manager.
@@ -18,6 +19,16 @@ import { SFX_EVENTS, MUSIC_VOLUME, AMBIENCE_VOLUME } from '../config/audioConfig
  */
 const MUTE_STORAGE_KEY = 'architect_audio_muted_v1';
 
+// Mute preference is shared across AudioManager instances within the page.
+// The store accepts the legacy `'1'` / `'0'` numeric encoding on read so
+// existing players' preferences survive the migration; new writes use the
+// JSON-boolean form (`'true'` / `'false'`).
+const muteStore = createPersistedStore<boolean>({
+  key: MUTE_STORAGE_KEY,
+  defaultValue: () => false,
+  parse: (raw) => raw === true || raw === 1 || raw === '1',
+});
+
 export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
   private currentMusic: Phaser.Sound.BaseSound | null = null;
@@ -31,12 +42,7 @@ export class AudioManager {
 
   constructor(sound: Phaser.Sound.BaseSoundManager) {
     this.sound = sound;
-    // Restore persisted mute preference.
-    try {
-      if (localStorage.getItem(MUTE_STORAGE_KEY) === '1') {
-        this.sound.mute = true;
-      }
-    } catch { /* localStorage unavailable — ignore */ }
+    if (muteStore.read()) this.sound.mute = true;
   }
 
   /**
@@ -128,9 +134,7 @@ export class AudioManager {
 
   toggleMute(): void {
     this.sound.mute = !this.sound.mute;
-    try {
-      localStorage.setItem(MUTE_STORAGE_KEY, this.sound.mute ? '1' : '0');
-    } catch { /* localStorage unavailable — ignore */ }
+    muteStore.write(this.sound.mute);
     eventBus.emit('audio:mute-changed', this.sound.mute);
   }
 
