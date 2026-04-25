@@ -63,13 +63,17 @@ export function load(): SaveData | null {
     const raw = getStorage().getItem(key());
     if (!raw) return null;
     let data = JSON.parse(raw) as Record<string, unknown>;
+    // Saves written before versioning was introduced have no `version` field → treat as v0.
     let version = typeof data['version'] === 'number' ? (data['version'] as number) : 0;
     while (version < CURRENT_SAVE_VERSION) {
       const migrate = MIGRATIONS[version];
-      if (!migrate) break;
+      // A missing migration entry is a developer error — throw so the outer catch
+      // returns null rather than silently serving partially-migrated data.
+      if (!migrate) throw new Error(`No migration found for save version ${version}`);
       data = migrate(data);
       version++;
     }
+    // Stamp the final version so the returned object always has an up-to-date field.
     data['version'] = version;
     return data as unknown as SaveData;
   } catch { return null; }
