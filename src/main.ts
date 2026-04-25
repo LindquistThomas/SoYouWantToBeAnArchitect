@@ -1,20 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, PLAYER_GRAVITY } from './config/gameConfig';
-import { BootScene } from './scenes/core/BootScene';
-import { MenuScene } from './scenes/core/MenuScene';
-import { ElevatorScene } from './scenes/elevator/ElevatorScene';
-import {
-  PlatformTeamScene,
-  ArchitectureTeamScene,
-  FinanceTeamScene,
-  ProductLeadershipScene,
-  CustomerSuccessScene,
-  ExecutiveSuiteScene,
-} from './features/floors';
-import { ProductIsyProjectControlsScene } from './features/products/rooms/ProductIsyProjectControlsScene';
-import { ProductIsyBeskrivelseScene } from './features/products/rooms/ProductIsyBeskrivelseScene';
-import { ProductIsyRoadScene } from './features/products/rooms/ProductIsyRoadScene';
-import { ProductAdminLisensScene } from './features/products/rooms/ProductAdminLisensScene';
+import { SCENE_CLASSES, validateSceneRegistry } from './scenes/sceneRegistry';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 import { InputService } from './input';
@@ -83,13 +69,24 @@ const config: Phaser.Types.Core.GameConfig = {
   render: {
     preserveDrawingBuffer: needsPillarboxBackdrop,
   },
-  scene: [BootScene, MenuScene, ElevatorScene, PlatformTeamScene, ArchitectureTeamScene, FinanceTeamScene, ProductLeadershipScene, CustomerSuccessScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
+  scene: [...SCENE_CLASSES],
   plugins: {
     scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
             { key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
             { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],
   },
 };
+
+// Fail loudly in dev if LEVEL_DATA / SCENE_MUSIC reference an unknown scene
+// key. In production builds we still log so misconfiguration is visible
+// (especially in CI Playwright runs against the built bundle), but we let
+// Phaser come up — partial scene routing is better than a black canvas.
+const sceneRegistryErrors = validateSceneRegistry();
+if (sceneRegistryErrors.length > 0) {
+  const message = `[scene-registry] ${sceneRegistryErrors.length} configuration error(s):\n  - ${sceneRegistryErrors.join('\n  - ')}`;
+  if (import.meta.env.DEV) throw new Error(message);
+  console.error(message);
+}
 
 const game = new Phaser.Game(config);
 

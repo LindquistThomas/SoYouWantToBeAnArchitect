@@ -55,6 +55,13 @@ export interface GameEvents {
   'buff:caffeine_start': [durationMs: number];
   /** Caffeine buff expired. */
   'buff:caffeine_end': [];
+
+  /**
+   * A persisted-store write failed (quota exceeded, storage unavailable,
+   * or serialisation error). HUD can surface a toast to the player.
+   * Payload: storage key that failed, and the human-readable error message.
+   */
+  'persistence:error': [storageKey: string, message: string];
 }
 
 export type GameEventName = keyof GameEvents;
@@ -79,6 +86,17 @@ class EventBus {
   /** Emit an event to all subscribers. */
   emit<K extends GameEventName>(event: K, ...args: GameEvents[K]): this {
     this.listeners.get(event)?.forEach(fn => (fn as GameEventHandler<K>)(...args));
+    return this;
+  }
+
+  /**
+   * Remove every listener — primarily a test seam so suites can isolate
+   * each case without reaching into private state. Safe at runtime too
+   * (e.g. on a hard scene-graph reset), but production code should prefer
+   * paired `on`/`off` with scene shutdown for narrower cleanup.
+   */
+  removeAllListeners(): this {
+    this.listeners.clear();
     return this;
   }
 }
