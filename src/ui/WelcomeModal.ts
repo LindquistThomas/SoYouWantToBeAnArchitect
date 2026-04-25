@@ -13,12 +13,20 @@ import { ModalBase } from './ModalBase';
  */
 export class WelcomeModal extends ModalBase {
   private readonly onComplete: () => void;
+  private confirmHandler: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene, onComplete: () => void) {
     super(scene);
     this.onComplete = onComplete;
     this.buildPanel();
     this.fadeIn();
+  }
+
+  protected override onBeforeClose(): void {
+    if (this.confirmHandler) {
+      this.scene.inputs.off('Confirm', this.confirmHandler);
+      this.confirmHandler = null;
+    }
   }
 
   protected override onAfterClose(): void {
@@ -100,12 +108,11 @@ export class WelcomeModal extends ModalBase {
     btn.on('pointerdown', () => this.close());
     this.container.add(btn);
 
-    // "Confirm" keyboard shortcut (Enter) — wire up while the modal context is active
-    const confirmHandler = () => this.close();
-    this.scene.inputs.on('Confirm', confirmHandler);
-    this.scene.events.once('shutdown', () => {
-      this.scene.inputs.off('Confirm', confirmHandler);
-    });
+    // "Confirm" keyboard shortcut (Enter) — stored so onBeforeClose() can
+    // remove it regardless of whether the modal is closed by the button,
+    // the Esc/Cancel binding in ModalBase, or by scene shutdown.
+    this.confirmHandler = () => this.close();
+    this.scene.inputs.on('Confirm', this.confirmHandler);
 
     // Skip label
     const skip = this.scene.add.text(

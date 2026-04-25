@@ -21,7 +21,8 @@ test.describe('Onboarding flow', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
-    // Welcome modal should be visible: check the onboardingComplete flag is NOT yet set.
+    // On a fresh save the welcome modal should appear; onboardingComplete is
+    // not yet set in localStorage at this point.
     const beforeConfirm = await page.evaluate(() => {
       try {
         const raw = window.localStorage.getItem('architect_default_v1');
@@ -29,8 +30,9 @@ test.describe('Onboarding flow', () => {
         return JSON.parse(raw) as { onboardingComplete?: boolean };
       } catch { return null; }
     });
-    // The welcome modal was shown; onboarding may or may not be complete yet
-    // depending on timing — what matters is the modal appears and can be dismissed.
+    // Either the save hasn't been written yet (null) or onboardingComplete is
+    // false / absent — the welcome modal was shown.
+    expect(beforeConfirm?.onboardingComplete).not.toBe(true);
 
     // Dismiss the welcome modal via Enter (Confirm action, mapped in WelcomeModal).
     await page.keyboard.press('Enter');
@@ -47,9 +49,6 @@ test.describe('Onboarding flow', () => {
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/onboarding-after-confirm.png` });
     errors.assertClean();
-
-    // Suppress unused variable warning
-    void beforeConfirm;
   });
 
   test('second load (existing save with onboardingComplete=true) skips tutorial', async ({ page }) => {
