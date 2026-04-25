@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { eventBus } from '../../systems/EventBus';
 import { theme } from '../../style/theme';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { pushContext, popContext } from '../../input';
 
 const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = 280;
@@ -14,11 +15,13 @@ const PANEL_HEIGHT = 280;
  * Flow:
  *   1. Parent level calls `scene.launch('PauseScene', { parentKey })`.
  *   2. `create()` pauses the parent and ducks the music.
- *   3. Resume (Esc / P / button) restores the parent and music.
+ *   3. Resume (Esc / Enter on "Resume") restores the parent and music.
  *   4. Quit to Menu stops the parent scene and navigates to `MenuScene`.
  */
 export class PauseScene extends Phaser.Scene {
   private parentKey = '';
+  private selectedIndex = 0;
+  private menuItems: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
 
   constructor() {
     super({ key: 'PauseScene' });
@@ -26,6 +29,8 @@ export class PauseScene extends Phaser.Scene {
 
   init(data: { parentKey: string }): void {
     this.parentKey = data.parentKey;
+    this.selectedIndex = 0;
+    this.menuItems = [];
   }
 
   create(): void {
@@ -36,12 +41,7 @@ export class PauseScene extends Phaser.Scene {
 
     this.buildOverlay();
     this.buildPanel();
-
-    // Keyboard: Pause action (Esc / P) resumes. Both keys fire 'Pause' in
-    // the 'gameplay' context (the default when no other context is pushed),
-    // and the parent's InputService is dormant while the scene is paused.
-    const lc = createSceneLifecycle(this);
-    lc.bindInput('Pause', () => this.resumeGame());
+    this.setupKeyboard();
   }
 
   private buildOverlay(): void {
@@ -51,6 +51,8 @@ export class PauseScene extends Phaser.Scene {
       theme.color.bg.dark, 0.65,
     );
     overlay.setScrollFactor(0).setDepth(190);
+    // Block pointer events so clicks cannot reach the paused parent scene.
+    overlay.setInteractive();
   }
 
   private buildPanel(): void {
@@ -84,11 +86,11 @@ export class PauseScene extends Phaser.Scene {
     divider.lineBetween(-PANEL_WIDTH / 2 + 24, -PANEL_HEIGHT / 2 + 82, PANEL_WIDTH / 2 - 24, -PANEL_HEIGHT / 2 + 82);
     container.add(divider);
 
-    // Resume button
-    const resumeBtn = this.makeButton('Resume  [Esc / P]', 0, 30, () => this.resumeGame());
+    // Resume button (index 0)
+    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 30, () => this.resumeGame());
     container.add(resumeBtn);
 
-    // Quit to Menu button
+    // Quit to Menu button (index 1)
     const quitBtn = this.makeButton('Quit to Menu', 0, 110, () => this.quitToMenu());
     container.add(quitBtn);
 
@@ -103,13 +105,16 @@ export class PauseScene extends Phaser.Scene {
     // Fade in
     container.setAlpha(0);
     this.tweens.add({ targets: container, alpha: 1, duration: 150 });
+
+    // Apply initial selection highlight.
+    this.updateSelection();
   }
 
   private makeButton(
     label: string,
     x: number,
     y: number,
-    onPress: () => void,
+    action: () => void,
   ): Phaser.GameObjects.Text {
     const btn = this.add.text(x, y, label, {
       fontFamily: 'monospace',
@@ -119,11 +124,53 @@ export class PauseScene extends Phaser.Scene {
       padding: { x: 24, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-    btn.on('pointerover', () => btn.setColor(theme.color.css.textAccent));
-    btn.on('pointerout', () => btn.setColor(theme.color.css.textWhite));
-    btn.on('pointerdown', onPress);
+    btn.on('pointerover', () => {
+      // Sync pointer hover with keyboard selection.
+      const idx = this.menuItems.findIndex((m) => m.btn === btn);
+      if (idx !== -1) {
+        this.selectedIndex = idx;
+        this.updateSelection();
+      }
+    });
+    btn.on('pointerdown', action);
 
+    this.menuItems.push({ btn, action });
     return btn;
+  }
+
+  private setupKeyboard(): void {
+    // Push 'menu' context so NavigateUp/Down/Confirm/Cancel fire.
+    const contextToken = pushContext('menu');
+    const lc = createSceneLifecycle(this);
+    lc.add(() => popContext(contextToken));
+
+    // Esc (Cancel in menu context) → always resume.
+    lc.bindInput('Cancel', () => this.resumeGame());
+    lc.bindInput('NavigateUp', () => this.moveSelection(-1));
+    lc.bindInput('NavigateDown', () => this.moveSelection(1));
+    lc.bindInput('Confirm', () => this.activateSelection());
+  }
+
+  private moveSelection(delta: number): void {
+    const n = this.menuItems.length;
+    if (n === 0) return;
+    this.selectedIndex = (this.selectedIndex + delta + n) % n;
+    this.updateSelection();
+  }
+
+  private activateSelection(): void {
+    const item = this.menuItems[this.selectedIndex];
+    if (item) item.action();
+  }
+
+  private updateSelection(): void {
+    this.menuItems.forEach((item, i) => {
+      if (i === this.selectedIndex) {
+        item.btn.setColor(theme.color.css.textAccent).setScale(1.05);
+      } else {
+        item.btn.setColor(theme.color.css.textWhite).setScale(1.0);
+      }
+    });
   }
 
   private resumeGame(): void {

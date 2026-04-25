@@ -68,7 +68,7 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
 
   // --- Pause / resume ---
   // Esc pauses gameplay only (not modals/menus — Cancel covers those).
-  // P is the secondary binding so players can pause without dismissing dialogs.
+  // P is an alternate pause key during gameplay; Esc remains Cancel in menu/modal contexts.
   Pause: [K.ESC, K.P],
 
   // --- Debug ---
