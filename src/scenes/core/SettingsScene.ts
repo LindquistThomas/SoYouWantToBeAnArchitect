@@ -280,6 +280,7 @@ export class SettingsScene extends Phaser.Scene {
     this.goBack();
   }
 
+
   private goBack(): void {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {

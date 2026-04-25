@@ -5,6 +5,10 @@ import * as DefaultSaveManager from './SaveManager';
 import { CURRENT_SAVE_VERSION } from './SaveManager';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
+import { eventBus } from './EventBus';
+
+/** Milestone interval for `progression:au_milestone` events. */
+const AU_MILESTONE_STEP = 50;
 
 /** Pluggable persistence adapter; defaults to the SaveManager module. */
 export interface SaveAdapter {
@@ -63,10 +67,25 @@ export class ProgressionSystem {
   }
 
   addAU(floorId: FloorId, amount: number): void {
+    const prevTotal = this.state.totalAU;
     this.state.totalAU += amount;
     this.state.floorAU[floorId] += amount;
     this.checkUnlocks();
     this.persist();
+
+    // We emit each crossed milestone boundary (e.g. 50, 100, 150) rather than
+    // the actual total so the announced message is round and unambiguous ("50
+    // Architecture Units collected" even if the player jumped from 45 to 60).
+    // Looping ensures every boundary is announced when a single addAU call
+    // crosses multiple steps (e.g. 0 → 120 emits both 50 and 100).
+    const newTotal = this.state.totalAU;
+    const prevMilestone = Math.floor(prevTotal / AU_MILESTONE_STEP);
+    const newMilestone = Math.floor(newTotal / AU_MILESTONE_STEP);
+    if (newTotal > 0 && newMilestone > prevMilestone) {
+      for (let m = prevMilestone + 1; m <= newMilestone; m += 1) {
+        eventBus.emit('progression:au_milestone', m * AU_MILESTONE_STEP);
+      }
+    }
   }
 
   /**
@@ -117,6 +136,7 @@ export class ProgressionSystem {
       if (!this.state.unlockedFloors.has(floorData.id) &&
           this.state.totalAU >= floorData.auRequired) {
         this.state.unlockedFloors.add(floorData.id);
+        eventBus.emit('progression:floor_unlocked', floorData.id);
       }
     }
   }
