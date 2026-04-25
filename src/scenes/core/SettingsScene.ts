@@ -21,7 +21,7 @@ interface SettingsRow {
  *     control hints reappear on the next lobby entry.
  *   - Back — returns to the calling scene.
  *
- * Keyboard: ↑↓ select row, Enter/Space confirm, Esc back.
+ * Keyboard: ↑↓ select row, Enter confirm, Esc back.
  */
 export class SettingsScene extends Phaser.Scene {
   private fromScene = 'MenuScene';

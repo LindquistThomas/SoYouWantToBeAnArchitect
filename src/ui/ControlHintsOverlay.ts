@@ -1,8 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
-import type { GameAction } from '../input/actions';
-import { primaryKeyLabel } from '../input';
+import { primaryKeyLabel, type GameAction } from '../input';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 
 /** A single control hint chip shown to the player. */

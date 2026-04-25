@@ -73,7 +73,8 @@ test.describe('Onboarding flow', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Start game
+    // Load existing save: index 0 is [ START GAME ], [ CONTINUE ] is index 1.
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
@@ -108,12 +109,9 @@ test.describe('Onboarding flow', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Navigate to settings: the Settings button is after CONTINUE and possibly SOUNDTRACK.
-    // We navigate down until we activate SettingsScene.
-    // Press Down repeatedly to reach Settings button (last item).
-    for (let i = 0; i < 5; i++) {
-      await page.keyboard.press('ArrowDown');
-    }
+    // Navigate to settings via wrap-around: ArrowUp from index 0 wraps to the
+    // last item ([ SETTINGS ]), regardless of how many conditional buttons exist.
+    await page.keyboard.press('ArrowUp');
     await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
