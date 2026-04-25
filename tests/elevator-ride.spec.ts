@@ -27,6 +27,21 @@ test.describe('elevator ride controls', () => {
           'architect_info_seen_v1',
           JSON.stringify(['architecture-elevator']),
         );
+        // Mark onboarding complete so the WelcomeModal does not pop on
+        // arrival — its modal input context suppresses MoveUp/Interact
+        // and would otherwise block both ride and Enter-to-open assertions.
+        window.localStorage.setItem(
+          'architect_default_v1',
+          JSON.stringify({
+            version: 1,
+            totalAU: 0,
+            floorAU: {},
+            unlockedFloors: [0],
+            currentFloor: 0,
+            collectedTokens: {},
+            onboardingComplete: true,
+          }),
+        );
       } catch { /* noop */ }
     });
   });

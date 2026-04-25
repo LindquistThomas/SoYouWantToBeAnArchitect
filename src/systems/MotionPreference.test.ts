@@ -23,6 +23,13 @@ describe('MotionPreference', () => {
   beforeEach(() => {
     fake = makeFakeStorage();
     _setMotionStorageForTest(fake.storage);
+    // jsdom does not define window.matchMedia; install a stub so vi.spyOn
+    // can replace it in individual tests.
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: false } as MediaQueryList),
+    });
     // Reset to "no override" state
     setReducedMotionOverride(null);
     vi.restoreAllMocks();
