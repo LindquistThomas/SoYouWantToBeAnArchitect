@@ -17,6 +17,7 @@ export interface SaveData {
   collectedTokens: Record<number, number[]>;
 }
 
+
 /** Schema version written by this build. Increment when SaveData shape changes. */
 export const CURRENT_SAVE_VERSION = 1;
 
@@ -31,6 +32,7 @@ export const CURRENT_SAVE_VERSION = 1;
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
 };
+
 
 export const noopStorage: KVStorage = {
   getItem: () => null,

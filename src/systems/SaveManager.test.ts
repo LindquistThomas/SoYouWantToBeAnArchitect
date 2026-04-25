@@ -194,6 +194,7 @@ describe('SaveManager — forward compatibility & robustness', () => {
   });
 });
 
+
 describe('SaveManager — schema versioning & migration', () => {
   beforeEach(() => {
     setPlayerSlot('test');
@@ -286,6 +287,7 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(load()).toBeNull();
   });
 });
+
 
 describe('SaveManager — persistence:failed events', () => {
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
