@@ -169,14 +169,14 @@ Short list of recurring mistakes. Check here first when something breaks inexpli
 
 ## Git branching — MANDATORY worktree-first workflow
 
-**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree at `C:\code\SoYouWantToBeAnArchitect-<slug>` on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. The primary checkout at `C:\code\SoYouWantToBeAnArchitect` stays on `main` and is **read-only for edits** during a session.
+**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. Sibling path: `<primary-checkout-name>-<slug>` (Windows convention: `C:\code\SoYouWantToBeAnArchitect-<slug>`; macOS/Linux convention: `../architect-elevator-game-<slug>`). The primary checkout stays on `main` and is **read-only for edits** during a session. **Full OS-specific commands live in `.github/skills/git-worktree.md` — defer to it.**
 
 This applies to **every** task, including:
 - Documentation-only changes (yes, even a one-line README tweak).
 - "Trivial" or "tiny" edits — size is not an exemption.
 - Updates to `.github/copilot-instructions.md` or `CLAUDE.md` themselves.
 
-Do not rationalize skipping the worktree ("it's just docs", "it's one line", "I'll move it later"). If you catch yourself about to edit a file in `C:\code\SoYouWantToBeAnArchitect` that isn't in the session worktree, **stop and create the worktree first**.
+Do not rationalize skipping the worktree ("it's just docs", "it's one line", "I'll move it later"). If you catch yourself about to edit a file in the primary checkout (the directory you cloned into) that isn't in the session worktree, **stop and create the worktree first**.
 
 The only exception: the user explicitly says to work on the current checkout / on `main` / without a worktree. Treat anything less explicit than that as "use a worktree".
 
