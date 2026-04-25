@@ -154,10 +154,13 @@ test.describe('Visual regression (static UI)', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
-    // Emit persistence:failed via the test-hooks eventBus so the HUD shows the toast
+    // Emit persistence:failed via the test-hooks eventBus so the HUD shows the toast.
+    // The cast uses the concrete payload shape for 'persistence:failed' — browser context
+    // erases TypeScript types so we can't import GameEvents here directly.
     await page.evaluate(() => {
+      type PersistenceFailedPayload = { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string };
       const hooks = (window as unknown as {
-        __testHooks?: { eventBus: { emit: (event: string, payload: unknown) => void } };
+        __testHooks?: { eventBus: { emit: (event: 'persistence:failed', payload: PersistenceFailedPayload) => void } };
       }).__testHooks;
       if (!hooks) throw new Error('__testHooks not available');
       hooks.eventBus.emit('persistence:failed', { reason: 'quota' });
