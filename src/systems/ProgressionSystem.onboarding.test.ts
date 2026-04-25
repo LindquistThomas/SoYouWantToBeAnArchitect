@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ProgressionSystem, SaveAdapter } from './ProgressionSystem';
-import { SaveData } from './SaveManager';
+import { SaveData, CURRENT_SAVE_VERSION } from './SaveManager';
 import { FLOORS } from '../config/gameConfig';
 
 function memoryAdapter(): SaveAdapter & { stored: SaveData | null } {
@@ -48,6 +48,7 @@ describe('ProgressionSystem — onboarding', () => {
   it('loadFromSave() restores onboardingComplete=true from saved data', () => {
     // Manually save data with onboardingComplete=true
     adapter.save({
+      version: CURRENT_SAVE_VERSION,
       totalAU: 0,
       floorAU: { [FLOORS.LOBBY]: 0 } as Record<number, number>,
       unlockedFloors: [FLOORS.LOBBY],

@@ -160,7 +160,10 @@ export class ElevatorScene extends Phaser.Scene {
         if (id === WELCOME_BOARD_ID) return this.zones.lobbyBoardIcon;
         return this.zones.elevatorInfoIcon;
       },
-      onOpen: (id) => this.gameState.markSeen(id),
+      onOpen: (id) => {
+        this.gameState.markSeen(id);
+        this.gameState.checkAchievements();
+      },
       onClose: (id) => {
         if (id === ELEVATOR_INFO_ID) {
           this.zones.elevatorInfoIcon?.markAsSeen();
@@ -169,6 +172,7 @@ export class ElevatorScene extends Phaser.Scene {
         } else if (id === GEIR_F4_ID) {
           this.zones.geirInfoIcon?.markAsSeen();
         }
+        this.gameState.checkAchievements();
       },
     });
 
@@ -197,6 +201,10 @@ export class ElevatorScene extends Phaser.Scene {
 
     // First-time onboarding: show welcome modal on a fresh save.
     this.maybeShowOnboarding();
+
+    // Mark the lobby as visited and check for first-time achievements.
+    this.progression.markFloorVisited(FLOORS.LOBBY);
+    this.gameState.checkAchievements();
   }
 
   /** Show the welcome modal + control hints overlay on the player's first visit. */
@@ -213,7 +221,7 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   /* ---- player ---- */
-  private createPlayer(positions: Record<number, number>): void {
+  private createPlayer(positions: Record<FloorId, number>): void {
     const spawn = this.resolveInitialSpawn(positions);
     this.player = new Player(this, spawn.x, spawn.y);
     this.physics.add.collider(this.player.sprite, this.layout.platforms);
@@ -225,7 +233,7 @@ export class ElevatorScene extends Phaser.Scene {
    *   - returning from a floor/room     → just outside the shaft on that side
    *   - otherwise                       → lobby default
    */
-  private resolveInitialSpawn(positions: Record<number, number>): { x: number; y: number } {
+  private resolveInitialSpawn(positions: Record<FloorId, number>): { x: number; y: number } {
     const SPAWN_OFFSET = 56;
     if (this.spawnAtProductDoor) {
       const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
@@ -235,21 +243,18 @@ export class ElevatorScene extends Phaser.Scene {
       }
     }
     if (this.spawnAtFloor !== undefined && this.spawnAtFloor !== FLOORS.LOBBY) {
-      const floorY = positions[this.spawnAtFloor];
-      if (floorY !== undefined) {
-        const walkY = floorY + ElevatorScene.FLOOR_H;
-        const cx = GAME_WIDTH / 2;
-        const sw = ElevatorScene.SHAFT_WIDTH;
-        const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
-        return { x, y: walkY - SPAWN_OFFSET };
-      }
+      const walkY = positions[this.spawnAtFloor] + ElevatorScene.FLOOR_H;
+      const cx = GAME_WIDTH / 2;
+      const sw = ElevatorScene.SHAFT_WIDTH;
+      const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
+      return { x, y: walkY - SPAWN_OFFSET };
     }
     const lobbyY = positions[FLOORS.LOBBY];
     return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
   }
 
   /* ---- elevator ---- */
-  private buildElevator(positions: Record<number, number>): Elevator {
+  private buildElevator(positions: Record<FloorId, number>): Elevator {
     const cx = GAME_WIDTH / 2;
     const floorH = ElevatorScene.FLOOR_H;
     const startY = positions[this.progression.getCurrentFloor()] + floorH + 8;
@@ -286,7 +291,7 @@ export class ElevatorScene extends Phaser.Scene {
    * bottom and executive at the top; {@link computeShaftExtent} derives
    * the shaft range from these.
    */
-  private getFloorYPositions(): Record<number, number> {
+  private getFloorYPositions(): Record<FloorId, number> {
     return {
       [FLOORS.LOBBY]: 2410,
       [FLOORS.PLATFORM_TEAM]: 1936,
@@ -520,8 +525,8 @@ export class ElevatorScene extends Phaser.Scene {
       'ElevatorCallFloor3', 'ElevatorCallFloor4',
     ];
     for (let i = 0; i < visualOrder.length && i < actions.length; i++) {
-      if (inputs.justPressed(actions[i])) {
-        this.elevatorCtrl.elevator.moveToFloor(visualOrder[i].id);
+      if (inputs.justPressed(actions[i]!)) {
+        this.elevatorCtrl.elevator.moveToFloor(visualOrder[i]!.id);
         return;
       }
     }
