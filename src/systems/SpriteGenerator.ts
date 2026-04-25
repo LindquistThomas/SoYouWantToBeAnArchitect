@@ -15,6 +15,7 @@ import { generateEnemySprites } from './sprites/enemies';
 import { generateGeirSprite } from './sprites/npcGeir';
 import { generateReceptionistSprite } from './sprites/receptionist';
 import { generateCoffeeSprites } from './sprites/coffee';
+import { generateRubberDuckSprite } from './sprites/npcRubberDuck';
 
 /**
  * Composition root for runtime sprite generation.
@@ -40,4 +41,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateGeirSprite(scene);
   generateReceptionistSprite(scene);
   generateCoffeeSprites(scene);
+  generateRubberDuckSprite(scene);
 }
