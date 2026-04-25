@@ -85,11 +85,11 @@ export class ElevatorScene extends Phaser.Scene {
     this.spawnAtProductDoor = data?.spawnDoorId;
     this.spawnAtFloor = data?.fromFloor;
     this.spawnAtFloorSide = data?.spawnSide ?? 'left';
-    this.zoneManager.clear();
   }
 
   create(): void {
     this.isTransitioning = false;
+    this.zoneManager.bindScene(this);
     // Fallback colour behind the sky backdrop (drawn by ElevatorSceneLayout).
     // Matches the horizon band so any sub-pixel leak reads as "sky", not a
     // harsh purple notch.
