@@ -1,6 +1,6 @@
 ## Enemies & Obstacles (Phase 2)
 
-> **Status: shipped — preserved as historical spec.** Base `Enemy` class, `Slime` / `BureaucracyBot` subclasses, Arcade-physics patrol AI, AU-loss on contact, and level-config placement all live in `src/entities/Enemy.ts`, `src/entities/enemies/`, and each floor's `LevelConfig.enemies`. Keep this file for design context; do not treat the checklist below as an active TODO.
+> **Archived: shipped — see `docs/architecture.md` for current state.** This file is preserved as historical design context. Do not treat the checklist as active TODOs. Base `Enemy` class, `Slime` / `BureaucracyBot` / `ScopeCreep` / `ArchitectureAstronaut` / `TechDebtGhost` subclasses, Arcade-physics patrol AI, AU-loss on contact, and level-config placement all live in `src/entities/Enemy.ts`, `src/entities/enemies/`, and each floor's `LevelConfig.enemies`.
 
 Add enemies and environmental hazards to floor levels to create gameplay challenge.
 

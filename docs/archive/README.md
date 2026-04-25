@@ -1,0 +1,1 @@
+This directory contains historical design specifications for features that have been fully implemented and shipped. These files are preserved for design context only — do not treat any checklist items as active TODOs. For the current state of the codebase, refer to `docs/architecture.md`.
