@@ -86,6 +86,17 @@ class EventBus {
     this.listeners.get(event)?.forEach(fn => (fn as GameEventHandler<K>)(...args));
     return this;
   }
+
+  /**
+   * Remove every listener — primarily a test seam so suites can isolate
+   * each case without reaching into private state. Safe at runtime too
+   * (e.g. on a hard scene-graph reset), but production code should prefer
+   * paired `on`/`off` with scene shutdown for narrower cleanup.
+   */
+  removeAllListeners(): this {
+    this.listeners.clear();
+    return this;
+  }
 }
 
 /** Singleton game event bus — import anywhere, no framework dependency. */

@@ -37,19 +37,13 @@ function makeFakeSoundManager(): FakeSoundManager {
   return mgr;
 }
 
-/** Strip all listeners from the EventBus singleton between tests. */
-function resetEventBus(): void {
-  const listeners = (eventBus as unknown as { listeners: Map<unknown, unknown> }).listeners;
-  listeners.clear();
-}
-
 describe('AudioManager', () => {
   let fakeSound: FakeSoundManager;
   let manager: AudioManager;
 
   beforeEach(() => {
     localStorage.clear();
-    resetEventBus();
+    eventBus.removeAllListeners();
     fakeSound = makeFakeSoundManager();
     // Cast to unknown to bypass Phaser's rich type — the subset we use is covered.
     manager = new AudioManager(fakeSound as unknown as Phaser.Sound.BaseSoundManager);
@@ -57,7 +51,7 @@ describe('AudioManager', () => {
   });
 
   afterEach(() => {
-    resetEventBus();
+    eventBus.removeAllListeners();
     localStorage.clear();
   });
 

@@ -13,17 +13,13 @@ function memoryStorage(): KVStorage & { store: Map<string, string> } {
   };
 }
 
-function resetEventBus(): void {
-  (eventBus as unknown as { listeners: Map<unknown, unknown> }).listeners.clear();
-}
-
 describe('PersistedStore', () => {
   beforeEach(() => {
-    resetEventBus();
+    eventBus.removeAllListeners();
   });
 
   afterEach(() => {
-    resetEventBus();
+    eventBus.removeAllListeners();
   });
 
   it('returns the default value when storage is empty', () => {
@@ -95,6 +91,24 @@ describe('PersistedStore', () => {
     eventBus.on('persistence:error', listener);
     s.write(1);
     expect(listener).toHaveBeenCalledWith('k', 'QuotaExceeded');
+  });
+
+  it('keeps the in-session value visible to read() when write fails (no cache mismatch)', () => {
+    // Storage that returns the previously-stored value for getItem but
+    // throws on setItem. Without the cache-on-success guard, the cached
+    // raw would no longer match the stored raw, so the next read() would
+    // discard the in-memory write and revert to the previous value.
+    let stored: string | null = null;
+    const flaky: KVStorage = {
+      getItem: () => stored,
+      setItem: () => { throw new Error('QuotaExceeded'); },
+      removeItem: () => { stored = null; },
+    };
+    const s = createPersistedStore<number>({ key: 'k', defaultValue: () => 0 });
+    s.setStorage(flaky);
+    s.write(7);
+    expect(s.read()).toBe(7); // cache must still reflect the failed write within this session
+    expect(s.read()).toBe(7); // and stay stable across reads
   });
 
   it('update() applies a transform to the current value', () => {

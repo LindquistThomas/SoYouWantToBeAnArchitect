@@ -1,9 +1,14 @@
 /**
  * Generic JSON-backed key/value store factory.
  *
- * Wraps a single localStorage key with an in-memory cache, defensive
- * try/catch on quota and corrupt-JSON errors, and an EventBus signal
- * (`persistence:error`) so a HUD can surface failures to the player.
+ * Wraps a single localStorage key with an in-memory cache and defensive
+ * try/catch on quota errors, corrupt JSON, and unavailable storage.
+ *
+ * **Error semantics**: `persistence:error` is emitted from the WRITE path
+ * only (quota / unavailable storage / unserialisable value). Read failures
+ * (corrupt JSON in storage, getItem throwing) silently fall back to
+ * `defaultValue` — they typically resolve themselves on the next
+ * successful write, and emitting on every read would spam the bus.
  *
  * Replaces the ad-hoc try/catch + JSON.parse pattern that was duplicated
  * across QuizManager, InfoDialogManager, and AudioManager.
@@ -83,9 +88,18 @@ export function createPersistedStore<T>(opts: PersistedStoreOptions<T>): Persist
       let raw: string;
       try { raw = JSON.stringify(serialise(value)); }
       catch (err) { reportError(err); return; }
-      cache = { raw, value };
-      try { getStorage().setItem(opts.key, raw); }
-      catch (err) { reportError(err); }
+      const previousRaw = cache?.raw ?? null;
+      try {
+        getStorage().setItem(opts.key, raw);
+        cache = { raw, value };
+      } catch (err) {
+        // Persisted write failed (quota / storage unavailable). Keep the
+        // new value visible to in-session reads, but pin cache.raw to the
+        // pre-write storage value so subsequent reads still hit the cache
+        // (otherwise the raw mismatch would discard the in-memory update).
+        cache = { raw: previousRaw, value };
+        reportError(err);
+      }
     },
     update(fn: (prev: T) => T): void {
       this.write(fn(this.read()));
