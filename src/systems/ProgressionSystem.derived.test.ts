@@ -23,7 +23,7 @@ describe('ProgressionSystem — defaultState derivation from FLOORS', () => {
     vi.resetModules();
   });
 
-  it('getFloorAU returns 0 (not undefined) for a synthetic floor id present in FLOORS', async () => {
+  it('getFloorAU returns 0 (not undefined) for a synthetic floor ID present in FLOORS', async () => {
     vi.doMock('../config/gameConfig', () => ({
       FLOORS: {
         LOBBY: 0,
@@ -40,7 +40,7 @@ describe('ProgressionSystem — defaultState derivation from FLOORS', () => {
     expect(p.getFloorAU(SYNTH_FLOOR)).toBe(0);
   });
 
-  it('isFloorUnlocked returns true for a synthetic floor id present in FLOORS', async () => {
+  it('isFloorUnlocked returns true for a synthetic floor ID present in FLOORS', async () => {
     vi.doMock('../config/gameConfig', () => ({
       FLOORS: {
         LOBBY: 0,
