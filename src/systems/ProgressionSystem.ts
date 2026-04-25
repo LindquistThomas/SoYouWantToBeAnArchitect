@@ -4,6 +4,10 @@ import type { SaveData } from './SaveManager';
 import * as DefaultSaveManager from './SaveManager';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
+import { eventBus } from './EventBus';
+
+/** Milestone interval for `progression:au_milestone` events. */
+const AU_MILESTONE_STEP = 50;
 
 /** Pluggable persistence adapter; defaults to the SaveManager module. */
 export interface SaveAdapter {
@@ -57,10 +61,19 @@ export class ProgressionSystem {
   }
 
   addAU(floorId: FloorId, amount: number): void {
+    const prevTotal = this.state.totalAU;
     this.state.totalAU += amount;
     this.state.floorAU[floorId] += amount;
     this.checkUnlocks();
     this.persist();
+
+    // Announce AU milestones every AU_MILESTONE_STEP AU earned.
+    const newTotal = this.state.totalAU;
+    const prevMilestone = Math.floor(prevTotal / AU_MILESTONE_STEP);
+    const newMilestone = Math.floor(newTotal / AU_MILESTONE_STEP);
+    if (newTotal > 0 && newMilestone > prevMilestone) {
+      eventBus.emit('progression:au_milestone', newMilestone * AU_MILESTONE_STEP);
+    }
   }
 
   /**
@@ -93,6 +106,7 @@ export class ProgressionSystem {
       if (!this.state.unlockedFloors.has(floorData.id) &&
           this.state.totalAU >= floorData.auRequired) {
         this.state.unlockedFloors.add(floorData.id);
+        eventBus.emit('progression:floor_unlocked', floorData.id);
       }
     }
   }
