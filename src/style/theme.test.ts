@@ -5,7 +5,7 @@ describe('theme', () => {
   it('exposes a stable top-level shape', () => {
     expect(Object.keys(theme).sort()).toEqual(['color', 'space']);
     expect(Object.keys(theme.color).sort()).toEqual([
-      'bg', 'css', 'floor', 'sky', 'status', 'ui',
+      'bg', 'css', 'floor', 'floorBackdrop', 'sky', 'status', 'ui',
     ]);
   });
 
