@@ -326,10 +326,10 @@ export class Player {
             this.playerState = 'grounded';
             this.airborneSince = null;
           } else {
+            // Set airborneSince fresh so landing detection only counts time
+            // since the player regained control (takeHit nulled the old value).
             this.playerState = 'airborne';
-            // Preserve airborneSince if it was set before the hit, otherwise
-            // start counting from now so landing detection works correctly.
-            this.airborneSince = this.airborneSince ?? now;
+            this.airborneSince = now;
           }
         }
         break;
@@ -531,6 +531,9 @@ export class Player {
     this.invulnerableUntil = now + durationMs;
     this.hitStunUntil = now + 220;
     this.playerState = 'hitStun';
+    // Reset so that landing detection after the stun only measures airborne
+    // time from when the player regained control, not from before the hit.
+    this.airborneSince = null;
 
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(true);
