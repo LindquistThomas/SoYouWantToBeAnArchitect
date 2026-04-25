@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioManager } from './AudioManager';
 import { eventBus } from './EventBus';
 import { MUSIC_VOLUME, SFX_EVENTS } from '../config/audioConfig';
-
-const MUTE_STORAGE_KEY = 'architect_audio_muted_v1';
+import { settingsStore, SETTINGS_STORAGE_KEY } from './SettingsStore';
 
 interface FakeSoundInstance {
   play: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
+  setVolume: ReturnType<typeof vi.fn>;
   pause: ReturnType<typeof vi.fn>;
   resume: ReturnType<typeof vi.fn>;
   isPlaying: boolean;
@@ -17,6 +17,7 @@ interface FakeSoundInstance {
 
 interface FakeSoundManager {
   mute: boolean;
+  volume: number;
   play: ReturnType<typeof vi.fn>;
   add: ReturnType<typeof vi.fn>;
   _instances: FakeSoundInstance[];
@@ -26,12 +27,14 @@ function makeFakeSoundManager(): FakeSoundManager {
   const instances: FakeSoundInstance[] = [];
   const mgr: FakeSoundManager = {
     mute: false,
+    volume: 1,
     play: vi.fn(),
     add: vi.fn((_key: string) => {
       const inst: FakeSoundInstance = {
         play: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
         stop: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = false; }),
         destroy: vi.fn(),
+        setVolume: vi.fn(),
         pause: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = true; }),
         resume: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
         isPlaying: false,
@@ -69,13 +72,13 @@ describe('AudioManager', () => {
       for (const ev of events) {
         fakeSound.play.mockClear();
         eventBus.emit(ev);
-        expect(fakeSound.play).toHaveBeenCalledWith(SFX_EVENTS[ev]);
+        expect(fakeSound.play).toHaveBeenCalledWith(SFX_EVENTS[ev], expect.objectContaining({ volume: expect.any(Number) }));
       }
     });
 
     it('routes a specific sfx event to the correct audio key', () => {
       eventBus.emit('sfx:jump');
-      expect(fakeSound.play).toHaveBeenCalledWith('jump');
+      expect(fakeSound.play).toHaveBeenCalledWith('jump', expect.objectContaining({ volume: expect.any(Number) }));
     });
 
     it('does not play anything before events are emitted', () => {
@@ -136,7 +139,7 @@ describe('AudioManager', () => {
 
     it('music:pause calls pause() on the playing track', () => {
       eventBus.emit('music:play', 'track_a');
-      const inst = fakeSound._instances[0];
+      const inst = fakeSound._instances[0]!;
       inst.isPlaying = true;
       eventBus.emit('music:pause');
       expect(inst.pause).toHaveBeenCalledTimes(1);
@@ -148,7 +151,7 @@ describe('AudioManager', () => {
 
     it('music:pause is a no-op when track is already paused', () => {
       eventBus.emit('music:play', 'track_a');
-      const inst = fakeSound._instances[0];
+      const inst = fakeSound._instances[0]!;
       inst.isPlaying = false; // not playing (e.g. already paused)
       eventBus.emit('music:pause');
       expect(inst.pause).not.toHaveBeenCalled();
@@ -156,7 +159,7 @@ describe('AudioManager', () => {
 
     it('music:resume calls resume() on a paused track', () => {
       eventBus.emit('music:play', 'track_a');
-      const inst = fakeSound._instances[0];
+      const inst = fakeSound._instances[0]!;
       inst.isPaused = true;
       eventBus.emit('music:resume');
       expect(inst.resume).toHaveBeenCalledTimes(1);
@@ -168,7 +171,7 @@ describe('AudioManager', () => {
 
     it('music:resume is a no-op when track is not paused', () => {
       eventBus.emit('music:play', 'track_a');
-      const inst = fakeSound._instances[0];
+      const inst = fakeSound._instances[0]!;
       inst.isPaused = false;
       eventBus.emit('music:resume');
       expect(inst.resume).not.toHaveBeenCalled();
@@ -176,7 +179,7 @@ describe('AudioManager', () => {
 
     it('pause then resume round-trip leaves track playing', () => {
       eventBus.emit('music:play', 'track_a');
-      const inst = fakeSound._instances[0];
+      const inst = fakeSound._instances[0]!;
       inst.isPlaying = true;
       eventBus.emit('music:pause');
       // After pause, isPlaying is false and isPaused is true (set by mock).
@@ -247,11 +250,13 @@ describe('AudioManager', () => {
       expect(manager.isMuted()).toBe(false);
     });
 
-    it('persists mute state to localStorage on toggle', () => {
+    it('persists mute state to settings store on toggle', () => {
       eventBus.emit('audio:toggle-mute');
-      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('true');
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as { muteAll?: boolean };
+      expect(saved.muteAll).toBe(true);
       eventBus.emit('audio:toggle-mute');
-      expect(localStorage.getItem(MUTE_STORAGE_KEY)).toBe('false');
+      const saved2 = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as { muteAll?: boolean };
+      expect(saved2.muteAll).toBe(false);
     });
 
     it('emits audio:mute-changed with new state when toggled', () => {
@@ -263,31 +268,41 @@ describe('AudioManager', () => {
       expect(listener).toHaveBeenLastCalledWith(false);
     });
 
-    it('restores persisted mute preference from localStorage on construction', () => {
-      localStorage.setItem(MUTE_STORAGE_KEY, 'true');
+    it('does NOT emit audio:mute-changed when only volume (not mute) changes', () => {
+      const muteListener = vi.fn();
+      eventBus.on('audio:mute-changed', muteListener);
+      // Volume change should not trigger audio:mute-changed
+      settingsStore.setMasterVolume(50);
+      settingsStore.setMusicVolume(60);
+      settingsStore.setSfxVolume(40);
+      expect(muteListener).not.toHaveBeenCalled();
+    });
+
+    it('restores persisted mute preference from settings store on construction', () => {
+      settingsStore.setMuteAll(true);
       const sound = makeFakeSoundManager();
       const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
       expect(m.isMuted()).toBe(true);
       expect(sound.mute).toBe(true);
     });
 
-    it('does not mute on construction if persisted value is "false"', () => {
-      localStorage.setItem(MUTE_STORAGE_KEY, 'false');
+    it('does not mute on construction if persisted muteAll is false', () => {
+      settingsStore.setMuteAll(false);
       const sound = makeFakeSoundManager();
       const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
       expect(m.isMuted()).toBe(false);
     });
 
-    it('honours the legacy "1" / "0" encoding on read for backward compat', () => {
-      localStorage.setItem(MUTE_STORAGE_KEY, '1');
+    it('picks up muteAll=true from settings store on construction', () => {
+      // Simulate what migration would have done: settingsStore has muteAll=true
+      settingsStore.setMuteAll(true);
+      settingsStore._store.setStorage(globalThis.localStorage);
       const sound = makeFakeSoundManager();
       const m = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager);
       expect(m.isMuted()).toBe(true);
-
-      localStorage.setItem(MUTE_STORAGE_KEY, '0');
-      const sound2 = makeFakeSoundManager();
-      const m2 = new AudioManager(sound2 as unknown as Phaser.Sound.BaseSoundManager);
-      expect(m2.isMuted()).toBe(false);
+      expect(sound.mute).toBe(true);
+      // Cleanup
+      settingsStore.setMuteAll(false);
     });
   });
 });

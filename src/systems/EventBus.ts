@@ -33,6 +33,12 @@ export interface GameEvents {
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /**
+   * Emitted by SettingsStore whenever any volume-related setting changes
+   * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens
+   * and re-applies the new levels to all active channels.
+   */
+  'audio:volume-changed': [];
   /** Pause the currently-playing music track (e.g. when game is paused). */
   'music:pause': [];
   /** Resume a music track that was paused via `music:pause`. */
