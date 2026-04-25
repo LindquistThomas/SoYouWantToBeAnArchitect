@@ -69,24 +69,31 @@ export class NameScene extends Phaser.Scene {
 Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts`, extend `LevelScene`, and declare their content as a `LevelConfig`:
 
 ```ts
-import { LevelScene } from '../_shared/LevelScene';
+import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { FLOORS } from '../../../config/gameConfig';
 
-export class MyFloorScene extends LevelScene {
+export class MyFloorTeamScene extends LevelScene {
   constructor() {
-    super('MyFloorScene', {
+    super('MyFloorTeamScene', FLOORS.MY_FLOOR);
+  }
+
+  protected override getLevelConfig(): LevelConfig {
+    return {
       floorId: FLOORS.MY_FLOOR,
       platforms: [/* … */],
       tokens:    [/* … */],
+      roomElevators: [],
+      playerStart: { x: 120, y: 700 },
+      exitPosition: { x: 80, y: 700 },
       enemies:   [{ type: 'slime', x: 400, y: 700, minX: 300, maxX: 600, speed: 60 }],
-                  // type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost'
-                  // minX/maxX default to x ± 160 when omitted
-      infoPoints:[{ id: 'my-info-card', x: 800, y: 700 /*, zoneRadius?: number */ }],
-    });
+      infoPoints:[{ contentId: 'my-info-card', x: 800, y: 700,
+                    zone: { shape: 'circle', radius: 120 } }],
+    };
   }
 }
 ```
 
-Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a `{ key: 'MyFloorScene', cls: MyFloorScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`.
+Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a `{ key: 'MyFloorTeamScene', cls: MyFloorTeamScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`.
 
 ## Conventions checklist
 
