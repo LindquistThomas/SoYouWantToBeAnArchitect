@@ -11,9 +11,9 @@
  * layered on top with strict per-façade budgets so total motion cost
  * stays bounded regardless of shaft height:
  *
- *   - twinkle    — slow alpha yoyo (most lit windows eligible).
- *   - flicker    — quick fluorescent stutter on a long random interval.
- *   - switch     — discrete on/off toggle on a 15–60s cycle.
+ *   - twinkle    — quick alpha yoyo (most lit windows eligible).
+ *   - flicker    — quick fluorescent stutter on a short irregular interval.
+ *   - switch     — discrete on/off toggle on a short 1.5–6s cycle.
  *   - occupant   — tiny dark silhouette briefly crosses a lit window.
  *   - monitor    — fast subtle alpha jitter on cool/green monitor windows.
  *   - blinds     — stripe overlay slowly scales open/closed (rare).
@@ -53,7 +53,7 @@ export interface BuildingFacadeOptions {
   sides: [FacadeSide, FacadeSide];
   /** Per-floor bands, sorted by yTop ascending. */
   bands: FacadeBand[];
-  /** Max slow alpha-yoyo windows across the whole façade. */
+  /** Max quick alpha-yoyo windows across the whole façade. */
   twinkleBudget?: number;
   /** Max fluorescent-flicker windows across the whole façade. */
   flickerBudget?: number;
@@ -82,6 +82,20 @@ export interface BuildingFacadeHandle {
 
 export type FacadeWindowTint = 'warm' | 'cool' | 'green';
 export type FacadeWindowKind = 'plain' | 'blinds' | 'monitor';
+
+const WINDOW_WIDTH = 8;
+const WINDOW_HEIGHT = 11;
+const WINDOW_GUTTER_X = 9;
+const WINDOW_GUTTER_Y = 9;
+const WINDOW_MARGIN_X = 12;
+const WINDOW_MARGIN_Y = 14;
+
+const FLICKER_PAUSE_MIN_MS = 600;
+const FLICKER_PAUSE_SPREAD_MS = 1400;
+const SWITCH_DELAY_MIN_MS = 1500;
+const SWITCH_DELAY_SPREAD_MS = 4500;
+const OCCUPANT_DELAY_MIN_MS = 3000;
+const OCCUPANT_DELAY_SPREAD_MS = 6000;
 
 export interface FacadeWindowSpec {
   /** Local x, relative to the side's xLeft + band's yTop. */
@@ -133,7 +147,7 @@ function tintColor(tint: FacadeWindowTint): number {
 /**
  * Deterministically generate a grid of windows that fits inside a
  * rectangle of the given dimensions, with sensible margins. Distribution:
- * ~28% lit, ~22% dim, ~50% dark. Lit windows receive a stable tint + kind.
+ * ~38% lit, ~22% dim, ~40% dark. Lit windows receive a stable tint + kind.
  */
 export function generateFacadeWindows(
   width: number,
@@ -144,15 +158,14 @@ export function generateFacadeWindows(
   const rand = rng(seed);
   const { twinkles = 1, flickers = 0 } = opts;
 
-  const winW = 5;
-  const winH = 7;
-  const gutterX = 7;
-  const gutterY = 8;
-  const marginX = 10;
-  const marginY = 12;
-
-  const cols = Math.max(0, Math.floor((width - marginX * 2 + gutterX) / (winW + gutterX)));
-  const rows = Math.max(0, Math.floor((height - marginY * 2 + gutterY) / (winH + gutterY)));
+  const cols = Math.max(
+    0,
+    Math.floor((width - WINDOW_MARGIN_X * 2 + WINDOW_GUTTER_X) / (WINDOW_WIDTH + WINDOW_GUTTER_X)),
+  );
+  const rows = Math.max(
+    0,
+    Math.floor((height - WINDOW_MARGIN_Y * 2 + WINDOW_GUTTER_Y) / (WINDOW_HEIGHT + WINDOW_GUTTER_Y)),
+  );
 
   const windows: FacadeWindowSpec[] = [];
   let twinklesPlaced = 0;
@@ -162,8 +175,8 @@ export function generateFacadeWindows(
     for (let c = 0; c < cols; c++) {
       const roll = rand();
       let state: FacadeWindowSpec['state'];
-      if (roll > 0.72) state = 'lit';
-      else if (roll > 0.50) state = 'dim';
+      if (roll > 0.62) state = 'lit';
+      else if (roll > 0.40) state = 'dim';
       else state = 'dark';
 
       // Tint + kind decided up-front so later effect passes can key off
@@ -188,10 +201,10 @@ export function generateFacadeWindows(
       const canFlicker =
         !canTwinkle && state === 'lit' && flickersPlaced < flickers && rand() < 0.08;
       windows.push({
-        x: marginX + c * (winW + gutterX),
-        y: marginY + r * (winH + gutterY),
-        width: winW,
-        height: winH,
+        x: WINDOW_MARGIN_X + c * (WINDOW_WIDTH + WINDOW_GUTTER_X),
+        y: WINDOW_MARGIN_Y + r * (WINDOW_HEIGHT + WINDOW_GUTTER_Y),
+        width: WINDOW_WIDTH,
+        height: WINDOW_HEIGHT,
         state,
         tint,
         kind,
@@ -214,12 +227,12 @@ export function drawBuildingFacade(
   const {
     sides,
     bands,
-    twinkleBudget = 14,
-    flickerBudget = 6,
-    switchBudget = 16,
-    occupantBudget = 6,
-    monitorBudget = 8,
-    blindsAnimBudget = 4,
+    twinkleBudget = 36,
+    flickerBudget = 18,
+    switchBudget = 28,
+    occupantBudget = 12,
+    monitorBudget = 18,
+    blindsAnimBudget = 10,
     scrollFactorY = 0.72,
   } = opts;
 
@@ -288,7 +301,7 @@ export function drawBuildingFacade(
         if (w.twinkle || w.flicker) continue;
         if (w.state === 'dark') {
           // Dark frame so an "empty office" still reads as a window, not a blank wall.
-          gfx.fillStyle(theme.color.bg.mid, 0.35);
+          gfx.fillStyle(theme.color.bg.mid, 0.50);
           gfx.fillRect(side.xLeft + w.x, band.yTop + w.y, w.width, w.height);
           continue;
         }
@@ -297,9 +310,15 @@ export function drawBuildingFacade(
         // Monitor windows read slightly softer so the flicker tween has
         // somewhere to travel without clipping.
         const alpha =
-          w.state === 'lit' ? (w.kind === 'monitor' ? 0.72 : 0.80) : 0.45;
+          w.state === 'lit' ? (w.kind === 'monitor' ? 0.86 : 0.94) : 0.56;
         gfx.fillStyle(baseColor, alpha);
         gfx.fillRect(side.xLeft + w.x, band.yTop + w.y, w.width, w.height);
+
+        // Bright top edge so lit windows read at elevator-ride speed.
+        if (w.state === 'lit') {
+          gfx.fillStyle(theme.color.sky.starBright, 0.18);
+          gfx.fillRect(side.xLeft + w.x, band.yTop + w.y, w.width, 1);
+        }
 
         // Static blinds stripes — thin dark horizontals drawn over the lit
         // fill so the window reads as "shade drawn".
@@ -312,7 +331,7 @@ export function drawBuildingFacade(
 
         // Warm halo under lit windows to imply interior glow spilling onto the sill.
         if (w.state === 'lit') {
-          gfx.fillStyle(baseColor, 0.15);
+          gfx.fillStyle(baseColor, 0.24);
           gfx.fillRect(side.xLeft + w.x - 1, band.yTop + w.y + w.height, w.width + 2, 1);
         }
       }
@@ -327,15 +346,15 @@ export function drawBuildingFacade(
             w.width,
             w.height,
             tintColor(w.tint),
-            0.85,
+            0.96,
           )
           .setDepth(0.41)
           .setScrollFactor(1, scrollFactorY);
         objects.push(rect);
         const tw = scene.tweens.add({
           targets: rect,
-          alpha: { from: 0.85, to: 0.3 },
-          duration: 2400 + twinklesRemaining * 330,
+          alpha: { from: 0.96, to: 0.12 },
+          duration: 520 + (twinklesRemaining % 7) * 90,
           yoyo: true,
           repeat: -1,
           ease: 'Sine.inOut',
@@ -344,7 +363,7 @@ export function drawBuildingFacade(
         twinklesRemaining--;
       }
 
-      // Flickers: quick alpha dip (fluorescent stutter) with a long random
+      // Flickers: quick alpha dip (fluorescent stutter) with a short random
       // pause in between. Implemented as a chained TimerEvent so each
       // window keeps its own irregular cadence without a shared tween.
       for (const w of windows) {
@@ -356,7 +375,7 @@ export function drawBuildingFacade(
             w.width,
             w.height,
             tintColor(w.tint),
-            0.80,
+            0.96,
           )
           .setDepth(0.41)
           .setScrollFactor(1, scrollFactorY);
@@ -365,7 +384,8 @@ export function drawBuildingFacade(
         // xorshift-ish: seed derived from window position so flicker cadence is stable.
         const seed = (band.seed ^ (w.x * 73856093) ^ (w.y * 19349663)) >>> 0;
         const pauseRand = rng(seed);
-        const nextPause = (): number => 4000 + Math.floor(pauseRand() * 5000);
+        const nextPause = (): number =>
+          FLICKER_PAUSE_MIN_MS + Math.floor(pauseRand() * FLICKER_PAUSE_SPREAD_MS);
 
         // One reserved slot per flicker window — always holds the single
         // pending TimerEvent. Swapping in place prevents the array from
@@ -380,20 +400,30 @@ export function drawBuildingFacade(
         const doFlicker = (): void => {
           pending = null;
           if (!rect.active) return;
-          rect.setAlpha(0.20);
+          rect.setAlpha(0.08);
           setPending(
-            scene.time.delayedCall(60, () => {
+            scene.time.delayedCall(55, () => {
               pending = null;
               if (!rect.active) return;
-              rect.setAlpha(0.80);
-              setPending(scene.time.delayedCall(nextPause(), doFlicker));
+              rect.setAlpha(0.96);
+              setPending(scene.time.delayedCall(90, () => {
+                pending = null;
+                if (!rect.active) return;
+                rect.setAlpha(0.30);
+                setPending(scene.time.delayedCall(70, () => {
+                  pending = null;
+                  if (!rect.active) return;
+                  rect.setAlpha(0.96);
+                  setPending(scene.time.delayedCall(nextPause(), doFlicker));
+                }));
+              }));
             }),
           );
         };
 
         // Stagger initial fires so they don't all pop at t=0.
         setPending(
-          scene.time.delayedCall(1000 + Math.floor(pauseRand() * 4000), doFlicker),
+          scene.time.delayedCall(80 + Math.floor(pauseRand() * 700), doFlicker),
         );
         // Reference `pending` once so TS doesn't flag it as write-only — it
         // exists as a debug-friendly handle on the latest timer.
@@ -419,12 +449,12 @@ export function drawBuildingFacade(
           effectRand() < 0.10
         ) {
           const offPatch = scene.add
-            .rectangle(cx, cy, w.width, w.height, theme.color.bg.dark, 1)
+            .rectangle(cx, cy, w.width, w.height, theme.color.bg.dark, 0.92)
             .setDepth(0.405)
             .setScrollFactor(1, scrollFactorY)
             .setVisible(false);
           const offFrame = scene.add
-            .rectangle(cx, cy, w.width, w.height, theme.color.bg.mid, 0.35)
+            .rectangle(cx, cy, w.width, w.height, theme.color.bg.mid, 0.60)
             .setDepth(0.406)
             .setScrollFactor(1, scrollFactorY)
             .setVisible(false);
@@ -437,7 +467,7 @@ export function drawBuildingFacade(
           };
           timers.push(
             scene.time.addEvent({
-              delay: 15000 + Math.random() * 45000,
+              delay: SWITCH_DELAY_MIN_MS + Math.random() * SWITCH_DELAY_SPREAD_MS,
               loop: true,
               callback: fire,
             }),
@@ -453,15 +483,15 @@ export function drawBuildingFacade(
           (w.tint === 'cool' || w.tint === 'green')
         ) {
           const rect = scene.add
-            .rectangle(cx, cy, w.width, w.height, baseColor, 0.72)
+            .rectangle(cx, cy, w.width, w.height, baseColor, 0.86)
             .setDepth(0.412)
             .setScrollFactor(1, scrollFactorY);
           objects.push(rect);
           tweens.push(
             scene.tweens.add({
               targets: rect,
-              alpha: { from: 0.55, to: 0.9 },
-              duration: 140 + Math.floor(Math.random() * 160),
+              alpha: { from: 0.30, to: 1 },
+              duration: 55 + Math.floor(Math.random() * 80),
               yoyo: true,
               repeat: -1,
               ease: 'Sine.inOut',
@@ -472,10 +502,8 @@ export function drawBuildingFacade(
         }
 
         // Animated blinds — a solid shade block occasionally slides from
-        // fully closed (scaleY 1) to nearly open (scaleY 0.1) with a long
-        // random repeat delay so it reads as "someone occasionally adjusts
-        // their shade", not a constant tween. Static stripe detail is
-        // already baked into the underlying window by the paint pass.
+        // fully closed (scaleY 1) to nearly open (scaleY 0.1). Static stripe
+        // detail is already baked into the underlying window by the paint pass.
         if (
           blindsAnimsRemaining > 0 &&
           w.kind === 'blinds' &&
@@ -490,11 +518,11 @@ export function drawBuildingFacade(
             scene.tweens.add({
               targets: blind,
               scaleY: { from: 1, to: 0.1 },
-              duration: 1800 + Math.floor(Math.random() * 1200),
+              duration: 900 + Math.floor(Math.random() * 600),
               yoyo: true,
               repeat: -1,
-              delay: 10000 + Math.floor(Math.random() * 30000),
-              repeatDelay: 40000 + Math.floor(Math.random() * 50000),
+              delay: 700 + Math.floor(Math.random() * 1100),
+              repeatDelay: 2500 + Math.floor(Math.random() * 2500),
               ease: 'Sine.inOut',
             }),
           );
@@ -503,14 +531,14 @@ export function drawBuildingFacade(
         }
 
         // Occupant silhouette — rare crosser. Tiny dark figure slides from
-        // one edge of the window to the other on a long interval.
+        // one edge of the window to the other on an irregular interval.
         if (
           occupantsRemaining > 0 &&
           w.kind !== 'monitor' &&
-          effectRand() < 0.06
+          effectRand() < 0.10
         ) {
-          const figureW = Math.max(2, Math.floor(w.width / 2));
-          const figureH = Math.max(3, w.height - 1);
+          const figureW = Math.max(3, Math.ceil(w.width * 0.55));
+          const figureH = Math.max(5, w.height);
           const leftEdge = side.xLeft + w.x - figureW;
           const rightEdge = side.xLeft + w.x + w.width + figureW;
           const figure = scene.add
@@ -529,7 +557,7 @@ export function drawBuildingFacade(
             const tween = scene.tweens.add({
               targets: figure,
               x: toX,
-              duration: 1000 + Math.floor(Math.random() * 900),
+              duration: 650 + Math.floor(Math.random() * 600),
               ease: 'Linear',
               onComplete: () => figure.setVisible(false),
             });
@@ -537,7 +565,7 @@ export function drawBuildingFacade(
           };
           timers.push(
             scene.time.addEvent({
-              delay: 20000 + Math.random() * 40000,
+              delay: OCCUPANT_DELAY_MIN_MS + Math.random() * OCCUPANT_DELAY_SPREAD_MS,
               loop: true,
               callback: cross,
             }),
