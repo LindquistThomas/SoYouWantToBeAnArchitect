@@ -37,7 +37,7 @@ src/
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
-│       ├── finance/          Finance — Business floor, left room.
+│       ├── finance/          Finance — door inside the Executive Suite (FLOORS.EXECUTIVE).
 │       ├── product/          Product Leadership — Business floor, left room.
 │       ├── customer/         Customer Success — Business floor, right room.
 │       └── executive/        ExecutiveSuiteScene.ts (penthouse).
