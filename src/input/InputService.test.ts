@@ -39,6 +39,7 @@ import {
   setVirtualButton,
   _resetVirtualButtons,
 } from './InputService';
+import { settingsStore } from '../systems/SettingsStore';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
 
@@ -459,6 +460,66 @@ describe('InputService — virtual buttons (setVirtualButton)', () => {
     expect(h.svc.horizontal()).toBe(-1);
     setVirtualButton('MoveLeft', false);
     expect(h.svc.horizontal()).toBe(0);
+  });
+});
+
+describe('InputService — control-binding overrides', () => {
+  let h: Harness;
+
+  beforeEach(() => {
+    drainContextStack();
+    _resetVirtualButtons();
+    // Ensure a clean settings store for each test.
+    localStorage.clear();
+    settingsStore._store.setStorage(globalThis.localStorage);
+  });
+
+  afterEach(() => {
+    drainContextStack();
+    _resetVirtualButtons();
+    localStorage.clear();
+    settingsStore._store.setStorage(globalThis.localStorage);
+  });
+
+  it('honors a persisted MoveLeft override — overridden key dispatches the action', () => {
+    // Remap MoveLeft from LEFT/A to I (key code 73)
+    settingsStore.setControlBindings({ MoveLeft: [K.I] });
+    // Mount the service AFTER setting the override so onSceneStart reads the new binding
+    h = mountService();
+
+    h.fireKeyDown(K.I);
+    expect(h.svc.justPressed('MoveLeft')).toBe(true);
+  });
+
+  it('original default key no longer triggers the action after override', () => {
+    // Remap MoveLeft to I; the default LEFT key should not fire MoveLeft anymore
+    settingsStore.setControlBindings({ MoveLeft: [K.I] });
+    h = mountService();
+
+    h.fireKeyDown(K.LEFT);
+    // LEFT is still bound to NavigateLeft in defaults but NOT MoveLeft after override
+    expect(h.svc.justPressed('MoveLeft')).toBe(false);
+  });
+
+  it('isDown() reflects the overridden key', () => {
+    settingsStore.setControlBindings({ Jump: [K.I] });
+    h = mountService();
+
+    h.keys.get(K.I)!.isDown = true;
+    expect(h.svc.isDown('Jump')).toBe(true);
+    h.keys.get(K.I)!.isDown = false;
+    // Space is no longer in the effective binding for Jump
+    h.keys.get(K.SPACE)!.isDown = true;
+    expect(h.svc.isDown('Jump')).toBe(false);
+    h.keys.get(K.SPACE)!.isDown = false;
+  });
+
+  it('falls back to DEFAULT_BINDINGS when no overrides are stored', () => {
+    // Nothing in localStorage — should use defaults
+    h = mountService();
+
+    h.fireKeyDown(K.SPACE);
+    expect(h.svc.justPressed('Jump')).toBe(true);
   });
 });
 

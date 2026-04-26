@@ -3,7 +3,12 @@ import {
   ACTION_CONTEXTS, ALL_ACTIONS, ALWAYS,
   type ActionContextTag, type GameAction, type InputContext,
 } from './actions';
-import { ALL_BOUND_KEYS, DEFAULT_BINDINGS, actionsForKey, type KeyCode } from './bindings';
+import {
+  ALL_BOUND_KEYS, DEFAULT_BINDINGS,
+  buildEffectiveBindings, buildKeyToActions,
+  type KeyCode,
+} from './bindings';
+import { settingsStore } from '../systems/SettingsStore';
 
 /* ---------- Virtual (on-screen) button state ---------- */
 
@@ -153,6 +158,13 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   private keyDownListener?: (ev: KeyboardEvent) => void;
   /** Actions that have a pending "just pressed" flag consumed by justPressed(). */
   private justPressedFlags = new Map<GameAction, boolean>();
+  /**
+   * Per-scene effective binding table: DEFAULT_BINDINGS merged with any
+   * persisted overrides from SettingsStore. Rebuilt on every scene start.
+   */
+  private effectiveBindings: Record<GameAction, readonly KeyCode[]> = DEFAULT_BINDINGS;
+  /** Reverse lookup derived from effectiveBindings. Rebuilt on every scene start. */
+  private effectiveKeyToActions: Map<KeyCode, GameAction[]> = new Map();
 
   boot(): void {
     const events = this.systems!.events;
@@ -164,8 +176,17 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
     const kb = this.scene?.input.keyboard;
     if (!kb) return;
 
-    // Register every bound key so Phaser tracks its isDown state.
-    for (const code of ALL_BOUND_KEYS) {
+    // Build per-scene effective bindings by merging stored overrides over defaults.
+    const overrides = settingsStore.read().controlBindings;
+    this.effectiveBindings = buildEffectiveBindings(overrides);
+    this.effectiveKeyToActions = buildKeyToActions(this.effectiveBindings);
+
+    // Register every bound key (from effective bindings) so Phaser tracks isDown state.
+    const effectiveBoundKeys = Array.from(this.effectiveKeyToActions.keys());
+    // Always include ALL_BOUND_KEYS from defaults so that pre-registered keys remain
+    // tracked even when an action's binding is fully overridden away from a key.
+    const allKeys = new Set([...ALL_BOUND_KEYS, ...effectiveBoundKeys]);
+    for (const code of allKeys) {
       this.keys.set(code, kb.addKey(code, false));
     }
 
@@ -182,8 +203,8 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   }
 
   private dispatchKeyDown(keyCode: number): void {
-    const actions = actionsForKey(keyCode);
-    if (actions.length === 0) return;
+    const actions = this.effectiveKeyToActions.get(keyCode);
+    if (!actions || actions.length === 0) return;
     for (const action of actions) {
       this._dispatchAction(action);
     }
@@ -216,7 +237,7 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   isDown(action: GameAction): boolean {
     if (!actionAllowed(action)) return false;
     if (virtualButtonsDown.get(action)) return true;
-    const codes = DEFAULT_BINDINGS[action];
+    const codes = this.effectiveBindings[action];
     for (const code of codes) {
       if (this.keys.get(code)?.isDown) return true;
     }

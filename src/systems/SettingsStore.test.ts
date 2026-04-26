@@ -70,6 +70,7 @@ describe('SettingsStore', () => {
         muteAll: true,
         musicStyle: 'retro-synth',
         reducedMotion: true,
+        controlBindings: {},
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -263,6 +264,67 @@ describe('SettingsStore', () => {
       const s = settingsStore.read();
       expect(s.muteAll).toBe(false);
       expect(s.masterVolume).toBe(80);
+    });
+  });
+
+  describe('controlBindings', () => {
+    it('defaults to an empty object', () => {
+      expect(settingsStore.read().controlBindings).toEqual({});
+    });
+
+    it('setControlBindings persists an override', () => {
+      settingsStore.setControlBindings({ MoveLeft: [72] }); // H key
+      expect(settingsStore.read().controlBindings).toEqual({ MoveLeft: [72] });
+    });
+
+    it('resetControlBindings clears all overrides', () => {
+      settingsStore.setControlBindings({ Jump: [74] }); // J key
+      settingsStore.resetControlBindings();
+      expect(settingsStore.read().controlBindings).toEqual({});
+    });
+
+    it('round-trips controlBindings through storage', () => {
+      settingsStore.setControlBindings({ MoveLeft: [72], MoveRight: [76] });
+      settingsStore._store.setStorage(globalThis.localStorage);
+      const s = settingsStore.read();
+      expect(s.controlBindings).toEqual({ MoveLeft: [72], MoveRight: [76] });
+    });
+
+    it('ignores invalid (non-integer / non-positive) key codes on parse', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ controlBindings: { MoveLeft: [-1], MoveRight: [65.5], Jump: ['x'] } }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().controlBindings).toEqual({});
+    });
+
+    it('ignores unknown action keys on parse', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ controlBindings: { NotARealAction: [65], MoveLeft: [72] } }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().controlBindings).toEqual({ MoveLeft: [72] });
+    });
+
+    it('rejects proto-poison keys on parse', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ controlBindings: { __proto__: [65], constructor: [66], MoveLeft: [72] } }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      const bindings = settingsStore.read().controlBindings;
+      expect(bindings).not.toHaveProperty('__proto__');
+      expect(bindings).not.toHaveProperty('constructor');
+      expect(bindings).toEqual({ MoveLeft: [72] });
+    });
+
+    it('does not emit audio:volume-changed when updating controlBindings', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:volume-changed', listener);
+      settingsStore.setControlBindings({ Jump: [74] });
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 });

@@ -97,3 +97,38 @@ export function actionsForKey(key: KeyCode): readonly GameAction[] {
 
 /** Every distinct KeyCode referenced by the binding table. */
 export const ALL_BOUND_KEYS: readonly KeyCode[] = Array.from(KEY_TO_ACTIONS.keys());
+
+/**
+ * Merge persisted override bindings over DEFAULT_BINDINGS.
+ * Any action present in `overrides` with a non-empty key array replaces
+ * its default binding. Actions absent from `overrides` keep their defaults.
+ */
+export function buildEffectiveBindings(
+  overrides: Partial<Record<GameAction, KeyCode[]>>,
+): Record<GameAction, readonly KeyCode[]> {
+  const result = { ...DEFAULT_BINDINGS } as Record<GameAction, readonly KeyCode[]>;
+  for (const [action, keys] of Object.entries(overrides) as [GameAction, KeyCode[]][]) {
+    if (Array.isArray(keys) && keys.length > 0) {
+      result[action] = keys;
+    }
+  }
+  return result;
+}
+
+/**
+ * Build a reverse-lookup map (KeyCode → GameAction[]) from an effective
+ * binding table returned by `buildEffectiveBindings`.
+ */
+export function buildKeyToActions(
+  bindings: Record<GameAction, readonly KeyCode[]>,
+): Map<KeyCode, GameAction[]> {
+  const m = new Map<KeyCode, GameAction[]>();
+  for (const [action, keys] of Object.entries(bindings) as [GameAction, readonly KeyCode[]][]) {
+    for (const key of keys) {
+      const list = m.get(key) ?? [];
+      list.push(action);
+      m.set(key, list);
+    }
+  }
+  return m;
+}
