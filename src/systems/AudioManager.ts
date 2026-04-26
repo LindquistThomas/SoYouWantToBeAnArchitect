@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { eventBus } from './EventBus';
-import { SFX_EVENTS, MUSIC_VOLUME, AMBIENCE_VOLUME } from '../config/audioConfig';
+import { SFX_EVENTS, MUSIC_VOLUME, MUSIC_FADE_MS, AMBIENCE_VOLUME } from '../config/audioConfig';
 import { settingsStore } from './SettingsStore';
 
 /**
@@ -25,19 +25,41 @@ import { settingsStore } from './SettingsStore';
 /** Helper type for concrete sound instances that expose a volume property. */
 type SoundWithVolume = Phaser.Sound.BaseSound & { setVolume: (v: number) => void };
 
+/** Number of discrete volume steps used for fade-in/out intervals. */
+const FADE_STEPS = 20;
+
 export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
+  /** Crossfade duration used for this instance (0 = instant, no timers). */
+  private readonly fadeDurationMs: number;
+
   private currentMusic: Phaser.Sound.BaseSound | null = null;
   private currentMusicKey: string | null = null;
   /** Stack of music keys suspended by `music:push`, popped back on `music:pop`. */
   private musicStack: string[] = [];
 
+  /** Track fading out — kept alive until fade completes, then destroyed. */
+  private dyingMusic: Phaser.Sound.BaseSound | null = null;
+  /** setInterval handle for the outgoing fade. */
+  private fadeOutTimer: ReturnType<typeof setInterval> | null = null;
+  /** setInterval handle for the incoming fade. */
+  private fadeInTimer: ReturnType<typeof setInterval> | null = null;
+
   /** Independent looping ambience slot — layered under music. */
   private currentAmbience: Phaser.Sound.BaseSound | null = null;
   private currentAmbienceKey: string | null = null;
 
-  constructor(sound: Phaser.Sound.BaseSoundManager) {
+  /**
+   * @param sound           Phaser sound manager.
+   * @param fadeDurationMs  Override the crossfade duration.  Pass `0` for
+   *                        instant cuts (used in tests).  Defaults to
+   *                        `MUSIC_FADE_MS` in production and `0` in the Vitest
+   *                        environment so existing specs need no changes.
+   */
+  constructor(sound: Phaser.Sound.BaseSoundManager, fadeDurationMs?: number) {
     this.sound = sound;
+    this.fadeDurationMs =
+      fadeDurationMs ?? (import.meta.env.MODE === 'test' ? 0 : MUSIC_FADE_MS);
     this.applyVolumeSettings();
   }
 
@@ -77,10 +99,27 @@ export class AudioManager {
   private playMusic(key: string): void {
     if (this.currentMusicKey === key && this.currentMusic) return;
     this.stopMusic();
-    const vol = this.effectiveMusicVolume();
-    this.currentMusic = this.sound.add(key, { loop: true, volume: vol });
+    const targetVol = this.effectiveMusicVolume();
+    const startVol = this.fadeDurationMs > 0 ? 0 : targetVol;
+    this.currentMusic = this.sound.add(key, { loop: true, volume: startVol });
     this.currentMusic.play();
     this.currentMusicKey = key;
+
+    if (this.fadeDurationMs <= 0) return;
+
+    const stepMs = this.fadeDurationMs / FADE_STEPS;
+    let step = 0;
+    const music = this.currentMusic;
+    this.fadeInTimer = setInterval(() => {
+      step++;
+      const vol = targetVol * (step / FADE_STEPS);
+      (music as SoundWithVolume).setVolume(vol);
+      if (step >= FADE_STEPS) {
+        clearInterval(this.fadeInTimer!);
+        this.fadeInTimer = null;
+        (music as SoundWithVolume).setVolume(targetVol);
+      }
+    }, stepMs);
   }
 
   /** Suspend the current track and start a new one. Restore with popMusic. */
@@ -114,13 +153,58 @@ export class AudioManager {
     }
   }
 
-  /** Stop the current music track. */
+  /** Stop the current music track, fading it out over `fadeDurationMs`. */
   private stopMusic(): void {
-    if (this.currentMusic) {
-      this.currentMusic.stop();
-      this.currentMusic.destroy();
-      this.currentMusic = null;
-      this.currentMusicKey = null;
+    this.cancelFadeOut();
+    this.cancelFadeIn();
+    if (!this.currentMusic) return;
+
+    const dying = this.currentMusic;
+    this.currentMusic = null;
+    this.currentMusicKey = null;
+
+    if (this.fadeDurationMs <= 0) {
+      dying.stop();
+      dying.destroy();
+      return;
+    }
+
+    this.dyingMusic = dying;
+    const startVol = this.effectiveMusicVolume();
+    const stepMs = this.fadeDurationMs / FADE_STEPS;
+    let step = 0;
+    this.fadeOutTimer = setInterval(() => {
+      step++;
+      const vol = Math.max(0, startVol * (1 - step / FADE_STEPS));
+      (dying as SoundWithVolume).setVolume(vol);
+      if (step >= FADE_STEPS) {
+        clearInterval(this.fadeOutTimer!);
+        this.fadeOutTimer = null;
+        dying.stop();
+        dying.destroy();
+        this.dyingMusic = null;
+      }
+    }, stepMs);
+  }
+
+  /** Cancel any in-flight fade-out and immediately destroy the dying track. */
+  private cancelFadeOut(): void {
+    if (this.fadeOutTimer !== null) {
+      clearInterval(this.fadeOutTimer);
+      this.fadeOutTimer = null;
+    }
+    if (this.dyingMusic) {
+      this.dyingMusic.stop();
+      this.dyingMusic.destroy();
+      this.dyingMusic = null;
+    }
+  }
+
+  /** Cancel any in-flight fade-in (leaves the track playing at its current volume). */
+  private cancelFadeIn(): void {
+    if (this.fadeInTimer !== null) {
+      clearInterval(this.fadeInTimer);
+      this.fadeInTimer = null;
     }
   }
 
@@ -156,6 +240,9 @@ export class AudioManager {
    * Apply the current SettingsStore values to the live sound manager and
    * any currently playing tracks. Called on construction and whenever
    * `audio:volume-changed` fires.
+   *
+   * Any in-flight fade-in is cancelled so the new target volume takes effect
+   * immediately (mute must apply instantly per spec).
    */
   private applyVolumeSettings(): void {
     const s = settingsStore.read();
@@ -163,6 +250,9 @@ export class AudioManager {
 
     this.sound.mute = s.muteAll;
     this.sound.volume = s.masterVolume / 100;
+
+    // Cancel any in-flight fade-in so the correct volume is applied right away.
+    this.cancelFadeIn();
 
     if (this.currentMusic) {
       (this.currentMusic as SoundWithVolume).setVolume(this.effectiveMusicVolume());
