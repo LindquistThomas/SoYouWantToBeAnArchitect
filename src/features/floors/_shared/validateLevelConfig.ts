@@ -45,12 +45,12 @@ export function assertValidLevelConfig(cfg: LevelConfig): void {
     throw new Error('LevelConfig.roomElevators must be an array');
   }
 
-  // ---- Required position objects ----
-  if (typeof cfg.exitPosition?.x !== 'number' || typeof cfg.exitPosition?.y !== 'number') {
-    throw new Error('LevelConfig.exitPosition must have numeric x and y');
+  // ---- Required position objects (reject NaN/Infinity via Number.isFinite) ----
+  if (!Number.isFinite(cfg.exitPosition?.x) || !Number.isFinite(cfg.exitPosition?.y)) {
+    throw new Error('LevelConfig.exitPosition must have finite numeric x and y');
   }
-  if (typeof cfg.playerStart?.x !== 'number' || typeof cfg.playerStart?.y !== 'number') {
-    throw new Error('LevelConfig.playerStart must have numeric x and y');
+  if (!Number.isFinite(cfg.playerStart?.x) || !Number.isFinite(cfg.playerStart?.y)) {
+    throw new Error('LevelConfig.playerStart must have finite numeric x and y');
   }
 
   // ---- Enemy types ----
@@ -65,7 +65,7 @@ export function assertValidLevelConfig(cfg: LevelConfig): void {
 
   // ---- InfoPoint content-registry consistency ----
   for (const point of cfg.infoPoints ?? []) {
-    if (!(point.contentId in INFO_POINTS)) {
+    if (!Object.prototype.hasOwnProperty.call(INFO_POINTS, point.contentId)) {
       throw new Error(
         `infoPoints contentId "${point.contentId}" is not registered in INFO_POINTS. ` +
           `Check src/config/info/ and ensure the entry is re-exported from the barrel.`,
@@ -73,17 +73,18 @@ export function assertValidLevelConfig(cfg: LevelConfig): void {
     }
   }
 
-  // ---- Token bounds ----
-  for (const token of cfg.tokens) {
-    if (token.x < 0 || token.x > GAME_WIDTH) {
+  // ---- Token bounds (reject NaN/Infinity; use indexed loop for correct error messages) ----
+  for (let i = 0; i < cfg.tokens.length; i++) {
+    const token = cfg.tokens[i]!;
+    if (!Number.isFinite(token.x) || token.x < 0 || token.x > GAME_WIDTH) {
       throw new Error(
-        `Token at index ${cfg.tokens.indexOf(token)} has x=${token.x} ` +
+        `Token at index ${i} has x=${token.x} ` +
           `outside world bounds [0, ${GAME_WIDTH}]`,
       );
     }
-    if (token.y < 0 || token.y > GAME_HEIGHT) {
+    if (!Number.isFinite(token.y) || token.y < 0 || token.y > GAME_HEIGHT) {
       throw new Error(
-        `Token at index ${cfg.tokens.indexOf(token)} has y=${token.y} ` +
+        `Token at index ${i} has y=${token.y} ` +
           `outside world bounds [0, ${GAME_HEIGHT}]`,
       );
     }

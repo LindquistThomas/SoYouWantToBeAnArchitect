@@ -95,11 +95,11 @@ describe('ArchitectureTeamScene — LevelConfig', () => {
 
   it('token indices are disjoint from PlatformTeamScene (start at offset 7)', () => {
     // ArchitectureTeamScene uses TOKEN_INDEX_OFFSET = 7.
-    // All explicit indices must be >= 7.
+    // Every token must carry an explicit index so implicit 0..n indexing
+    // cannot silently collide with PlatformTeamScene's 0..6 range.
     for (const token of cfg.tokens) {
-      if (token.index !== undefined) {
-        expect(token.index).toBeGreaterThanOrEqual(7);
-      }
+      expect(token.index).toBeDefined();
+      expect(token.index).toBeGreaterThanOrEqual(7);
     }
   });
 });

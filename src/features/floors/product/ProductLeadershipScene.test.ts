@@ -78,11 +78,12 @@ describe('ProductLeadershipScene — LevelConfig', () => {
 
   it('token indices are disjoint from CustomerSuccessScene (start at offset 5)', () => {
     // ProductLeadershipScene.TOKEN_INDEX_OFFSET = 5, CustomerSuccessScene = 10.
+    // Every token must carry an explicit index so implicit 0..n indexing
+    // cannot silently collide with CustomerSuccessScene's 10..14 range.
     for (const token of cfg.tokens) {
-      if (token.index !== undefined) {
-        expect(token.index).toBeGreaterThanOrEqual(5);
-        expect(token.index).toBeLessThan(10);
-      }
+      expect(token.index).toBeDefined();
+      expect(token.index).toBeGreaterThanOrEqual(5);
+      expect(token.index).toBeLessThan(10);
     }
   });
 
