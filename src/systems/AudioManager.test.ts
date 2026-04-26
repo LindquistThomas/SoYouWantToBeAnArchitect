@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { AudioManager } from './AudioManager';
 import { eventBus } from './EventBus';
 import { MUSIC_VOLUME, SFX_EVENTS } from '../config/audioConfig';
@@ -194,6 +194,11 @@ describe('AudioManager', () => {
     /** Explicit fade duration used in crossfade tests (matches MUSIC_FADE_MS default). */
     const TEST_FADE_MS = 300;
 
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
     it('destroy() is NOT called before fade-out completes when fadeDurationMs > 0', () => {
       vi.useFakeTimers();
       const sound = makeFakeSoundManager();
@@ -212,8 +217,6 @@ describe('AudioManager', () => {
       vi.advanceTimersByTime(TEST_FADE_MS);
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
-
-      vi.useRealTimers();
     });
 
     it('incoming track starts at volume 0 and reaches target volume after fade', () => {
@@ -237,8 +240,6 @@ describe('AudioManager', () => {
       const calls = inst.setVolume.mock.calls;
       const lastSetVolumeArg: number = (calls[calls.length - 1] as [number])[0];
       expect(lastSetVolumeArg).toBeCloseTo(expectedVol, 2);
-
-      vi.useRealTimers();
     });
 
     it('rapid track change cancels previous fade-out and destroys old track immediately', () => {
@@ -263,7 +264,9 @@ describe('AudioManager', () => {
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
 
-      vi.useRealTimers();
+      // Flush remaining timers (track_b fade-out + track_c fade-in) so they
+      // don't leak into the next test via the afterEach timer reset.
+      vi.advanceTimersByTime(TEST_FADE_MS);
     });
 
     it('mute toggle during fade-in snaps music to correct muted state instantly', () => {
@@ -281,10 +284,6 @@ describe('AudioManager', () => {
 
       // The sound manager should be muted immediately.
       expect(mgr.isMuted()).toBe(true);
-
-      vi.useRealTimers();
-      // Cleanup.
-      eventBus.emit('audio:toggle-mute');
     });
   });
 

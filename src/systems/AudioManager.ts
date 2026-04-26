@@ -38,12 +38,22 @@ export class AudioManager {
   /** Stack of music keys suspended by `music:push`, popped back on `music:pop`. */
   private musicStack: string[] = [];
 
+  /**
+   * Actual current volume of `currentMusic` — updated on every setVolume call
+   * during a fade so that `stopMusic()` always fades out from the real level.
+   */
+  private currentMusicVolume = 0;
+
   /** Track fading out — kept alive until fade completes, then destroyed. */
   private dyingMusic: Phaser.Sound.BaseSound | null = null;
   /** setInterval handle for the outgoing fade. */
   private fadeOutTimer: ReturnType<typeof setInterval> | null = null;
+  /** Incremented on every cancelFadeOut; callbacks compare against this to bail out. */
+  private fadeOutEpoch = 0;
   /** setInterval handle for the incoming fade. */
   private fadeInTimer: ReturnType<typeof setInterval> | null = null;
+  /** Incremented on every cancelFadeIn; callbacks compare against this to bail out. */
+  private fadeInEpoch = 0;
 
   /** Independent looping ambience slot — layered under music. */
   private currentAmbience: Phaser.Sound.BaseSound | null = null;
@@ -101,6 +111,7 @@ export class AudioManager {
     this.stopMusic();
     const targetVol = this.effectiveMusicVolume();
     const startVol = this.fadeDurationMs > 0 ? 0 : targetVol;
+    this.currentMusicVolume = startVol;
     this.currentMusic = this.sound.add(key, { loop: true, volume: startVol });
     this.currentMusic.play();
     this.currentMusicKey = key;
@@ -110,16 +121,22 @@ export class AudioManager {
     const stepMs = this.fadeDurationMs / FADE_STEPS;
     let step = 0;
     const music = this.currentMusic;
-    this.fadeInTimer = setInterval(() => {
+    const epoch = ++this.fadeInEpoch;
+    // Capture the timer handle locally so callbacks never touch a stale this.fadeInTimer.
+    const timerId: ReturnType<typeof setInterval> = setInterval(() => {
+      if (this.fadeInEpoch !== epoch) return; // cancelled — do not mutate volume
       step++;
       const vol = targetVol * (step / FADE_STEPS);
+      this.currentMusicVolume = vol;
       (music as SoundWithVolume).setVolume(vol);
       if (step >= FADE_STEPS) {
-        clearInterval(this.fadeInTimer!);
+        clearInterval(timerId);
         this.fadeInTimer = null;
+        this.currentMusicVolume = targetVol;
         (music as SoundWithVolume).setVolume(targetVol);
       }
     }, stepMs);
+    this.fadeInTimer = timerId;
   }
 
   /** Suspend the current track and start a new one. Restore with popMusic. */
@@ -160,8 +177,12 @@ export class AudioManager {
     if (!this.currentMusic) return;
 
     const dying = this.currentMusic;
+    // Fade from the actual current volume (may be mid-fade-in) rather than
+    // the target level, so there is no audible jump on the first fade-out tick.
+    const startVol = this.currentMusicVolume;
     this.currentMusic = null;
     this.currentMusicKey = null;
+    this.currentMusicVolume = 0;
 
     if (this.fadeDurationMs <= 0) {
       dying.stop();
@@ -170,25 +191,29 @@ export class AudioManager {
     }
 
     this.dyingMusic = dying;
-    const startVol = this.effectiveMusicVolume();
     const stepMs = this.fadeDurationMs / FADE_STEPS;
     let step = 0;
-    this.fadeOutTimer = setInterval(() => {
+    const epoch = ++this.fadeOutEpoch;
+    // Capture the timer handle locally so callbacks never touch a stale this.fadeOutTimer.
+    const timerId: ReturnType<typeof setInterval> = setInterval(() => {
+      if (this.fadeOutEpoch !== epoch) return; // cancelled — do not act on destroyed track
       step++;
       const vol = Math.max(0, startVol * (1 - step / FADE_STEPS));
       (dying as SoundWithVolume).setVolume(vol);
       if (step >= FADE_STEPS) {
-        clearInterval(this.fadeOutTimer!);
+        clearInterval(timerId);
         this.fadeOutTimer = null;
         dying.stop();
         dying.destroy();
         this.dyingMusic = null;
       }
     }, stepMs);
+    this.fadeOutTimer = timerId;
   }
 
   /** Cancel any in-flight fade-out and immediately destroy the dying track. */
   private cancelFadeOut(): void {
+    this.fadeOutEpoch++; // invalidates any already-queued callback
     if (this.fadeOutTimer !== null) {
       clearInterval(this.fadeOutTimer);
       this.fadeOutTimer = null;
@@ -202,6 +227,7 @@ export class AudioManager {
 
   /** Cancel any in-flight fade-in (leaves the track playing at its current volume). */
   private cancelFadeIn(): void {
+    this.fadeInEpoch++; // invalidates any already-queued callback
     if (this.fadeInTimer !== null) {
       clearInterval(this.fadeInTimer);
       this.fadeInTimer = null;
@@ -255,7 +281,9 @@ export class AudioManager {
     this.cancelFadeIn();
 
     if (this.currentMusic) {
-      (this.currentMusic as SoundWithVolume).setVolume(this.effectiveMusicVolume());
+      const vol = this.effectiveMusicVolume();
+      this.currentMusicVolume = vol;
+      (this.currentMusic as SoundWithVolume).setVolume(vol);
     }
     if (this.currentAmbience) {
       (this.currentAmbience as SoundWithVolume).setVolume(this.effectiveAmbienceVolume());
