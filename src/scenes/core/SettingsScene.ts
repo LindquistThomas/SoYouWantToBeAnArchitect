@@ -91,6 +91,11 @@ export class SettingsScene extends Phaser.Scene {
       },
       {
         kind: 'action',
+        label: '[ CONTROLS ]',
+        action: () => this.openControls(),
+      },
+      {
+        kind: 'action',
         label: '[ REPLAY TUTORIAL ]',
         action: () => this.replayTutorial(),
       },
@@ -273,6 +278,13 @@ export class SettingsScene extends Phaser.Scene {
     } else if (item.kind === 'action') {
       item.action();
     }
+  }
+
+  private openControls(): void {
+    this.cameras.main.fadeOut(250, 0, 0, 0);
+    this.time.delayedCall(250, () => {
+      this.scene.start('ControlsScene', { settingsFrom: this.callerScene });
+    });
   }
 
   private replayTutorial(): void {

@@ -13,8 +13,12 @@
 
 import { createPersistedStore } from './PersistedStore';
 import { eventBus } from './EventBus';
+import type { GameAction } from '../input/actions';
 
 export type MusicStyle = '8bit-chiptune' | 'retro-synth' | 'elevator-jazz';
+
+/** Persisted key-binding overrides. Empty map = fall back to DEFAULT_BINDINGS. */
+export type ControlBindings = Partial<Record<GameAction, number[]>>;
 
 export interface SettingsData {
   /** Overall audio level (0–100). Applied as the global Phaser sound-manager volume. */
@@ -32,6 +36,13 @@ export interface SettingsData {
    * Defaults to the OS/browser prefers-reduced-motion media query.
    */
   reducedMotion: boolean;
+  /**
+   * Per-action key-binding overrides. An empty object means "use DEFAULT_BINDINGS
+   * for everything". Any action present here replaces its default binding.
+   * Additive / forward-compatible change — old saves that lack this field
+   * simply fall back to DEFAULT_BINDINGS via the empty-object default.
+   */
+  controlBindings: ControlBindings;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -55,7 +66,24 @@ export function defaultSettings(): SettingsData {
     muteAll: false,
     musicStyle: '8bit-chiptune',
     reducedMotion: defaultReducedMotion(),
+    controlBindings: {},
   };
+}
+
+function parseControlBindings(raw: unknown): ControlBindings {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const r = raw as Record<string, unknown>;
+  const result: ControlBindings = {};
+  for (const [key, val] of Object.entries(r)) {
+    if (
+      Array.isArray(val) &&
+      val.length > 0 &&
+      val.every((v) => typeof v === 'number' && Number.isInteger(v) && v > 0)
+    ) {
+      result[key as GameAction] = val as number[];
+    }
+  }
+  return result;
 }
 
 function parseSettings(raw: unknown): SettingsData {
@@ -77,6 +105,7 @@ function parseSettings(raw: unknown): SettingsData {
       ? (r['musicStyle'] as MusicStyle)
       : defaults.musicStyle,
     reducedMotion: typeof r['reducedMotion'] === 'boolean' ? r['reducedMotion'] : defaults.reducedMotion,
+    controlBindings: parseControlBindings(r['controlBindings']),
   };
 }
 
@@ -165,6 +194,16 @@ export const settingsStore = {
 
   setReducedMotion(reduced: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, reducedMotion: reduced }));
+  },
+
+  /** Persist a full set of key-binding overrides. Merges with nothing — replaces entirely. */
+  setControlBindings(bindings: ControlBindings): void {
+    this.updateNonAudio((prev) => ({ ...prev, controlBindings: bindings }));
+  },
+
+  /** Clear all key-binding overrides, restoring DEFAULT_BINDINGS on next scene load. */
+  resetControlBindings(): void {
+    this.updateNonAudio((prev) => ({ ...prev, controlBindings: {} }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

@@ -5,7 +5,7 @@
  */
 export type { GameAction, InputContext } from './actions';
 export { ACTION_CONTEXTS, ALL_ACTIONS } from './actions';
-export { DEFAULT_BINDINGS } from './bindings';
+export { DEFAULT_BINDINGS, buildEffectiveBindings, buildKeyToActions } from './bindings';
 export {
   InputService,
   activeContext, pushContext, popContext,
