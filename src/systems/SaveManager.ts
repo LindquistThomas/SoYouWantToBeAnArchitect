@@ -25,7 +25,7 @@ export interface SaveData {
 
 /** The three canonical slot IDs shown in the slot picker. */
 export const SAVE_SLOTS = ['slot1', 'slot2', 'slot3'] as const;
-export type SaveSlotId = typeof SAVE_SLOTS[number];
+export type SaveSlotId = (typeof SAVE_SLOTS)[number];
 
 /** Minimal summary used by the slot-picker UI (no slot-switching side-effects). */
 export interface SlotInfo {

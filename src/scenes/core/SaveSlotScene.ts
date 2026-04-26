@@ -187,7 +187,7 @@ export class SaveSlotScene extends Phaser.Scene {
 
   private navigate(delta: number): void {
     if (this.inConfirm) {
-      this.confirmIndex = (this.confirmIndex + 1) % 2;
+      this.confirmIndex = (this.confirmIndex + delta + 2) % 2;
       this.refreshConfirmHighlight();
       return;
     }
