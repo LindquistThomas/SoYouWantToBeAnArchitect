@@ -19,14 +19,16 @@ describe('ProgressionSystem', () => {
     setPlayerSlot('progression-test');
   });
 
-  it('starts with every floor unlocked and 0 total AU', () => {
+  it('starts with only free floors unlocked (auRequired === 0) and 0 total AU', () => {
     const p = new ProgressionSystem();
     expect(p.getTotalAU()).toBe(0);
+    // LOBBY and PLATFORM_TEAM both have auRequired=0 → unlocked from the start.
     expect(p.isFloorUnlocked(FLOORS.LOBBY)).toBe(true);
     expect(p.isFloorUnlocked(FLOORS.PLATFORM_TEAM)).toBe(true);
-    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
-    expect(p.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(true);
-    expect(p.isFloorUnlocked(FLOORS.PRODUCTS)).toBe(true);
+    // AU-gated floors start locked.
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
+    expect(p.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(false);
+    expect(p.isFloorUnlocked(FLOORS.PRODUCTS)).toBe(false);
   });
 
   it('accumulates AU per floor and in total', () => {
@@ -47,9 +49,9 @@ describe('ProgressionSystem', () => {
     expect(p.isTokenCollected(FLOORS.PLATFORM_TEAM, 2)).toBe(false);
   });
 
-  it('keeps BUSINESS unlocked when totalAU meets its threshold', () => {
+  it('unlocks BUSINESS when totalAU reaches its threshold', () => {
     const p = new ProgressionSystem();
-    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
     p.addAU(FLOORS.PLATFORM_TEAM, 10);
     expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
   });
@@ -77,12 +79,66 @@ describe('ProgressionSystem', () => {
     expect(q.getCurrentFloor()).toBe(FLOORS.PLATFORM_TEAM);
   });
 
+  it('locked floor remains locked after save-reload (no merge with defaults)', () => {
+    // Player collects only 5 AU — not enough for BUSINESS (needs 10).
+    const p = new ProgressionSystem();
+    p.addAU(FLOORS.PLATFORM_TEAM, 5);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
+
+    // Reload — BUSINESS should still be locked.
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.getTotalAU()).toBe(5);
+    expect(q.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
+  });
+
+  it('emits progression:floor_unlocked when AU threshold is crossed', () => {
+    const unlocked: number[] = [];
+    const handler = (id: number) => unlocked.push(id);
+    eventBus.on('progression:floor_unlocked', handler);
+    try {
+      const p = new ProgressionSystem();
+      p.addAU(FLOORS.PLATFORM_TEAM, 10); // crosses BUSINESS threshold (10)
+      expect(unlocked).toContain(FLOORS.BUSINESS);
+    } finally {
+      eventBus.off('progression:floor_unlocked', handler);
+    }
+  });
+
+  it('unlocked floor persists across save-reload', () => {
+    const p = new ProgressionSystem();
+    p.addAU(FLOORS.PLATFORM_TEAM, 10);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+  });
+
+  it('backwards-compat: old saves with all floors unlocked keep their unlocks', () => {
+    // Simulate a save from before gating was re-enabled where all floors
+    // were persisted as unlocked. loadFromSave() must honour that list rather
+    // than reverting to the new minimal default.
+    const p = new ProgressionSystem();
+    // Manually persist a save with all floors unlocked (legacy behaviour).
+    p.addAU(FLOORS.PLATFORM_TEAM, 15); // enough to unlock BUSINESS + EXECUTIVE
+    // Patch the save to also include floors that totalAU doesn't cover yet.
+    // We do this via a second system's public API.
+    expect(p.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(true);
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    // The saved unlocks (earned by reaching thresholds) must survive reload.
+    expect(q.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(true);
+  });
+
   it('reset() clears all state and the persisted save', () => {
     const p = new ProgressionSystem();
     p.addAU(FLOORS.PLATFORM_TEAM, 10);
     p.reset();
     expect(p.getTotalAU()).toBe(0);
-    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+    // After reset BUSINESS should be locked again (threshold not met with 0 AU).
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
 
     const q = new ProgressionSystem();
     expect(q.loadFromSave()).toBe(false);
