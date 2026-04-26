@@ -26,12 +26,20 @@ src/
 │       │   ├── LevelEnemySpawner.ts    Spawns + cleans up enemies.
 │       │   ├── LevelTokenManager.ts    Spawns AU tokens + handles pickup.
 │       │   ├── LevelZoneSetup.ts       Registers proximity zones for info points.
-│       │   └── LevelDialogBindings.ts  Wires dialog triggers to zones.
+│       │   ├── LevelDialogBindings.ts  Wires dialog triggers to zones.
+│       │   ├── LevelCoffeeManager.ts   Spawns coffee powerup pickups.
+│       │   ├── LevelFridgeManager.ts   Spawns energy-drink fridges + buff trigger.
+│       │   ├── LevelRoomElevators.ts   In-room elevator triggers (inter-room transport).
+│       │   ├── floorAccents.ts         Per-floor silhouette accent + ambient tween.
+│       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
+│       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
+│       │   └── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
 │       ├── finance/          Finance — Business floor, left room.
-│       ├── product/          Product Leadership — Business floor, right room.
+│       ├── product/          Product Leadership — Business floor, left room.
+│       ├── customer/         Customer Success — Business floor, right room.
 │       └── executive/        ExecutiveSuiteScene.ts (penthouse).
 │   └── products/
 │       └── rooms/            Individual product rooms reached from the Products floor doors.
@@ -45,10 +53,16 @@ src/
 │   ├── Elevator.ts           Cab physics, floor docking, ride cues.
 │   ├── Token.ts              AU token pickup with floating animation.
 │   ├── DroppedAU.ts          AU tokens dropped by defeated enemies.
+│   ├── MovingPlatform.ts     Horizontally/vertically patrolling platform.
+│   ├── Coffee.ts             Coffee powerup — grants a short speed boost.
+│   ├── EnergyDrinkFridge.ts  Energy-drink fridge — grants caffeine buff.
 │   ├── Enemy.ts              Shared enemy base (physics, damage, death cues).
 │   └── enemies/              Per-enemy config & behaviour.
 │       ├── Slime.ts
-│       └── BureaucracyBot.ts
+│       ├── BureaucracyBot.ts
+│       ├── ScopeCreep.ts
+│       ├── ArchitectureAstronaut.ts
+│       └── TechDebtGhost.ts
 ├── input/                    Semantic-action input layer.
 │   ├── index.ts              Facade — the only import surface the rest of the game uses.
 │   ├── InputService.ts       Keyboard/touch → semantic actions; context stack.
@@ -59,9 +73,13 @@ src/
 │   └── phaser-augment.d.ts   Phaser typings adjustments for the service.
 ├── scenes/                   Infrastructure scenes (non-floor).
 │   ├── NavigationContext.ts  Typed hand-off for `scene.start(key, ctx)`.
+│   ├── sceneRegistry.ts      SCENE_REGISTRY — single source of truth for all scene classes.
 │   ├── core/
 │   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
-│   │   └── MenuScene.ts      Title screen; new game / continue; save-slot UI.
+│   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
+│   │   ├── PauseScene.ts     Pause overlay (resume / settings / quit).
+│   │   ├── SettingsScene.ts  Settings menu (audio, motion, controls).
+│   │   └── ControlsScene.ts  Keyboard-rebinding submenu.
 │   ├── elevator/             Elevator-shaft orchestrator + collaborators.
 │   │   ├── ElevatorScene.ts               Thin orchestrator (~343 lines).
 │   │   ├── ElevatorController.ts          Owns the Elevator entity + ride loop.
@@ -80,14 +98,24 @@ src/
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
 │   ├── QuizManager.ts        Quiz pass/fail records + retry cooldowns.
 │   ├── InfoDialogManager.ts  Remembers which info points have been seen.
+│   ├── AchievementManager.ts Tracks unlocked achievement IDs (architect_achievements_v1).
 │   ├── AudioManager.ts       Subscribes to music/sfx events; plays via WebAudio.
+│   ├── SettingsStore.ts      Persisted volume levels + motion/control overrides.
+│   ├── MotionPreference.ts   Reduced-motion helper (reads OS preference + settings).
+│   ├── CaffeineBuff.ts       Pure timer for caffeine buff; callers supply `now`.
+│   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
+│   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
+│   ├── sliderUtils.ts        Volume slider clamping utilities.
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
 │   ├── SoundGenerator.ts     Composition root → `./sounds/` per-family modules.
 │   ├── sounds/               One file per SFX family (combat, footsteps, ui, …).
-│   │   ├── footsteps.ts
-│   │   ├── movement.ts
+│   │   ├── ambience.ts
 │   │   ├── combat.ts
+│   │   ├── footsteps.ts
+│   │   ├── items.ts
+│   │   ├── lullaby.ts
+│   │   ├── movement.ts
 │   │   ├── quiz.ts
 │   │   ├── ui.ts
 │   │   └── wav.ts
@@ -105,7 +133,8 @@ src/
 │   └── ElevatorPanel.ts      Floor-select panel inside the cab.
 └── plugins/                  Phaser plugins.
     ├── DebugPlugin.ts        Toggleable debug overlay.
-    └── MusicPlugin.ts        Scene-level music lifecycle helper.
+    ├── MusicPlugin.ts        Scene-level music lifecycle helper.
+    └── ScopedEventBus.ts     Auto-unsubscribes global EventBus listeners on scene shutdown.
 ```
 
 ## Ownership map (who owns what)
@@ -119,6 +148,7 @@ Use this to find the right file to edit for a given feature.
 | Architecture Team room              | `features/floors/architecture/{ArchitectureTeamScene,info,quiz}.ts`                    |
 | Finance room                        | `features/floors/finance/{FinanceTeamScene,info,quiz}.ts`                              |
 | Product Leadership                  | `features/floors/product/{ProductLeadershipScene,info,quiz}.ts`                        |
+| Customer Success                    | `features/floors/customer/{CustomerSuccessScene,info,quiz}.ts`                         |
 | Products floor + product rooms      | `scenes/elevator/ProductDoorManager.ts` (doors on the Products floor), `features/products/rooms/Product*Scene.ts` |
 | Executive Suite                     | `features/floors/executive/{ExecutiveSuiteScene,info,quiz}.ts`                         |
 | Shared floor base / managers        | `features/floors/_shared/*.ts`                                                         |
@@ -129,6 +159,7 @@ Use this to find the right file to edit for a given feature.
 | Player movement & animation         | `entities/Player.ts`                                                                   |
 | Enemies                             | `entities/Enemy.ts`, `entities/enemies/*.ts`                                           |
 | AU / tokens / progression           | `entities/Token.ts`, `entities/DroppedAU.ts`, `systems/ProgressionSystem.ts`           |
+| Achievements                        | `systems/AchievementManager.ts`, `ui/AchievementsDialog.ts`                            |
 | Save slots                          | `systems/SaveManager.ts`, `scenes/core/MenuScene.ts`                                   |
 | Quiz runtime                        | `systems/QuizManager.ts`, `ui/QuizDialog.ts`, `ui/QuizResultsScreen.ts`                |
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
