@@ -73,8 +73,7 @@ export class ElevatorPanel {
 
   /** Create the outer container and panel chrome (background + title). */
   private buildContainer(): void {
-    const panelWidth = 200;
-    const panelX = GAME_WIDTH / 2 - panelWidth / 2;
+    const panelX = GAME_WIDTH / 2 - this.panelWidth / 2;
     const panelY = GAME_HEIGHT - this.panelHeight - 60;
 
     this.container = this.scene.add.container(panelX, panelY);
@@ -92,7 +91,7 @@ export class ElevatorPanel {
     return 45 + rows * (BTN_H + BTN_GAP) + 10;
   }
 
-  /** Draw / redraw the panel background and title (clears previous chrome). */
+  /** Draw the panel background and title. Called once from buildContainer(). */
   private redrawChrome(): void {
     const { panelWidth, panelHeight } = this;
 
