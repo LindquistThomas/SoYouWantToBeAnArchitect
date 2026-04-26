@@ -17,7 +17,7 @@
  * scene lifecycle and scene transitions.
  */
 
-import { isTouchPrimary } from './VirtualGamepad';
+import { isTouchPrimary } from './touchPrimary';
 import * as TouchHintStore from '../systems/TouchHintStore';
 
 const HINT_DURATION_MS = 6_000;
@@ -62,13 +62,24 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
 
   // --- dismissal logic -------------------------------------------------------
   let dismissed = false;
+  // Declared as null before dismiss() so there is no temporal dead zone when
+  // dismiss() calls clearTimeout(timer) — even though the sync execution order
+  // means timer is always assigned before dismiss() can ever be invoked.
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  // Single delegated touchstart handler on the pad element; stored so dismiss()
+  // can remove it even when the timeout fires (not triggered by a button press).
+  let onPadTouch: ((e: Event) => void) | null = null;
 
   const dismiss = (): void => {
     if (dismissed) return;
     dismissed = true;
-    // Cancel the auto-dismiss timer so it doesn't fire after an early button
-    // press triggers dismissal.
-    clearTimeout(timer);
+    // Cancel the auto-dismiss timer so it doesn't double-fire.
+    if (timer !== null) { clearTimeout(timer); timer = null; }
+    // Remove the delegated listener so it doesn't linger after the timeout path.
+    if (onPadTouch !== null) {
+      padEl.removeEventListener('touchstart', onPadTouch);
+      onPadTouch = null;
+    }
 
     // Mark seen before removing DOM so repeated rapid taps can't re-trigger.
     TouchHintStore.markSeen();
@@ -85,12 +96,13 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
     for (const el of pulsed) el.classList.remove(PULSE_CLASS);
   };
 
-  // Dismiss on any virtual-pad button press.
-  const onButtonTouch = (): void => dismiss();
-  padEl.querySelectorAll('.vpad-btn').forEach((btn) => {
-    btn.addEventListener('touchstart', onButtonTouch, { once: true, passive: true });
-  });
+  // Single delegated touchstart listener — one handler covers all buttons and
+  // is removed in dismiss() so it never lingers after the overlay is gone.
+  onPadTouch = (e: Event): void => {
+    if ((e.target as Element | null)?.closest('.vpad-btn')) dismiss();
+  };
+  padEl.addEventListener('touchstart', onPadTouch, { passive: true });
 
   // Auto-dismiss after HINT_DURATION_MS.
-  const timer = setTimeout(dismiss, HINT_DURATION_MS);
+  timer = setTimeout(dismiss, HINT_DURATION_MS);
 }

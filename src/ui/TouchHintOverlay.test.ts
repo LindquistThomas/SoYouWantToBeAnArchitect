@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { KVStorage } from '../systems/SaveManager';
 
-// Mock VirtualGamepad to avoid pulling in Phaser (InputService imports it at
-// module level which triggers canvas feature-detection that fails in jsdom).
-vi.mock('./VirtualGamepad', () => ({
+// Mock touchPrimary to control isTouchPrimary() without pulling in Phaser
+// (VirtualGamepad imports InputService which imports Phaser at module level,
+// causing canvas feature-detection failures in jsdom). TouchHintOverlay.ts
+// imports isTouchPrimary directly from ./touchPrimary, so that is the only
+// module that needs to be mocked.
+vi.mock('./touchPrimary', () => ({
   isTouchPrimary: vi.fn(() => true),
 }));
 
 import { showTouchHintIfNeeded } from './TouchHintOverlay';
 import * as TouchHintStore from '../systems/TouchHintStore';
-import * as VirtualGamepad from './VirtualGamepad';
+import * as touchPrimary from './touchPrimary';
 
 // --- storage seam -----------------------------------------------------------
 function memStorage(): KVStorage & { data: Record<string, string> } {
@@ -51,7 +54,7 @@ describe('showTouchHintIfNeeded', () => {
     TouchHintStore.setStorage(storage);
 
     // Default: act as a touch-primary device.
-    vi.spyOn(VirtualGamepad, 'isTouchPrimary').mockReturnValue(true);
+    vi.spyOn(touchPrimary, 'isTouchPrimary').mockReturnValue(true);
 
     pad = makePad();
   });
@@ -75,7 +78,7 @@ describe('showTouchHintIfNeeded', () => {
   });
 
   it('does nothing on desktop (isTouchPrimary = false)', () => {
-    vi.spyOn(VirtualGamepad, 'isTouchPrimary').mockReturnValue(false);
+    vi.spyOn(touchPrimary, 'isTouchPrimary').mockReturnValue(false);
     showTouchHintIfNeeded(pad);
     expect(document.getElementById('touch-hint-overlay')).toBeNull();
   });
@@ -119,7 +122,7 @@ describe('showTouchHintIfNeeded', () => {
 
   it('is idempotent — does not create a second overlay on repeated calls', () => {
     showTouchHintIfNeeded(pad);
-    // Second call: hasSeen() returns true now so it short-circuits.
+    // Second call short-circuits because #touch-hint-overlay already exists.
     showTouchHintIfNeeded(pad);
     const overlays = document.querySelectorAll('#touch-hint-overlay');
     expect(overlays.length).toBe(1);
