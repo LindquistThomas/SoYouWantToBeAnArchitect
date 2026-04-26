@@ -526,7 +526,7 @@ export function drawBuildingFacade(
       // All attach to lit windows that aren't already twinkling or flickering
       // so competing animations don't stack on the same rectangle.
       for (const w of windows) {
-        if (w.state !== 'lit' || w.twinkle || w.flicker) continue;
+        if (w.state !== 'lit' || w.twinkle || w.flicker || w.motion) continue;
         const cx = side.xLeft + w.x + w.width / 2;
         const cy = band.yTop + w.y + w.height / 2;
         const baseColor = tintColor(w.tint);
