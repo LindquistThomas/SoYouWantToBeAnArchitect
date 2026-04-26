@@ -187,7 +187,10 @@
       pointer-events: none;
       display: flex;
       justify-content: center;
-      /* Vertically: sit above the virtual-pad cluster (~170 px tall) */
+      /* Vertically: sit above the virtual-pad cluster.
+         170px ≈ typical vpad-cluster height (buttons + gap + padding-bottom).
+         The max() keeps a minimum of 186px on devices where safe-area insets
+         are absent so the text never overlaps the buttons. */
       padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 170px), 186px);
       animation: touch-hint-fadein 400ms ease-out forwards;
     }

@@ -15,6 +15,8 @@ const STORAGE_KEY = 'architect_touch_hint_seen_v1';
 const store = createPersistedStore<boolean>({
   key: STORAGE_KEY,
   defaultValue: () => false,
+  // `PersistedStore` passes the already-JSON-parsed value to `parse`, so the
+  // stored JSON string `"true"` arrives here as the boolean `true`.
   parse: (raw) => raw === true,
 });
 

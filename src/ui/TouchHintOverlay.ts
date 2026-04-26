@@ -66,6 +66,9 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
   const dismiss = (): void => {
     if (dismissed) return;
     dismissed = true;
+    // Cancel the auto-dismiss timer so it doesn't fire after an early button
+    // press triggers dismissal.
+    clearTimeout(timer);
 
     // Mark seen before removing DOM so repeated rapid taps can't re-trigger.
     TouchHintStore.markSeen();
@@ -90,7 +93,4 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
 
   // Auto-dismiss after HINT_DURATION_MS.
   const timer = setTimeout(dismiss, HINT_DURATION_MS);
-
-  // Clean up the timer if dismiss was triggered by a button press first.
-  overlay.addEventListener('animationend', () => clearTimeout(timer), { once: true });
 }
