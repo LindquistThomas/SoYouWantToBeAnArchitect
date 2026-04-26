@@ -40,7 +40,6 @@ Ask the user whether to **rebase** or **merge**, then from the primary checkout:
 **Windows (PowerShell):**
 
 ```powershell
-cd ..\architect-elevator-game
 git fetch origin
 
 # Rebase path (linear history):
@@ -54,7 +53,6 @@ git merge --no-ff <type>/<slug>
 **macOS / Linux:**
 
 ```bash
-cd ../architect-elevator-game
 git fetch origin
 
 # Rebase path (linear history):
