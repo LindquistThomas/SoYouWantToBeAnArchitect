@@ -5,6 +5,7 @@ import { ZoneManager } from '../../systems/ZoneManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { Player } from '../../entities/Player';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
+import { ElevatorPanel } from '../../ui/ElevatorPanel';
 import { DialogController } from '../../ui/DialogController';
 import { InfoIcon } from '../../ui/InfoIcon';
 import type { DebugZone } from '../../features/floors/_shared/LevelZoneSetup';
@@ -31,6 +32,8 @@ export interface ElevatorZonesOptions {
   gameState: GameStateManager;
   /** Elevator buttons — shown/hidden together with the elevator zone. */
   elevatorButtons: () => ElevatorButtons | undefined;
+  /** Elevator panel — shown/hidden together with the elevator zone. */
+  elevatorPanel?: () => ElevatorPanel | undefined;
   /** Returns true while the player is physically standing on the elevator cab. */
   isPlayerOnElevator: () => boolean;
   /** World-space x of the info board in the lobby. */
@@ -160,6 +163,7 @@ export class ElevatorZones {
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(true);
+        this.opts.elevatorPanel?.()?.show();
         this.elevatorInfoIcon?.setVisible(true);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
@@ -172,6 +176,7 @@ export class ElevatorZones {
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(false);
+        this.opts.elevatorPanel?.()?.hide();
         this.elevatorInfoIcon?.setVisible(false);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(false);

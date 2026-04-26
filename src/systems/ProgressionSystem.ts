@@ -43,10 +43,13 @@ export class ProgressionSystem {
     return {
       totalAU: 0,
       floorAU: Object.fromEntries(allFloors.map(id => [id, 0])) as Record<FloorId, number>,
-      // TODO(progression): re-enable floor-unlock gating once the full
-      // AU economy is tuned. For now every floor is unlocked from the
-      // start so players can explore the building freely.
-      unlockedFloors: new Set(allFloors),
+      // Only floors with auRequired === 0 are unlocked from the start.
+      // All other floors are gated behind AU thresholds checked in checkUnlocks().
+      unlockedFloors: new Set(
+        Object.values(LEVEL_DATA)
+          .filter(f => f.auRequired === 0)
+          .map(f => f.id),
+      ),
       currentFloor: FLOORS.LOBBY,
       collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
       onboardingComplete: false,
@@ -199,13 +202,10 @@ export class ProgressionSystem {
     this.state = {
       totalAU: data.totalAU,
       floorAU: data.floorAU as Record<FloorId, number>,
-      // Merge saved unlocks with the current default set so existing saves
-      // inherit any floors that are now unlocked by default (e.g. when
-      // progression gating is temporarily disabled).
-      unlockedFloors: new Set<FloorId>([
-        ...this.defaultState().unlockedFloors,
-        ...(data.unlockedFloors as FloorId[]),
-      ]),
+      // Restore only the floors the player actually unlocked (no merge with
+      // defaults). checkUnlocks() below will re-unlock any floor whose
+      // auRequired threshold the player's saved total already meets.
+      unlockedFloors: new Set<FloorId>(data.unlockedFloors as FloorId[]),
       currentFloor: data.currentFloor as FloorId,
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),

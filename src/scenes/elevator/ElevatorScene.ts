@@ -5,6 +5,7 @@ import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { HUD } from '../../ui/HUD';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
+import { ElevatorPanel } from '../../ui/ElevatorPanel';
 import { WelcomeModal } from '../../ui/WelcomeModal';
 import { ControlHintsOverlay } from '../../ui/ControlHintsOverlay';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
@@ -48,6 +49,7 @@ export class ElevatorScene extends Phaser.Scene {
   private preSitY = 0;
 
   private elevatorButtons?: ElevatorButtons;
+  private elevatorPanel?: ElevatorPanel;
 
   /** Scene-transition hints derived from NavigationContext.init(). */
   private spawnAtProductDoor?: string;
@@ -184,6 +186,7 @@ export class ElevatorScene extends Phaser.Scene {
       player: this.player,
       gameState: this.gameState,
       elevatorButtons: () => this.elevatorButtons,
+      elevatorPanel: () => this.elevatorPanel,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
       // Matches the info_board sprite placed in ElevatorSceneLayout at
       // (355, floorBottom - 60). Keep these in sync if the sprite moves.
@@ -282,6 +285,22 @@ export class ElevatorScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
     this.elevatorButtons = new ElevatorButtons(this, 56);
+    this.elevatorPanel = new ElevatorPanel(
+      this,
+      this.progression,
+      (floorId) => this.callFloorIfUnlocked(floorId),
+    );
+  }
+
+  /**
+   * Attempt to call the elevator cab to a floor.
+   * Silently ignores the request if the floor is still locked — guards both
+   * the ElevatorPanel pointer interaction and the keyboard floor-call path.
+   */
+  private callFloorIfUnlocked(floorId: FloorId): void {
+    if (this.progression.isFloorUnlocked(floorId)) {
+      this.elevatorCtrl.elevator.moveToFloor(floorId);
+    }
   }
 
   /* ---- helpers ---- */
@@ -526,7 +545,7 @@ export class ElevatorScene extends Phaser.Scene {
     ];
     for (let i = 0; i < visualOrder.length && i < actions.length; i++) {
       if (inputs.justPressed(actions[i]!)) {
-        this.elevatorCtrl.elevator.moveToFloor(visualOrder[i]!.id);
+        this.callFloorIfUnlocked(visualOrder[i]!.id);
         return;
       }
     }
