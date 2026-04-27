@@ -121,7 +121,7 @@ Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene`
 Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*: (1) create the subclass under `src/entities/enemies/<Name>.ts` extending `Enemy`; (2) add the literal to the `type` union in `LevelConfig.enemies` (`src/features/floors/_shared/LevelScene.ts`); (3) add a `case` to the `switch` in `LevelEnemySpawner.spawn()` (`src/features/floors/_shared/LevelEnemySpawner.ts`) that constructs the new subclass.
 
 ### Add a sound effect
-1. Generate the waveform in `SoundGenerator.generateSounds()` and register the audio key.
+1. Add the waveform generator to the relevant family file under `src/systems/sounds/<family>.ts` (or create a new family file if none fits). Wire it into `generateSounds()` in `src/systems/SoundGenerator.ts` with `loadWav(scene, '<audio_key>', generateXxxSound())`.
 2. Declare the event in `GameEvents` (`src/systems/EventBus.ts`) — TypeScript will now enforce correct usage everywhere.
 3. Add the event→key mapping in `SFX_EVENTS` (`src/config/audioConfig.ts`).
 4. Emit from the relevant entity: `eventBus.emit('sfx:myevent')`.
