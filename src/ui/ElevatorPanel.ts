@@ -87,12 +87,15 @@ export class ElevatorPanel {
     const pw = this.panelWidth;
     const ph = this.panelHeight;
 
-    // Add a small horizontal padding so a player standing just beside the
-    // panel edge doesn't trigger the fade unnecessarily.
-    const PAD = 16;
+    // Add padding so the panel fades smoothly as the player approaches.
+    // Horizontal: equal padding on both sides.
+    // Vertical: pad the top edge only — padding below the panel would trigger
+    // the fade when the player walks on the lobby floor beneath it.
+    const PAD_H = 16;
+    const PAD_TOP = 16;
     const overlaps =
-      playerScreenX >= px - PAD && playerScreenX <= px + pw + PAD &&
-      playerScreenY >= py && playerScreenY <= py + ph;
+      playerScreenX >= px - PAD_H && playerScreenX <= px + pw + PAD_H &&
+      playerScreenY >= py - PAD_TOP && playerScreenY <= py + ph;
 
     if (overlaps && !this.isFaded) {
       this.isFaded = true;
