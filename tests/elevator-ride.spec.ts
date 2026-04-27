@@ -3,6 +3,7 @@ import {
   waitForGame,
   waitForScene,
   clearStorage,
+  navigateToElevator,
   attachErrorWatchers,
 } from './helpers/playwright';
 
@@ -31,7 +32,7 @@ test.describe('elevator ride controls', () => {
         // arrival — its modal input context suppresses MoveUp/Interact
         // and would otherwise block both ride and Enter-to-open assertions.
         window.localStorage.setItem(
-          'architect_default_v1',
+          'architect_slot1_v1',
           JSON.stringify({
             version: 1,
             totalAU: 0,
@@ -52,8 +53,7 @@ test.describe('elevator ride controls', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Teleport the player onto the cab and force the latch on directly —
     // avoids flakiness from walking across the lobby + onto the shaft.
@@ -134,8 +134,7 @@ test.describe('elevator ride controls', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game as unknown as {

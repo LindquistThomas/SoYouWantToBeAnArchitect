@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForGame,
   waitForScene,
@@ -27,8 +28,7 @@ test.describe('Pause / Resume', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Enter Floor 1 programmatically.
     await page.evaluate(() => {
@@ -76,8 +76,7 @@ test.describe('Pause / Resume', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -116,8 +115,7 @@ test.describe('Pause / Resume', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -149,7 +147,7 @@ test.describe('Pause / Resume', () => {
     // Progression state (save slot) should still exist.
     const saveExists = await page.evaluate(() => {
       try {
-        const raw = window.localStorage.getItem('architect_default_v1');
+        const raw = window.localStorage.getItem('architect_slot1_v1');
         return raw !== null;
       } catch {
         return false;

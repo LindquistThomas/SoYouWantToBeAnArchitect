@@ -4,6 +4,7 @@ import {
   waitForScene,
   seedFullProgressSave,
   clearStorage,
+  navigateToElevator,
   attachErrorWatchers,
 } from './helpers/playwright';
 
@@ -41,10 +42,8 @@ test.describe('elevator return', () => {
       await waitForGame(page);
       await waitForScene(page, 'MenuScene');
 
-      // Select Continue (second entry) and confirm → ElevatorScene with loadSave=true.
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('Enter');
-      await waitForScene(page, 'ElevatorScene');
+      // Navigate through the slot picker to ElevatorScene.
+      await navigateToElevator(page);
 
       // Jump directly to the "just returned from floor" state by restarting
       // ElevatorScene with the exact NavigationContext the floor scene would
