@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
-import { SOUNDTRACK_PLAYLIST } from '../../config/audioConfig';
+import { SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
@@ -42,6 +42,30 @@ export class MenuScene extends Phaser.Scene {
     this.setupKeyboardNavigation();
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
+    this.idlePreloadMusic();
+  }
+
+  /**
+   * Background-preload all non-eager music tracks during the idle time the
+   * player spends on the menu. Eliminates first-entry stalls on subsequent
+   * scenes (elevator, floors, executive suite, quiz).
+   *
+   * Skipped automatically on metered or very slow connections so users on
+   * limited data plans are not penalised.
+   */
+  private idlePreloadMusic(): void {
+    interface NavigatorConnection { saveData?: boolean; effectiveType?: string }
+    const conn = (navigator as unknown as { connection?: NavigatorConnection }).connection;
+    if (conn?.saveData) return;
+    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return;
+
+    const queue = STATIC_MUSIC_ASSETS.filter(
+      (a) => !a.eager && !this.cache.audio.exists(a.key),
+    );
+    if (queue.length === 0) return;
+
+    for (const asset of queue) this.load.audio(asset.key, asset.path);
+    this.load.start();
   }
 
   private setupKeyboardNavigation(): void {
