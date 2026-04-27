@@ -81,7 +81,7 @@ src/
 │   │   ├── SettingsScene.ts  Settings menu (audio, motion, controls).
 │   │   └── ControlsScene.ts  Keyboard-rebinding submenu.
 │   ├── elevator/             Elevator-shaft orchestrator + collaborators.
-│   │   ├── ElevatorScene.ts               Thin orchestrator (~343 lines).
+│   │   ├── ElevatorScene.ts               Thin orchestrator — delegates layout, transitions, doors, zones to the collaborators below.
 │   │   ├── ElevatorController.ts          Owns the Elevator entity + ride loop.
 │   │   ├── ElevatorSceneLayout.ts         Shaft visuals, floor labels, unlock rendering.
 │   │   ├── ElevatorFloorTransitionManager.ts  Floor-to-floor transition state.
