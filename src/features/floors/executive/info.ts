@@ -66,4 +66,21 @@ export const INFO_EXEC: Record<string, InfoPointDef> = {
         '  \u2022 Revenue through Norconsult: 20% (2025: 10%)',
     },
   },
+  'executive-hostage-rescued': {
+    floorId: FLOORS.EXECUTIVE,
+    content: {
+      id: 'executive-hostage-rescued',
+      title: 'Operation: Die Hard',
+      body:
+        'You did it. The C-suite leadership has been freed from the ' +
+        'terrorist commander\u2019s grip.\n\n' +
+        'You collected the Pistol, Security Key Card, and Bomb ' +
+        'Deactivation Code. You disarmed the explosive device and ' +
+        'neutralised the threat. The inner sanctum is secure.\n\n' +
+        'In the real world, architects face less cinematic but equally ' +
+        'critical crises: production outages, security breaches, vendor ' +
+        'lock-in, and organisational dysfunction. The lesson is the same: ' +
+        'gather the right tools, understand the threat, and act decisively.',
+    },
+  },
 };

@@ -12,6 +12,7 @@ export type AchievementId =
   | 'info-1' | 'info-5' | 'info-all'
   | 'quiz-1' | 'quiz-5' | 'quiz-all'
   | 'tokens-10' | 'tokens-25'
+  | 'hostage-rescue'
   | 'grand-architect';
 
 export interface AchievementDef {
@@ -43,6 +44,12 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'tokens-10',  label: 'Token Collector',    description: 'Collect 10 tokens.' },
   { id: 'tokens-25',  label: 'Token Hoarder',      description: 'Collect 25 tokens.' },
   // Secret
+  {
+    id: 'hostage-rescue',
+    label: 'Die Hard',
+    description: 'Free the C-suite leadership from the terrorist threat.',
+    secret: true,
+  },
   {
     id: 'grand-architect',
     label: 'Grand Architect',

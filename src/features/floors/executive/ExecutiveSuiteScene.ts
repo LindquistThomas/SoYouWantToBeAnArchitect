@@ -9,6 +9,8 @@ import { loadDeferredMusic } from '../../../config/audioConfig';
 import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { eventBus } from '../../../systems/EventBus';
+import * as AchievementManager from '../../../systems/AchievementManager';
+import { ACHIEVEMENT_MAP } from '../../../config/achievements';
 
 /** Scene-local state for the hostage rescue scenario. Reset on every create(). */
 interface RescueState {
@@ -497,6 +499,12 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.sanctumPrompt?.setVisible(false);
 
     this.progression.addAU(this.floorId, 5);
+
+    // Unlock the secret Die Hard achievement.
+    if (AchievementManager.unlock('hostage-rescue')) {
+      const def = ACHIEVEMENT_MAP.get('hostage-rescue');
+      if (def) eventBus.emit('achievement:unlocked', 'hostage-rescue', def.label);
+    }
 
     const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100,
       '\uD83C\uDFC6 LEADERSHIP FREED!', {
