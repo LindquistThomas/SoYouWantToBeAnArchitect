@@ -321,7 +321,7 @@ export class BossArenaScene extends Phaser.Scene {
         if (!this.boss.defeated) {
           const hit = this.boss.takeDamage();
           this.healthBar.update(this.boss.currentHp);
-          if (!hit && this.boss.currentHp <= 1) {
+          if (!hit && this.boss.currentHp <= 1 && this.boss.phasePromptsAnsweredCorrectly === 0) {
             this.showToast('Answer a challenge first!');
           }
         }

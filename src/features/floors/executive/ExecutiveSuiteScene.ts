@@ -281,13 +281,15 @@ export class ExecutiveSuiteScene extends LevelScene {
       this.bombPromptText.setVisible(true);
       if (this.bombMinigameActive) {
         this.bombMinigameActive = false;
+        // Only penalize if player released well outside the green zone and
+        // hadn't made significant progress (< 0.3s accumulated in zone).
+        const outsideZone = this.bombCursorX < 0.35 || this.bombCursorX > 0.65;
+        if (outsideZone && this.bombSuccessAccum < 0.3) {
+          this.player.takeHit(40, -100);
+        }
         this.bombSuccessAccum = 0;
         this.bombBar?.destroy();
         this.bombBar = undefined;
-        // Minor penalty for releasing outside green zone
-        if (this.bombCursorX < 0.35 || this.bombCursorX > 0.65) {
-          this.player.takeHit(40, -100);
-        }
         this.bombCursorX = 0;
       }
       return;

@@ -38,6 +38,8 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   private readonly PATROL_SPEED_P2 = 140;
   private readonly PATROL_SPEED_P3 = 200;
   private readonly CHARGE_SPEED = 420;
+  private readonly PLATFORM_JUMP_INTERVAL_MS = 8000;
+  private readonly PLATFORM_JUMP_VELOCITY_Y = -500;
 
   private patrolDir = 1;
   private minX: number;
@@ -198,8 +200,8 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
     if (this.phase === 2) {
       this.platformJumpTimer -= delta;
       if (this.platformJumpTimer <= 0 && Math.abs(body.velocity.y) < 5 && body.blocked.down) {
-        this.platformJumpTimer = 8000;
-        body.setVelocityY(-500);
+        this.platformJumpTimer = this.PLATFORM_JUMP_INTERVAL_MS;
+        body.setVelocityY(this.PLATFORM_JUMP_VELOCITY_Y);
       }
     }
 

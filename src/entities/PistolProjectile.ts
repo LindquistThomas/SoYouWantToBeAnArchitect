@@ -19,16 +19,23 @@ export class PistolProjectile extends Phaser.Physics.Arcade.Sprite {
     body.setVelocityX(toRight ? 500 : -500);
     this.setFlipX(!toRight);
 
-    // Destroy when leaving world bounds
-    scene.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, (b: Phaser.Physics.Arcade.Body) => {
-      if (b === this.body) this.destroySelf();
-    });
+    // Destroy when leaving world bounds — use once() to avoid listener accumulation
     body.setCollideWorldBounds(true);
     body.onWorldBounds = true;
+    const onBounds = (b: Phaser.Physics.Arcade.Body): void => {
+      if (b === this.body) this.destroySelf();
+    };
+    scene.physics.world.once(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, onBounds);
+    this._boundsListener = onBounds;
   }
+
+  private _boundsListener?: (b: Phaser.Physics.Arcade.Body) => void;
 
   destroySelf(): void {
     if (!this.active) return;
+    if (this._boundsListener && this.scene?.physics?.world) {
+      this.scene.physics.world.off(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this._boundsListener);
+    }
     this.destroy();
   }
 }
