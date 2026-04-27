@@ -18,7 +18,8 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "test:visual:update": "playwright test tests/visual.spec.ts --update-snapshots"
+    "test:visual:update": "playwright test tests/visual.spec.ts --update-snapshots",
+    "size": "node scripts/check-size.cjs"
   },
   "license": "MIT",
   "dependencies": {
