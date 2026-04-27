@@ -78,6 +78,10 @@ export class BossArenaScene extends Phaser.Scene {
   private mugGroup!: Phaser.Physics.Arcade.Group;
   private briefcaseGroup!: Phaser.Physics.Arcade.Group;
 
+  /** Number of mugs currently held (inventory counter). */
+  private heldMugs = 0;
+  static readonly MAX_HELD_MUGS = 3;
+
   /** Mug pickup platforms — each has a respawn timer. */
   private mugPlatforms: Array<{ x: number; y: number; count: number; respawnMs: number; elapsed: number }> = [];
   private mugCountText?: Phaser.GameObjects.Text;
@@ -221,20 +225,6 @@ export class BossArenaScene extends Phaser.Scene {
     this.mugGroup = this.physics.add.group();
     this.briefcaseGroup = this.physics.add.group();
 
-    // Mugs hit boss
-    this.physics.add.overlap(
-      this.mugGroup,
-      this.boss,
-      (mug) => {
-        const m = mug as CoffeeMugProjectile;
-        if (!this.boss.defeated) {
-          this.boss.takeDamage();
-          this.healthBar.update(this.boss.currentHp);
-        }
-        m.destroySelf();
-      },
-    );
-
     // Briefcases hit player
     this.physics.add.overlap(
       this.player.sprite,
@@ -250,10 +240,6 @@ export class BossArenaScene extends Phaser.Scene {
         b.destroySelf();
       },
     );
-  }
-
-  private get mugCount(): number {
-    return (this.mugGroup.getChildren() as CoffeeMugProjectile[]).length;
   }
 
   update(_time: number, delta: number): void {
@@ -290,7 +276,7 @@ export class BossArenaScene extends Phaser.Scene {
       }
     }
 
-    this.mugCountText?.setText(`Mugs: ${this.mugGroup.getChildren().length}`);
+    this.mugCountText?.setText(`Mugs: ${this.heldMugs}`);
   }
 
   private spawnMugPickup(x: number, y: number): void {
@@ -300,22 +286,17 @@ export class BossArenaScene extends Phaser.Scene {
       this.player.sprite,
       pickup,
       () => {
-        if (this.mugGroup.getChildren().length >= 3) return;
+        if (this.heldMugs >= BossArenaScene.MAX_HELD_MUGS) return;
         pickup.destroy();
+        this.heldMugs++;
         eventBus.emit('sfx:item_pickup');
-        // Add a held mug to inventory (represented as group children count)
-        const dummy = this.add.image(-100, -100, 'mug_projectile').setVisible(false);
-        this.mugGroup.add(dummy);
       },
     );
   }
 
   private throwMug(): void {
-    const children = this.mugGroup.getChildren();
-    if (children.length === 0) return;
-    // Remove one held mug
-    const held = children[children.length - 1];
-    if (held) held.destroy();
+    if (this.heldMugs === 0) return;
+    this.heldMugs--;
 
     // Spawn projectile
     const facingRight = !this.player.sprite.flipX;
@@ -327,7 +308,7 @@ export class BossArenaScene extends Phaser.Scene {
     );
     this.mugGroup.add(mug);
     eventBus.emit('sfx:mug_throw');
-    // Re-wire overlap for new projectile against boss
+    // Wire overlap for this projectile against the boss
     this.physics.add.overlap(
       mug,
       this.boss,
@@ -410,11 +391,12 @@ export class BossArenaScene extends Phaser.Scene {
     this.promptPanel = container;
 
     // Also listen for keyboard 1/2/3
+    const K = Phaser.Input.Keyboard.KeyCodes;
     const handler = (key: Phaser.Input.Keyboard.Key) => {
       const k = key.keyCode;
-      if (k === 49) this.resolvePrompt(prompt, 0, container);  // 1
-      else if (k === 50) this.resolvePrompt(prompt, 1, container);  // 2
-      else if (k === 51) this.resolvePrompt(prompt, 2, container);  // 3
+      if (k === K.ONE)   this.resolvePrompt(prompt, 0, container);
+      else if (k === K.TWO)   this.resolvePrompt(prompt, 1, container);
+      else if (k === K.THREE) this.resolvePrompt(prompt, 2, container);
     };
     this.input.keyboard?.on('keydown', handler);
     container.setData('keyHandler', handler);

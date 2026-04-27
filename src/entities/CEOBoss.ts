@@ -59,10 +59,10 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
    * Attempt to deal 1 damage. Respects i-frame cooldown and the knowledge gate.
    * Returns true if damage was actually applied.
    */
-  takeDamage(ignorKnowledgeGate = false): boolean {
+  takeDamage(ignoreKnowledgeGate = false): boolean {
     if (this.defeated || this.iFrameTimer > 0) return false;
     // Knowledge gate: can't finish phase without at least one correct prompt.
-    if (!ignorKnowledgeGate && this.hp <= 1 && this.phasePromptsAnsweredCorrectly === 0) {
+    if (!ignoreKnowledgeGate && this.hp <= 1 && this.phasePromptsAnsweredCorrectly === 0) {
       return false;
     }
     this.hp = Math.max(0, this.hp - 1);
