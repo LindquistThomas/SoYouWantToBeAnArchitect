@@ -103,25 +103,36 @@ export class MenuScene extends Phaser.Scene {
 
   /** Slow-twinkling starfield across the upper sky. */
   private createStarfield(): void {
-    const stars = this.add.graphics().setDepth(0);
-    const draw = (alpha: number) => {
-      stars.clear();
-      for (let i = 0; i < 80; i++) {
-        const x = (i * 137.5) % GAME_WIDTH;
-        const y = ((i * 73.3) % (GAME_HEIGHT * 0.55));
-        const a = alpha * (0.4 + ((i * 31) % 7) / 10);
-        stars.fillStyle(0xffffff, a);
-        stars.fillRect(x, y, 1.5, 1.5);
-      }
-    };
-    draw(1);
-    this.tweens.addCounter({
-      from: 0.5, to: 1, duration: 2400, ease: 'Sine.easeInOut',
-      yoyo: true, repeat: -1,
-      onUpdate: (tw) => draw(tw.getValue() ?? 1),
+    // Draw all 80 stars into a temporary Graphics object, then bake it into a
+    // RenderTexture so Phaser renders a single textured quad each frame instead
+    // of resubmitting all 80 fill-rect commands every tick.
+    const starGfx = this.add.graphics();
+    for (let i = 0; i < 80; i++) {
+      const x = (i * 137.5) % GAME_WIDTH;
+      const y = (i * 73.3) % (GAME_HEIGHT * 0.55);
+      const a = 0.4 + ((i * 31) % 7) / 10;
+      starGfx.fillStyle(0xffffff, a);
+      starGfx.fillRect(x, y, 1.5, 1.5);
+    }
+    // Stars only occupy the upper ~55% of the screen; size the RT tightly.
+    const starfieldHeight = Math.ceil(GAME_HEIGHT * 0.55);
+    const starRT = this.add.renderTexture(0, 0, GAME_WIDTH, starfieldHeight)
+      .setOrigin(0, 0)
+      .setDepth(0);
+    starRT.draw(starGfx, 0, 0);
+    starGfx.destroy();
+
+    // Twinkle by tweening the RT alpha — zero per-frame redraws.
+    this.tweens.add({
+      targets: starRT,
+      alpha: { from: 0.5, to: 1 },
+      duration: 2400,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
     });
 
-    // Soft moon
+    // Soft moon — two circles drawn once, stays static.
     const moon = this.add.graphics().setDepth(0);
     moon.fillStyle(0xfff6cc, 0.9);
     moon.fillCircle(GAME_WIDTH - 140, 110, 36);
@@ -131,7 +142,9 @@ export class MenuScene extends Phaser.Scene {
 
   /** Distant skyline of varied dark buildings forming the city horizon. */
   private createSkylineBackdrop(): void {
-    const g = this.add.graphics().setDepth(1);
+    // Build all geometry into a temporary Graphics, bake it into a RenderTexture,
+    // then discard the Graphics. Phaser renders the result as one textured quad.
+    const g = this.add.graphics();
     const horizonY = GAME_HEIGHT - 180;
     let x = 0;
     let seed = 17;
@@ -161,6 +174,20 @@ export class MenuScene extends Phaser.Scene {
     // Ground band
     g.fillStyle(0x080a18, 1);
     g.fillRect(0, GAME_HEIGHT - 30, GAME_WIDTH, 30);
+
+    // Size the RT to exactly the drawn skyline area to reduce VRAM usage and overdraw.
+    // Max building height is 80 + (seed >> 8) % 220 = 299; use 300 as conservative bound.
+    const skylineTopY = horizonY - 300;
+    const skylineRT = this.add.renderTexture(
+      0,
+      skylineTopY,
+      GAME_WIDTH,
+      GAME_HEIGHT - skylineTopY,
+    )
+      .setOrigin(0, 0)
+      .setDepth(1);
+    skylineRT.draw(g, 0, -skylineTopY);
+    g.destroy();
   }
 
   /**
@@ -176,26 +203,65 @@ export class MenuScene extends Phaser.Scene {
     const topY = GAME_HEIGHT - 80 - FLOORS * FLOOR_H;
     const bottomY = topY + FLOORS * FLOOR_H;
 
-    // Building silhouette
-    const body = this.add.graphics().setDepth(2);
-    body.fillStyle(0x1c2138, 1);
-    body.fillRect(buildingX - buildingW / 2, topY - 24, buildingW, FLOORS * FLOOR_H + 24);
-    // Roof structure
-    body.fillStyle(0x252b48, 1);
-    body.fillRect(buildingX - 28, topY - 56, 56, 32);
-    body.fillStyle(0xff5566, 1);
-    body.fillCircle(buildingX, topY - 60, 4); // antenna light
-
-    // Floor separators
-    body.lineStyle(1, 0x0c0f1c, 1);
-    for (let f = 1; f < FLOORS; f++) {
-      const y = topY + f * FLOOR_H;
-      body.lineBetween(buildingX - buildingW / 2, y, buildingX + buildingW / 2, y);
-    }
-
-    // Window grid (skip the centre column — that's the elevator shaft)
     const cols = 6;
     const colW = buildingW / cols;
+    const shaftW = colW * 1.6;
+    const shaftX = buildingX;
+    const cabW = shaftW - 8;
+    const cabH = FLOOR_H - 14;
+
+    // ---- Static building layers (body + shaft) baked into a RenderTexture ----
+    // Rendering these as one textured quad avoids per-frame geometry submission.
+    const buildingGfx = this.add.graphics();
+
+    // Building silhouette
+    buildingGfx.fillStyle(0x1c2138, 1);
+    buildingGfx.fillRect(buildingX - buildingW / 2, topY - 24, buildingW, FLOORS * FLOOR_H + 24);
+    // Roof structure
+    buildingGfx.fillStyle(0x252b48, 1);
+    buildingGfx.fillRect(buildingX - 28, topY - 56, 56, 32);
+    buildingGfx.fillStyle(0xff5566, 1);
+    buildingGfx.fillCircle(buildingX, topY - 60, 4); // antenna light
+
+    // Floor separators
+    buildingGfx.lineStyle(1, 0x0c0f1c, 1);
+    for (let f = 1; f < FLOORS; f++) {
+      const y = topY + f * FLOOR_H;
+      buildingGfx.lineBetween(buildingX - buildingW / 2, y, buildingX + buildingW / 2, y);
+    }
+
+    // Elevator shaft — darker column down the building's centre
+    buildingGfx.fillStyle(0x0a0d1c, 1);
+    buildingGfx.fillRect(shaftX - shaftW / 2, topY, shaftW, FLOORS * FLOOR_H);
+    buildingGfx.lineStyle(1, 0x2a2f4a, 1);
+    buildingGfx.lineBetween(shaftX - shaftW / 2, topY, shaftX - shaftW / 2, bottomY);
+    buildingGfx.lineBetween(shaftX + shaftW / 2, topY, shaftX + shaftW / 2, bottomY);
+
+    // Floor-stop indicators inside the shaft
+    for (let f = 0; f < FLOORS; f++) {
+      const y = topY + f * FLOOR_H + FLOOR_H / 2;
+      buildingGfx.fillStyle(0x33ff99, 0.35);
+      buildingGfx.fillRect(shaftX - shaftW / 2 + 2, y - 1, shaftW - 4, 2);
+    }
+
+    // Size the RT to the building bounding box only — avoids a full-screen textured quad.
+    // Topmost pixel: antenna circle at (buildingX, topY - 60) radius 4 → topY - 64.
+    const buildingLeft = buildingX - buildingW / 2;
+    const buildingTop = topY - 64;
+    const buildingRT = this.add.renderTexture(
+      buildingLeft,
+      buildingTop,
+      buildingW,
+      FLOORS * FLOOR_H + 64,
+    )
+      .setOrigin(0, 0)
+      .setDepth(2);
+    buildingRT.draw(buildingGfx, -buildingLeft, -buildingTop);
+    buildingGfx.destroy();
+
+    // ---- Window grid (live Rectangle objects — needed for twinkle) ----
+    // Reset before rebuild to prevent stale refs accumulating on scene restart.
+    this.windowRects = [];
     for (let f = 0; f < FLOORS; f++) {
       for (let c = 0; c < cols; c++) {
         if (c === 2 || c === 3) continue; // shaft columns
@@ -219,26 +285,7 @@ export class MenuScene extends Phaser.Scene {
       },
     });
 
-    // Elevator shaft — darker column down the building's centre
-    const shaftW = colW * 1.6;
-    const shaftX = buildingX;
-    const shaft = this.add.graphics().setDepth(2);
-    shaft.fillStyle(0x0a0d1c, 1);
-    shaft.fillRect(shaftX - shaftW / 2, topY, shaftW, FLOORS * FLOOR_H);
-    shaft.lineStyle(1, 0x2a2f4a, 1);
-    shaft.lineBetween(shaftX - shaftW / 2, topY, shaftX - shaftW / 2, bottomY);
-    shaft.lineBetween(shaftX + shaftW / 2, topY, shaftX + shaftW / 2, bottomY);
-
-    // Floor-stop indicators inside the shaft
-    for (let f = 0; f < FLOORS; f++) {
-      const y = topY + f * FLOOR_H + FLOOR_H / 2;
-      shaft.fillStyle(0x33ff99, 0.35);
-      shaft.fillRect(shaftX - shaftW / 2 + 2, y - 1, shaftW - 4, 2);
-    }
-
-    // Elevator cab + player rider — composed in a container so they tween together
-    const cabW = shaftW - 8;
-    const cabH = FLOOR_H - 14;
+    // ---- Elevator cab + player rider — live container (moves between floors) ----
     const cab = this.add.container(shaftX, bottomY - FLOOR_H / 2).setDepth(3);
 
     const cabBg = this.add.graphics();
@@ -250,7 +297,8 @@ export class MenuScene extends Phaser.Scene {
     cabBg.fillRect(-cabW / 2, -cabH / 2 - 4, cabW, 4); // top bar
     cab.add(cabBg);
 
-    // Cables up to the roof
+    // Cables up to the roof — Graphics is live because drawCables() is called in
+    // the elevator tween's onUpdate/onComplete to track the cab's Y position.
     const cables = this.add.graphics().setDepth(3);
     const drawCables = () => {
       cables.clear();
