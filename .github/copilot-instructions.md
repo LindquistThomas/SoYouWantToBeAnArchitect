@@ -31,7 +31,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
-│   ├── scenes/               # core/ (BootScene, MenuScene, PauseScene, SettingsScene),
+│   ├── scenes/               # core/ (BootScene, MenuScene, SettingsScene,
+│   │                         # ControlsScene, PauseScene, SaveSlotScene),
 │   │                         # elevator/, NavigationContext, sceneRegistry
 │   ├── style/                # theme.ts — colour + spacing token catalogue
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,

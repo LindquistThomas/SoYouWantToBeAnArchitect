@@ -79,7 +79,8 @@ src/
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
 │   │   ├── PauseScene.ts     Pause overlay (resume / settings / quit).
 │   │   ├── SettingsScene.ts  Settings menu (audio, motion, controls).
-│   │   └── ControlsScene.ts  Keyboard-rebinding submenu.
+│   │   ├── ControlsScene.ts  Keyboard-rebinding submenu.
+│   │   └── SaveSlotScene.ts  Save-slot picker (new game / continue / delete).
 │   ├── elevator/             Elevator-shaft orchestrator + collaborators.
 │   │   ├── ElevatorScene.ts               Thin orchestrator (~343 lines).
 │   │   ├── ElevatorController.ts          Owns the Elevator entity + ride loop.
