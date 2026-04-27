@@ -207,8 +207,12 @@ describe('CEOBoss', () => {
     boss.takeDamage(true);
     expect(boss.currentHp).toBe(8);
 
+    // Advance chargeTimer so it's non-zero before the wrong answer
+    (boss as unknown as { chargeTimer: number }).chargeTimer = 4000;
+
     boss.onWrongAnswer();
     expect(boss.currentHp).toBe(9); // healed 1, capped at phase 1 max (10)
+    expect((boss as unknown as { chargeTimer: number }).chargeTimer).toBe(0);
   });
 
   it('update() does nothing when defeated', () => {

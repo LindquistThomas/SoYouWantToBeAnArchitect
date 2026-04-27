@@ -11,8 +11,11 @@ interface FakeWorld {
 
 function makeWorld(): FakeWorld {
   const listeners = new Map<string, WorldListener[]>();
+  const onceSet = new Set<WorldListener>();
+
   const world: FakeWorld = {
     once: vi.fn((event: string, fn: WorldListener) => {
+      onceSet.add(fn);
       const list = listeners.get(event) ?? [];
       list.push(fn);
       listeners.set(event, list);
@@ -20,10 +23,13 @@ function makeWorld(): FakeWorld {
     off: vi.fn((event: string, fn: WorldListener) => {
       const remaining = (listeners.get(event) ?? []).filter((f) => f !== fn);
       listeners.set(event, remaining);
+      onceSet.delete(fn);
     }),
     _emit: (event, arg) => {
       const list = listeners.get(event) ?? [];
-      listeners.set(event, []);
+      // Remove once-listeners before firing so they can't be called twice.
+      const remaining = list.filter((fn) => !onceSet.has(fn));
+      listeners.set(event, remaining);
       list.forEach((fn) => fn(arg));
     },
   };
