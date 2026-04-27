@@ -8,7 +8,11 @@ vi.mock('phaser', () => {
   class Scene {
     constructor(_config: unknown) {}
   }
-  return { default: { Scene }, Scene };
+  class ArcadeSprite {
+    constructor(_scene: unknown, _x: unknown, _y: unknown, _key: unknown) {}
+  }
+  const Physics = { Arcade: { Sprite: ArcadeSprite, Events: { WORLD_BOUNDS: 'worldbounds' } } };
+  return { default: { Scene, Physics }, Scene, Physics };
 });
 
 vi.mock('../_shared/LevelScene', () => ({
@@ -52,6 +56,34 @@ vi.mock('../../../config/audioConfig', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../../config/audioConfig')>();
   return { ...original, loadDeferredMusic: vi.fn() };
 });
+
+// MissionItem uses Phaser.Physics.Arcade.Sprite — stub the whole module.
+vi.mock('../../../entities/MissionItem', () => ({
+  MissionItem: class MissionItem {
+    itemId: string;
+    constructor(_s: unknown, _x: unknown, _y: unknown, id: string, _cb: unknown) {
+      this.itemId = id;
+    }
+    collect() {}
+  },
+}));
+
+// TerroristCommander uses Phaser Physics — stub it.
+vi.mock('../../../entities/enemies/TerroristCommander', () => ({
+  TerroristCommander: class TerroristCommander {
+    defeated = false;
+    knockbackX = 300;
+    knockbackY = -280;
+    constructor() {}
+    update() {}
+    defeat() {}
+  },
+}));
+
+// eventBus is a singleton — stub the emit to avoid side effects in config tests.
+vi.mock('../../../systems/EventBus', () => ({
+  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn(), once: vi.fn() },
+}));
 
 import { ExecutiveSuiteScene } from './ExecutiveSuiteScene';
 
