@@ -90,7 +90,9 @@ export class MenuScene extends Phaser.Scene {
       starGfx.fillStyle(0xffffff, a);
       starGfx.fillRect(x, y, 1.5, 1.5);
     }
-    const starRT = this.add.renderTexture(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    // Stars only occupy the upper ~55% of the screen; size the RT tightly.
+    const starfieldHeight = Math.ceil(GAME_HEIGHT * 0.55);
+    const starRT = this.add.renderTexture(0, 0, GAME_WIDTH, starfieldHeight)
       .setOrigin(0, 0)
       .setDepth(0);
     starRT.draw(starGfx, 0, 0);
@@ -149,10 +151,18 @@ export class MenuScene extends Phaser.Scene {
     g.fillStyle(0x080a18, 1);
     g.fillRect(0, GAME_HEIGHT - 30, GAME_WIDTH, 30);
 
-    const skylineRT = this.add.renderTexture(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    // Size the RT to exactly the drawn skyline area to reduce VRAM usage and overdraw.
+    // Max building height is 80 + (seed >> 8) % 220 = 299; use 300 as conservative bound.
+    const skylineTopY = horizonY - 300;
+    const skylineRT = this.add.renderTexture(
+      0,
+      skylineTopY,
+      GAME_WIDTH,
+      GAME_HEIGHT - skylineTopY,
+    )
       .setOrigin(0, 0)
       .setDepth(1);
-    skylineRT.draw(g, 0, 0);
+    skylineRT.draw(g, 0, -skylineTopY);
     g.destroy();
   }
 
@@ -210,14 +220,24 @@ export class MenuScene extends Phaser.Scene {
       buildingGfx.fillRect(shaftX - shaftW / 2 + 2, y - 1, shaftW - 4, 2);
     }
 
-    const buildingRT = this.add.renderTexture(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    // Size the RT to the building bounding box only — avoids a full-screen textured quad.
+    // Topmost pixel: antenna circle at (buildingX, topY - 60) radius 4 → topY - 64.
+    const buildingLeft = buildingX - buildingW / 2;
+    const buildingTop = topY - 64;
+    const buildingRT = this.add.renderTexture(
+      buildingLeft,
+      buildingTop,
+      buildingW,
+      FLOORS * FLOOR_H + 64,
+    )
       .setOrigin(0, 0)
       .setDepth(2);
-    buildingRT.draw(buildingGfx, 0, 0);
+    buildingRT.draw(buildingGfx, -buildingLeft, -buildingTop);
     buildingGfx.destroy();
 
     // ---- Window grid (live Rectangle objects — needed for twinkle) ----
-    // Same depth as buildingRT; inserted after the RT so they render on top.
+    // Reset before rebuild to prevent stale refs accumulating on scene restart.
+    this.windowRects = [];
     for (let f = 0; f < FLOORS; f++) {
       for (let c = 0; c < cols; c++) {
         if (c === 2 || c === 3) continue; // shaft columns
