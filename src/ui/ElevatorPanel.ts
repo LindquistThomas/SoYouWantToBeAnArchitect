@@ -135,7 +135,7 @@ export class ElevatorPanel {
       btnContainer.add(btnBg);
 
       // Floor number
-      const floorNum = this.scene.add.text(10, 4, `F${floorId}`, {
+      const floorNum = this.scene.add.text(10, 4, `F${floorData.floorNumber}`, {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: isUnlocked ? '#00d4ff' : '#ff4444',
