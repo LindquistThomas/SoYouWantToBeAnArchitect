@@ -31,6 +31,8 @@ export class ElevatorController {
 
   private playerOnElevator = false;
   private wasElevatorMoving = false;
+  /** Tracks the previous frame's on-elevator state to detect the boarding transition. */
+  private prevPlayerOnElevator = false;
 
   constructor(scene: Phaser.Scene, player: Player, elevator: Elevator) {
     this.scene = scene;
@@ -86,13 +88,15 @@ export class ElevatorController {
     this.player.setFlipEnabled(!this.playerOnElevator);
 
     if (this.playerOnElevator) {
-      // Commit the player to the cab: zero walk momentum and clamp X so
-      // residual speed can't carry them past the unmount threshold before
-      // the cab leaves the floor.
-      const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-      body.setVelocityX(0);
-      const { x } = clampRiderToCab(this.player.sprite.x, this.elevator.platform.x);
-      this.player.sprite.setX(x);
+      // On the boarding frame: zero walk momentum and snap X to the cab
+      // so residual walk speed can't carry the player past the unmount
+      // threshold before the cab leaves the floor.
+      if (!this.prevPlayerOnElevator) {
+        const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+        body.setVelocityX(0);
+        const { x } = clampRiderToCab(this.player.sprite.x, this.elevator.platform.x);
+        this.player.sprite.setX(x);
+      }
 
       // Auto-rise: cab moves up while the player is on board.
       this.elevator.ride(true, false, delta);
@@ -120,6 +124,7 @@ export class ElevatorController {
       }
     }
     this.wasElevatorMoving = moving;
+    this.prevPlayerOnElevator = this.playerOnElevator;
 
     this.elevator.updateVisuals();
   }
