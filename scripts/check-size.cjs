@@ -89,7 +89,13 @@ function getEagerMusicPaths() {
   const src = fs.readFileSync(configFile, 'utf8');
 
   // Match object literals that contain `eager: true` and extract their `path`
-  // field.  The pattern is intentionally simple; adjust if the format changes.
+  // field.  Assumptions about the source format (all satisfied by the current
+  // audioConfig.ts layout):
+  //   • Each MusicAsset entry is a single-line object literal `{ … }`.
+  //   • No brace characters appear inside string values in the same literal.
+  //   • The `path` and `eager` properties use single or double quotes.
+  // If the format ever changes to multi-line objects, update this regex or
+  // switch to a proper TS-AST approach.
   const blockRe = /\{[^}]*eager\s*:\s*true[^}]*\}/gs;
   const pathRe  = /path\s*:\s*['"]([^'"]+)['"]/;
 
@@ -145,7 +151,10 @@ const BUDGETS = /** @type {const} */ ([
       for (const rel of eagerPaths) {
         const abs = path.join(ROOT, 'public', rel);
         if (!fs.existsSync(abs)) {
-          console.warn(`  ⚠  Eager music file not found: ${rel}`);
+          // A declared eager asset that doesn't exist on disk is a hard error:
+          // it means either the file was deleted or the config path is wrong.
+          console.error(`  ✗  Eager music file not found: ${rel}`);
+          failed = true;
           continue;
         }
         total += fs.statSync(abs).size;
