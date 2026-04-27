@@ -23,6 +23,7 @@ import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
+import { CallElevatorButton } from '../../../ui/CallElevatorButton';
 
 /**
  * Decorative background pattern assignment per floor. Each motif echoes
@@ -154,6 +155,9 @@ export class LevelScene extends Phaser.Scene {
 
   /** In-room elevator manager (shafts, platforms, input, rider-pin). */
   private roomElevators!: LevelRoomElevators;
+
+  /** On-screen "CALL LIFT" button — touch/pointer shortcut for returnToElevator(). */
+  private callElevatorButton!: CallElevatorButton;
 
   /** Info + quiz dialog orchestration. */
   protected dialogs!: DialogController;
@@ -630,6 +634,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- UI ---- */
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
+    this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
   }
 
   /* ---- banner ---- */
@@ -747,6 +752,7 @@ export class LevelScene extends Phaser.Scene {
   protected returnToElevator(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
+    this.callElevatorButton.setVisible(false);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,
