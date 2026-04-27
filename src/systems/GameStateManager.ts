@@ -124,10 +124,21 @@ export class GameStateManager {
     }
   }
 
+  /**
+   * Allow `applyInitialLoad` to run again on the next call.
+   * Must be called whenever the player makes a new slot selection in
+   * `SaveSlotScene` so that the correct save (or fresh state) is applied
+   * when `ElevatorScene.init` fires.
+   */
+  resetLoadState(): void {
+    this.initialLoadApplied = false;
+  }
+
   /** Reset ALL persistent state including achievements and touch hint. */
   resetAll(): void {
     this.progression.reset();
     AchievementManager.resetAll();
     TouchHintStore.clearSeen();
+    this.resetLoadState();
   }
 }
