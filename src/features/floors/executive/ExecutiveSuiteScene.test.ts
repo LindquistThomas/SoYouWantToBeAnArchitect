@@ -46,6 +46,30 @@ vi.mock('../../../ui/InteractiveDoor', () => ({
   },
 }));
 
+// MissionItem extends Phaser.Physics.Arcade.Sprite — mock it.
+vi.mock('../../../entities/MissionItem', () => ({
+  MissionItem: class MissionItem {
+    readonly itemId: string;
+    constructor(_scene: unknown, _x: number, _y: number, _texture: string, itemId: string) {
+      this.itemId = itemId;
+    }
+    collect() { return true; }
+  },
+}));
+
+// TerroristCommander extends Enemy → Phaser.Physics.Arcade.Sprite — mock it.
+vi.mock('../../../entities/enemies/TerroristCommander', () => ({
+  TerroristCommander: class TerroristCommander {
+    canBeStomped = false;
+    defeated = false;
+  },
+}));
+
+// EventBus singleton used for SFX events.
+vi.mock('../../../systems/EventBus', () => ({
+  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
+}));
+
 // loadDeferredMusic is called in preload(), not getLevelConfig().
 // Stub it so the import resolves without side effects.
 vi.mock('../../../config/audioConfig', async (importOriginal) => {
