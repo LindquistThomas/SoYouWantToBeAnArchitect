@@ -752,7 +752,7 @@ export class LevelScene extends Phaser.Scene {
   protected returnToElevator(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
-    this.callElevatorButton?.setVisible(false);
+    this.callElevatorButton.setVisible(false);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,

@@ -47,11 +47,11 @@ export class CallElevatorButton {
       .setAlpha(0.001);
     this.container.add(hit);
 
-    hit.on('pointerdown', () => {
-      this.drawBg(true);
+    hit.on('pointerdown', () => this.drawBg(true));
+    hit.on('pointerup', () => {
+      this.drawBg(false);
       onCall();
     });
-    hit.on('pointerup', () => this.drawBg(false));
     hit.on('pointerout', () => this.drawBg(false));
     hit.on('pointerupoutside', () => this.drawBg(false));
 
