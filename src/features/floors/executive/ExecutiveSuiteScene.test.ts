@@ -8,7 +8,11 @@ vi.mock('phaser', () => {
   class Scene {
     constructor(_config: unknown) {}
   }
-  return { default: { Scene }, Scene };
+  class ArcadeSprite {
+    constructor(_scene: unknown, _x: unknown, _y: unknown, _key: unknown) {}
+  }
+  const Physics = { Arcade: { Sprite: ArcadeSprite, Events: { WORLD_BOUNDS: 'worldbounds' } } };
+  return { default: { Scene, Physics }, Scene, Physics };
 });
 
 vi.mock('../_shared/LevelScene', () => ({

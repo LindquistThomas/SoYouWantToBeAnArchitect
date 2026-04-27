@@ -29,6 +29,10 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   private chargeTimer = 0;
   private briefcaseTimer = 0;
   private isCharging = false;
+  private briefcaseSuppressTimer = 0;
+  private stunTimer = 0;
+  private briefcaseRageTimer = 0;
+  private platformJumpTimer = 0;
 
   private readonly PATROL_SPEED_P1 = 80;
   private readonly PATROL_SPEED_P2 = 140;
@@ -85,9 +89,15 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   /** Correct quiz answer: disable hazard, earn knowledge gate credit, deal bonus damage. */
   onCorrectAnswer(): void {
     this.phasePromptsAnsweredCorrectly++;
+    const phaseBefore = this.phase;
     this.takeDamage(true);
-    // Reset briefcase timer (brief breathing room)
-    this.briefcaseTimer = Math.max(this.briefcaseTimer, 3000);
+    if (phaseBefore === 1) {
+      this.briefcaseTimer = Math.max(this.briefcaseTimer, 3000);
+    } else if (phaseBefore === 2) {
+      this.briefcaseSuppressTimer = 10000;
+    } else {
+      this.stunTimer = 5000;
+    }
   }
 
   /** Wrong quiz answer: restore 1 HP (capped at phase max), refill charge timer. */
@@ -95,6 +105,11 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
     const phaseMax = this.phase === 1 ? 10 : this.phase === 2 ? 7 : 3;
     this.hp = Math.min(phaseMax, this.hp + 1);
     this.chargeTimer = 0;
+    if (this.phase === 2) {
+      this.briefcaseRageTimer = 10000;
+    } else if (this.phase === 3) {
+      this.emit('bossBarrage');
+    }
   }
 
   private checkPhaseTransition(): void {
@@ -108,6 +123,10 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
       this.chargeTimer = 0;
       this.briefcaseTimer = 0;
       this.isCharging = false;
+      this.briefcaseSuppressTimer = 0;
+      this.stunTimer = 0;
+      this.briefcaseRageTimer = 0;
+      this.platformJumpTimer = 0;
       if (this.phase === 3) this.setTint(0xffd700);
       eventBus.emit('sfx:boss_phase');
     }
@@ -116,8 +135,16 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   update(delta: number, playerX: number, _playerY: number): void {
     if (this.defeated) return;
 
+    // Stun: skip all AI, let physics run freely
+    if (this.stunTimer > 0) {
+      this.stunTimer -= delta;
+      return;
+    }
+
     // Cool i-frames
     if (this.iFrameTimer > 0) this.iFrameTimer -= delta;
+    if (this.briefcaseSuppressTimer > 0) this.briefcaseSuppressTimer -= delta;
+    if (this.briefcaseRageTimer > 0) this.briefcaseRageTimer -= delta;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     const speed = this.phase === 1
@@ -131,7 +158,9 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
     this.briefcaseTimer -= delta;
 
     const chargeInterval = 5000;
-    const briefcaseInterval = this.phase === 2 ? 4000 : 2000;
+    const briefcaseInterval = this.phase === 2
+      ? (this.briefcaseRageTimer > 0 ? 1500 : 4000)
+      : 2000;
 
     // Charge attack (phase 1+)
     if (this.chargeTimer <= 0 && !this.isCharging) {
@@ -165,12 +194,23 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
       body.setVelocityX(speed * this.patrolDir);
     }
 
+    // Phase 2 platform jump — every 8s when grounded
+    if (this.phase === 2) {
+      this.platformJumpTimer -= delta;
+      if (this.platformJumpTimer <= 0 && Math.abs(body.velocity.y) < 5 && body.blocked.down) {
+        this.platformJumpTimer = 8000;
+        body.setVelocityY(-500);
+      }
+    }
+
     // Briefcase throw (phase 2+)
     if (this.phase >= 2 && this.briefcaseTimer <= 0) {
       this.briefcaseTimer = briefcaseInterval;
-      eventBus.emit('sfx:briefcase_throw');
-      // The scene creates the actual projectile — we just signal readiness.
-      this.emit('throwBriefcase', playerX);
+      if (this.briefcaseSuppressTimer <= 0) {
+        eventBus.emit('sfx:briefcase_throw');
+        // The scene creates the actual projectile — we just signal readiness.
+        this.emit('throwBriefcase', playerX);
+      }
     }
   }
 

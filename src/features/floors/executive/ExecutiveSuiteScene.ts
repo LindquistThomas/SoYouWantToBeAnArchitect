@@ -8,6 +8,7 @@ import { InteractiveDoor } from '../../../ui/InteractiveDoor';
 import { loadDeferredMusic } from '../../../config/audioConfig';
 import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
+import { PistolProjectile } from '../../../entities/PistolProjectile';
 import { eventBus } from '../../../systems/EventBus';
 
 /**
@@ -52,6 +53,17 @@ export class ExecutiveSuiteScene extends LevelScene {
   private missionIconSlots: Phaser.GameObjects.Text[] = [];
   private bombIndicator?: Phaser.GameObjects.Text;
 
+  // ---- Pistol projectile group ----
+  private pistolGroup?: Phaser.Physics.Arcade.Group;
+
+  // ---- Bomb mini-game state ----
+  private bombMinigameActive = false;
+  private bombCursorX = 0;
+  private bombCursorSpeed = 0.4;
+  private bombSuccessAccum = 0;
+  private bombBar?: Phaser.GameObjects.Container;
+  private bombPromptText?: Phaser.GameObjects.Text;
+
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
   }
@@ -89,6 +101,54 @@ export class ExecutiveSuiteScene extends LevelScene {
     });
 
     this.setupRescue();
+    this.showMissionBrief();
+  }
+
+  private showMissionBrief(): void {
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const W = 620;
+    const H = 130;
+
+    const bg = this.add.graphics()
+      .fillStyle(0x0a0a1a, 0.92)
+      .fillRect(-W / 2, -H / 2, W, H)
+      .lineStyle(2, 0xffd700, 1)
+      .strokeRect(-W / 2, -H / 2, W, H);
+
+    const title = this.add.text(0, -H / 2 + 14, '⚠ MISSION BRIEF', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffd700', fontStyle: 'bold',
+    }).setOrigin(0.5, 0);
+
+    const body = this.add.text(0, -H / 2 + 36, [
+      'ALERT: C-suite leadership has been taken hostage!',
+      'Locate the pistol, keycard, and bomb code.',
+      'Defeat the TerroristCommander and disarm the bomb.',
+    ].join('\n'), {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ccddff',
+      wordWrap: { width: W - 40 }, align: 'center',
+    }).setOrigin(0.5, 0);
+
+    const hint = this.add.text(0, H / 2 - 18, 'Press Enter to continue', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#666677',
+    }).setOrigin(0.5, 1);
+
+    const container = this.add.container(cx, cy, [bg, title, body, hint])
+      .setDepth(90)
+      .setScrollFactor(0);
+
+    const onEnter = (event: KeyboardEvent): void => {
+      if (event.key === 'Enter') {
+        window.removeEventListener('keydown', onEnter);
+        container.destroy();
+      }
+    };
+    window.addEventListener('keydown', onEnter);
+
+    // Also clean up listener on scene shutdown
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('keydown', onEnter);
+    });
   }
 
   private setupRescue(): void {
@@ -116,6 +176,9 @@ export class ExecutiveSuiteScene extends LevelScene {
       this.commander,
       () => this.onCommanderOverlap(),
     );
+
+    // Pistol projectile group
+    this.pistolGroup = this.physics.add.group();
 
     // ---- Bomb device (right side, gated by bomb_code) ----
     this.bombSprite = this.add.image(1100, G - 40, 'bomb_device').setDepth(4);
@@ -181,13 +244,86 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.checkSanctumUnlock();
   }
 
-  private checkBombDisarm(): void {
+  private checkBombDisarm(delta: number): void {
     if (this.rescueState.bombDisarmed) return;
     if (!this.rescueState.collected.has('bomb_code')) return;
+
     const px = this.player.sprite.x;
     const G = GAME_HEIGHT - TILE_SIZE;
-    if (Math.abs(px - 1100) < 80 && this.player.sprite.y > G - 200) {
+    const nearBomb = Math.abs(px - 1100) < 80 && this.player.sprite.y > G - 200;
+
+    if (!nearBomb) {
+      // Player left zone — hide UI and reset
+      if (this.bombMinigameActive || this.bombPromptText?.visible) {
+        this.bombMinigameActive = false;
+        this.bombCursorX = 0;
+        this.bombSuccessAccum = 0;
+        this.bombBar?.destroy();
+        this.bombBar = undefined;
+        this.bombPromptText?.setVisible(false);
+      }
+      return;
+    }
+
+    // Near bomb — show prompt if not active
+    if (!this.bombPromptText) {
+      this.bombPromptText = this.add.text(
+        GAME_WIDTH / 2, GAME_HEIGHT - 148,
+        'Hold [Interact] to disarm',
+        { fontFamily: 'monospace', fontSize: '12px', color: '#ffd700' },
+      ).setOrigin(0.5).setScrollFactor(0).setDepth(65).setVisible(false);
+    }
+
+    const holding = this.inputs.isDown('Interact');
+
+    if (!holding) {
+      // Not holding — show prompt, hide/reset bar
+      this.bombPromptText.setVisible(true);
+      if (this.bombMinigameActive) {
+        this.bombMinigameActive = false;
+        this.bombSuccessAccum = 0;
+        this.bombBar?.destroy();
+        this.bombBar = undefined;
+        // Minor penalty for releasing outside green zone
+        if (this.bombCursorX < 0.35 || this.bombCursorX > 0.65) {
+          this.player.takeHit(40, -100);
+        }
+        this.bombCursorX = 0;
+      }
+      return;
+    }
+
+    // Holding Interact — run mini-game
+    this.bombPromptText.setVisible(false);
+    if (!this.bombMinigameActive) {
+      this.bombMinigameActive = true;
+      this.bombCursorX = 0;
+      this.bombSuccessAccum = 0;
+    }
+
+    const dt = delta / 1000;
+    this.bombCursorX = (this.bombCursorX + this.bombCursorSpeed * dt) % 1;
+    const inGreen = this.bombCursorX >= 0.35 && this.bombCursorX <= 0.65;
+    if (inGreen) {
+      this.bombSuccessAccum += dt;
+    } else {
+      this.bombSuccessAccum = Math.max(0, this.bombSuccessAccum - dt * 0.5);
+    }
+
+    // Build/update bar UI
+    if (!this.bombBar) {
+      this.bombBar = this.buildBombBar();
+    }
+    this.updateBombBar(this.bombCursorX);
+
+    if (this.bombSuccessAccum >= 0.8) {
+      // Success!
+      this.bombMinigameActive = false;
       this.rescueState.bombDisarmed = true;
+      this.bombBar.destroy();
+      this.bombBar = undefined;
+      this.bombPromptText?.destroy();
+      this.bombPromptText = undefined;
       this.bombSprite?.destroy();
       eventBus.emit('sfx:bomb_disarm');
       if (this.bombIndicator) {
@@ -195,6 +331,44 @@ export class ExecutiveSuiteScene extends LevelScene {
       }
       this.checkSanctumUnlock();
     }
+  }
+
+  private buildBombBar(): Phaser.GameObjects.Container {
+    const BAR_W = 300;
+    const BAR_H = 18;
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT - 120;
+
+    const bg = this.add.graphics()
+      .fillStyle(0x333333, 1)
+      .fillRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H)
+      .lineStyle(1, 0xffd700, 1)
+      .strokeRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
+
+    const greenZone = this.add.graphics()
+      .fillStyle(0x00aa44, 0.6)
+      .fillRect(-BAR_W / 2 + BAR_W * 0.35, -BAR_H / 2, BAR_W * 0.3, BAR_H);
+
+    const cursor = this.add.graphics()
+      .fillStyle(0xffffff, 1)
+      .fillRect(-2, -BAR_H / 2, 4, BAR_H);
+    cursor.setName('cursor');
+
+    const container = this.add.container(cx, cy, [bg, greenZone, cursor])
+      .setDepth(65).setScrollFactor(0);
+    return container;
+  }
+
+  private updateBombBar(cursorX: number): void {
+    if (!this.bombBar) return;
+    const BAR_W = 300;
+    const BAR_H = 18;
+    const cursor = this.bombBar.getByName('cursor') as Phaser.GameObjects.Graphics;
+    if (!cursor) return;
+    cursor.clear();
+    cursor.fillStyle(0xffffff, 1);
+    const cx = -BAR_W / 2 + BAR_W * cursorX;
+    cursor.fillRect(cx - 2, -BAR_H / 2, 4, BAR_H);
   }
 
   private checkSanctumUnlock(): void {
@@ -374,10 +548,26 @@ export class ExecutiveSuiteScene extends LevelScene {
    * the two prompts never collide.
    */
   protected override checkExitProximity(): void {
+    // Handled by update() override via checkExitProximityWithDelta().
+    // Intentionally empty — super call moved there to get delta.
+  }
+
+  override update(time: number, delta: number): void {
+    super.update(time, delta);
+    this.checkExitProximityWithDelta(delta);
+  }
+
+  private checkExitProximityWithDelta(delta: number): void {
+    // Base class elevator-exit check
     super.checkExitProximity();
 
-    // Check bomb disarm each frame (proximity-gated)
-    this.checkBombDisarm();
+    // Fire pistol with Attack action if pistol collected
+    if (this.rescueState.collected.has('pistol') && this.inputs.justPressed('Attack')) {
+      this.firePistol();
+    }
+
+    // Check bomb disarm each frame (proximity-gated, needs delta)
+    this.checkBombDisarm(delta);
 
     // Commander update (not in LevelEnemySpawner — managed directly here)
     if (this.commander && !this.commander.defeated) {
@@ -390,8 +580,6 @@ export class ExecutiveSuiteScene extends LevelScene {
     const G = GAME_HEIGHT - TILE_SIZE;
     const playerOnGround = this.player.sprite.y > G - 200;
 
-    // Find the door the player is currently close to (if any) so we can
-    // swap its sprite to the open texture and show the prompt.
     const near = playerOnGround
       ? ExecutiveSuiteScene.DOORS.find((d) => Math.abs(px - d.x) < 60)
       : undefined;
@@ -405,6 +593,28 @@ export class ExecutiveSuiteScene extends LevelScene {
     ).setVisible(true);
     if (this.inputs.justPressed('Interact')) {
       this.enterSuiteRoom(near);
+    }
+  }
+
+  private firePistol(): void {
+    if (!this.pistolGroup) return;
+    const toRight = !this.player.sprite.flipX;
+    const bullet = new PistolProjectile(
+      this,
+      this.player.sprite.x + (toRight ? 20 : -20),
+      this.player.sprite.y - 10,
+      toRight,
+    );
+    this.pistolGroup.add(bullet);
+    eventBus.emit('sfx:pistol_shot');
+    if (this.commander && !this.commander.defeated) {
+      this.physics.add.overlap(bullet, this.commander, () => {
+        if (!this.commander || this.commander.defeated) return;
+        this.commander.defeat();
+        this.rescueState.commanderDefeated = true;
+        bullet.destroySelf();
+        this.checkSanctumUnlock();
+      });
     }
   }
 

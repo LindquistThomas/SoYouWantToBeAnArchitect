@@ -26,6 +26,7 @@ import {
   generateItemPickupSound,
   generateBombDisarmSound,
   generateHostageFreedSound,
+  generatePistolShotSound,
 } from './sounds/boss';
 
 /**
@@ -66,6 +67,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'item_pickup',     generateItemPickupSound());
   loadWav(scene, 'bomb_disarm',     generateBombDisarmSound());
   loadWav(scene, 'hostage_freed',   generateHostageFreedSound());
+  loadWav(scene, 'pistol_shot',     generatePistolShotSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';

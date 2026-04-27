@@ -147,3 +147,18 @@ export function generateHostageFreedSound(): ArrayBuffer {
   }
   return encodeWAV(samples, SAMPLE_RATE);
 }
+
+/** Short sharp crack — pistol shot. */
+export function generatePistolShotSound(): ArrayBuffer {
+  const duration = 0.12;
+  const n = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const noise = (Math.random() * 2 - 1);
+    const tone = Math.sin(2 * Math.PI * 1200 * (i / SAMPLE_RATE));
+    const env = Math.exp(-t * 18);
+    samples[i] = (noise * 0.6 + tone * 0.4) * env * 0.4;
+  }
+  return encodeWAV(samples, SAMPLE_RATE);
+}

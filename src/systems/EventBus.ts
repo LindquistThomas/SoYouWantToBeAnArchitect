@@ -96,6 +96,8 @@ export interface GameEvents {
   'sfx:bomb_disarm': [];
   /** Triumphant brass hit when leadership is freed. */
   'sfx:hostage_freed': [];
+  /** Short sharp crack — pistol shot. */
+  'sfx:pistol_shot': [];
 
   // ---- Boss lifecycle events ----
   /** CEO boss has been defeated — carry the victory state to the scene. */

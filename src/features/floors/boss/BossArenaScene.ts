@@ -206,6 +206,11 @@ export class BossArenaScene extends Phaser.Scene {
 
     this.boss.on('throwBriefcase', (playerX: number) => this.spawnBriefcase(playerX));
     this.boss.on('defeatDialogue', () => this.showDefeatDialogue());
+    this.boss.on('bossBarrage', () => {
+      for (const offsetY of [-30, 0, 30]) {
+        this.spawnBriefcase(this.player.sprite.x, offsetY);
+      }
+    });
   }
 
   private buildUI(): void {
@@ -314,20 +319,23 @@ export class BossArenaScene extends Phaser.Scene {
       this.boss,
       () => {
         if (!this.boss.defeated) {
-          this.boss.takeDamage();
+          const hit = this.boss.takeDamage();
           this.healthBar.update(this.boss.currentHp);
+          if (!hit && this.boss.currentHp <= 1) {
+            this.showToast('Answer a challenge first!');
+          }
         }
         mug.destroySelf();
       },
     );
   }
 
-  private spawnBriefcase(playerX: number): void {
+  private spawnBriefcase(playerX: number, yOffset = 0): void {
     const toRight = playerX > this.boss.x;
     const bc = new BriefcaseProjectile(
       this,
       this.boss.x + (toRight ? 30 : -30),
-      this.boss.y,
+      this.boss.y + yOffset,
       toRight,
     );
     this.briefcaseGroup.add(bc);
@@ -423,12 +431,23 @@ export class BossArenaScene extends Phaser.Scene {
       backgroundColor: '#0a0a1a', padding: { x: 12, y: 6 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(80);
 
+    const phaseBefore = this.boss.phase;
     if (correct) {
       this.boss.onCorrectAnswer();
       this.healthBar.update(this.boss.currentHp);
+      if (phaseBefore === 2) {
+        this.showToast('Briefcases disabled for 10s!', '#44ff88', GAME_HEIGHT / 2 + 20, 200);
+      } else if (phaseBefore === 3) {
+        this.showToast('Boss stunned! Attack now!', '#44ff88', GAME_HEIGHT / 2 + 20, 200);
+      }
     } else {
       this.boss.onWrongAnswer();
       this.healthBar.update(this.boss.currentHp);
+      if (phaseBefore === 2) {
+        this.showToast('Rage mode! Faster briefcases!', '#ff8844', GAME_HEIGHT / 2 + 20, 200);
+      } else if (phaseBefore === 3) {
+        this.showToast('BARRAGE!', '#ff8844', GAME_HEIGHT / 2 + 20, 200);
+      }
     }
 
     this.tweens.add({
@@ -438,6 +457,24 @@ export class BossArenaScene extends Phaser.Scene {
       duration: 2000,
       delay: 1200,
       onComplete: () => toast.destroy(),
+    });
+  }
+
+  private showToast(text: string, color = '#ff8844', y = GAME_HEIGHT / 2, delay = 0): void {
+    this.time.delayedCall(delay, () => {
+      const toast = this.add.text(GAME_WIDTH / 2, y, text, {
+        fontFamily: 'monospace', fontSize: '14px',
+        color,
+        backgroundColor: '#0a0a1a', padding: { x: 12, y: 6 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(80);
+      this.tweens.add({
+        targets: toast,
+        alpha: 0,
+        y: toast.y - 40,
+        duration: 2000,
+        delay: 1200,
+        onComplete: () => toast.destroy(),
+      });
     });
   }
 
