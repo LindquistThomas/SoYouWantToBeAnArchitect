@@ -159,6 +159,10 @@ export interface SeedSaveOptions {
  *
  * Pass `options` to tailor the seeded AU values — e.g. `{ totalAU: 0 }` for
  * tests that want to observe AU increasing from zero.
+ *
+ * Writes directly to `architect_slot1_v1` (the default active slot set by
+ * `BootScene`) so the save is immediately visible in `SaveSlotScene` without
+ * relying on the legacy-slot migration path.
  */
 export async function seedFullProgressSave(
   page: Page,
@@ -173,9 +177,12 @@ export async function seedFullProgressSave(
       unlockedFloors: [0, 1],
       currentFloor: 0,
       collectedTokens: { 0: [], 1: [] },
+      // Mark onboarding complete so WelcomeModal doesn't block keyboard input
+      // in tests that interact with the ElevatorScene or floor scenes.
+      onboardingComplete: true,
     };
     try {
-      window.localStorage.setItem('architect_default_v1', JSON.stringify(save));
+      window.localStorage.setItem('architect_slot1_v1', JSON.stringify(save));
       window.localStorage.setItem(
         'architect_info_seen_v1',
         JSON.stringify(['architecture-elevator']),
@@ -184,6 +191,22 @@ export async function seedFullProgressSave(
       /* localStorage blocked — ignore */
     }
   }, { totalAU, floorAU });
+}
+
+/**
+ * Navigate from `MenuScene` through the `SaveSlotScene` slot picker to
+ * `ElevatorScene`. This replaces the old single-Enter pattern which
+ * worked when `MenuScene` started the elevator directly; now there is an
+ * intermediate slot-picker step.
+ *
+ * Assumes the caller has already waited for `MenuScene` to be active.
+ * Selects slot 1 (the first / default slot) via Enter.
+ */
+export async function navigateToElevator(page: Page): Promise<void> {
+  await page.keyboard.press('Enter');
+  await waitForScene(page, 'SaveSlotScene');
+  await page.keyboard.press('Enter');
+  await waitForScene(page, 'ElevatorScene');
 }
 
 /**

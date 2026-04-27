@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForGame,
   waitForScene,
@@ -28,10 +29,7 @@ test.describe('Token collection', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Continue (seeded save present).
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -87,8 +85,8 @@ test.describe('Token collection', () => {
     await page.waitForTimeout(150);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/08-token-collected.png` });
 
-    // Persistence: the collected index made it into localStorage.
-    const saved = await page.evaluate(() => window.localStorage.getItem('architect_default_v1'));
+    // Persistence: the collected index made it into localStorage (slot1).
+    const saved = await page.evaluate(() => window.localStorage.getItem('architect_slot1_v1'));
     expect(saved).toBeTruthy();
     const parsed = JSON.parse(saved!) as {
       totalAU: number;

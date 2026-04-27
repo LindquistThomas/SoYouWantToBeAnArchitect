@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForDialogOpen,
   waitForGame,
@@ -58,8 +59,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Jump directly into floor 1 via the same private method the cab uses.
     await page.evaluate(() => {

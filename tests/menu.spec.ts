@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForGame,
   waitForScene,
@@ -33,10 +34,7 @@ test.describe('Menu scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Down + Enter selects the Continue button (Start Game is the default).
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     errors.assertClean();
   });

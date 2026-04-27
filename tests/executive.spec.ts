@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForDialogOpen,
   waitForGame,
@@ -31,8 +32,7 @@ test.describe('Executive Suite — Geir Harald', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -95,8 +95,7 @@ test.describe('Executive Suite — Geir Harald', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Force cab docked at F4 with the player standing on it and verify that
     // the active content zone is the elevator's own info card — Geir is
@@ -134,8 +133,7 @@ test.describe('Executive Suite — Geir Harald', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Teleport the player into Geir's walkway rect on F4 — off the cab,
     // standing on the F4 walking surface — and verify (a) the active zone
@@ -185,8 +183,7 @@ test.describe('Executive Suite — Geir Harald', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;

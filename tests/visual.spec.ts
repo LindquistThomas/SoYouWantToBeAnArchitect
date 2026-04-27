@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForGame,
   waitForScene,
@@ -50,17 +51,17 @@ test.describe('Visual regression (static UI)', () => {
         unlockedFloors: [0, 1],
         currentFloor: 0,
         collectedTokens: { 0: [], 1: [] },
+        onboardingComplete: true,
       };
       try {
-        window.localStorage.setItem('architect_default_v1', JSON.stringify(save));
+        window.localStorage.setItem('architect_slot1_v1', JSON.stringify(save));
       } catch { /* noop */ }
     });
 
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await expect(page).toHaveScreenshot('hud-elevator.png', {
       ...SNAPSHOT_OPTS,
@@ -77,8 +78,7 @@ test.describe('Visual regression (static UI)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;
@@ -113,8 +113,7 @@ test.describe('Visual regression (static UI)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // DialogController.openQuiz is private; reach it by bracket notation at
     // runtime. Calling it directly (no info dialog open first) bypasses the
@@ -151,8 +150,7 @@ test.describe('Visual regression (static UI)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // Emit persistence:failed via the test-hooks eventBus so the HUD shows the toast.
     // The cast uses the concrete payload shape for 'persistence:failed' — browser context
@@ -249,9 +247,10 @@ test.describe('Visual regression (floor layouts)', () => {
         unlockedFloors: [0, 1, 3, 4, 5],
         currentFloor: 0,
         collectedTokens: { 0: [], 1: [], 3: [], 4: [], 5: [] },
+        onboardingComplete: true,
       };
       try {
-        window.localStorage.setItem('architect_default_v1', JSON.stringify(save));
+        window.localStorage.setItem('architect_slot1_v1', JSON.stringify(save));
         window.localStorage.setItem(
           'architect_info_seen_v1',
           JSON.stringify(['architecture-elevator']),
@@ -268,8 +267,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     await navigateToFloor(page, 1, 'PlatformTeamScene', 'left');
 
     await expect(page).toHaveScreenshot('floor-1-platform-team.png', FLOOR_SNAPSHOT_OPTS);
@@ -282,8 +280,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     await navigateToFloor(page, 1, 'ArchitectureTeamScene', 'right');
 
     await expect(page).toHaveScreenshot('floor-1-architecture-team.png', FLOOR_SNAPSHOT_OPTS);
@@ -296,8 +293,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     await navigateToFloor(page, 3, 'ProductLeadershipScene', 'left');
 
     await expect(page).toHaveScreenshot('floor-3-product-leadership.png', FLOOR_SNAPSHOT_OPTS);
@@ -310,8 +306,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     await navigateToFloor(page, 3, 'CustomerSuccessScene', 'right');
 
     await expect(page).toHaveScreenshot('floor-3-customer-success.png', FLOOR_SNAPSHOT_OPTS);
@@ -324,8 +319,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     await navigateToFloor(page, 4, 'ExecutiveSuiteScene', 'left');
 
     await expect(page).toHaveScreenshot('floor-4-executive-suite.png', FLOOR_SNAPSHOT_OPTS);
@@ -338,8 +332,7 @@ test.describe('Visual regression (floor layouts)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
     // First enter the Executive Suite (the parent floor that hosts the Finance door)
     await navigateToFloor(page, 4, 'ExecutiveSuiteScene', 'left');
     // Then start FinanceTeamScene directly — mirrors the in-game door transition

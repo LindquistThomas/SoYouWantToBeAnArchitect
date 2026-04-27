@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForDialogClosed,
   waitForDialogOpen,
@@ -30,8 +31,7 @@ test.describe('Floor 1 (Platform Team)', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.evaluate(() => {
       const g = window.__game!;

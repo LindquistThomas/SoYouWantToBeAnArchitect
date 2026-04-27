@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   seedFullProgressSave,
   waitForGame,
   waitForScene,
@@ -17,15 +18,14 @@ test.describe('Onboarding flow', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Start a new game (no save → fresh state).
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    // Start a new game (no save → fresh state) through the slot picker.
+    await navigateToElevator(page);
 
     // On a fresh save the welcome modal should appear; onboardingComplete is
     // not yet set in localStorage at this point.
     const beforeConfirm = await page.evaluate(() => {
       try {
-        const raw = window.localStorage.getItem('architect_default_v1');
+        const raw = window.localStorage.getItem('architect_slot1_v1');
         if (!raw) return null;
         return JSON.parse(raw) as { onboardingComplete?: boolean };
       } catch { return null; }
@@ -40,7 +40,7 @@ test.describe('Onboarding flow', () => {
     // After confirming, onboardingComplete should be persisted as true.
     await page.waitForFunction(() => {
       try {
-        const raw = window.localStorage.getItem('architect_default_v1');
+        const raw = window.localStorage.getItem('architect_slot1_v1');
         if (!raw) return false;
         const data = JSON.parse(raw) as { onboardingComplete?: boolean };
         return data.onboardingComplete === true;
@@ -52,7 +52,7 @@ test.describe('Onboarding flow', () => {
   });
 
   test('second load (existing save with onboardingComplete=true) skips tutorial', async ({ page }) => {
-    // Seed a save with onboardingComplete already set.
+    // Seed a save with onboardingComplete already set directly into slot1.
     await page.addInitScript(() => {
       try {
         const save = {
@@ -63,7 +63,7 @@ test.describe('Onboarding flow', () => {
           collectedTokens: { 0: [], 1: [] },
           onboardingComplete: true,
         };
-        window.localStorage.setItem('architect_default_v1', JSON.stringify(save));
+        window.localStorage.setItem('architect_slot1_v1', JSON.stringify(save));
         window.localStorage.setItem('architect_info_seen_v1', JSON.stringify(['welcome-board']));
       } catch { /* noop */ }
     });
@@ -73,15 +73,13 @@ test.describe('Onboarding flow', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    // Load existing save: index 0 is [ START GAME ], [ CONTINUE ] is index 1.
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    // Navigate through the slot picker to ElevatorScene (slot 1 has the save).
+    await navigateToElevator(page);
 
     // onboardingComplete is true — no welcome modal should have reset it.
     const afterLoad = await page.evaluate(() => {
       try {
-        const raw = window.localStorage.getItem('architect_default_v1');
+        const raw = window.localStorage.getItem('architect_slot1_v1');
         if (!raw) return null;
         return JSON.parse(raw) as { onboardingComplete?: boolean };
       } catch { return null; }
@@ -92,17 +90,8 @@ test.describe('Onboarding flow', () => {
   });
 
   test('Settings scene has a Replay Tutorial button that resets onboarding', async ({ page }) => {
+    // seedFullProgressSave writes to architect_slot1_v1 with onboardingComplete:true.
     await seedFullProgressSave(page);
-    // Mark onboarding as complete so it's already set.
-    await page.addInitScript(() => {
-      try {
-        const raw = window.localStorage.getItem('architect_default_v1');
-        if (!raw) return;
-        const data = JSON.parse(raw) as Record<string, unknown>;
-        data['onboardingComplete'] = true;
-        window.localStorage.setItem('architect_default_v1', JSON.stringify(data));
-      } catch { /* noop */ }
-    });
     const errors = attachErrorWatchers(page);
 
     await page.goto('/');
@@ -121,10 +110,10 @@ test.describe('Onboarding flow', () => {
     // Should return to MenuScene.
     await waitForScene(page, 'MenuScene');
 
-    // onboardingComplete should now be false in localStorage.
+    // onboardingComplete should now be false in localStorage (slot1).
     const afterReset = await page.evaluate(() => {
       try {
-        const raw = window.localStorage.getItem('architect_default_v1');
+        const raw = window.localStorage.getItem('architect_slot1_v1');
         if (!raw) return null;
         return JSON.parse(raw) as { onboardingComplete?: boolean };
       } catch { return null; }

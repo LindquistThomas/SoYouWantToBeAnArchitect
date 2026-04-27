@@ -3,6 +3,7 @@ import {
   SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
+  navigateToElevator,
   waitForGame,
   waitForScene,
 } from './helpers/playwright';
@@ -29,8 +30,7 @@ test.describe('Elevator scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/02-elevator-lobby.png` });
     errors.assertClean();
@@ -43,8 +43,7 @@ test.describe('Elevator scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     // The DialogController lives at `scene.dialogs` (private in TS, reachable
     // via bracket notation at runtime). Opening through it exercises the same
@@ -95,8 +94,7 @@ test.describe('Elevator scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
+    await navigateToElevator(page);
 
     const result = await page.evaluate(() => {
       type Bounds = { left: number; right: number; top: number; bottom: number };
