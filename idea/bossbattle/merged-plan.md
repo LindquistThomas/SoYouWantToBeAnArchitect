@@ -304,9 +304,18 @@ Knowledge prompts are **scene-local** (not in the shared quiz system) — they'r
 - Delivery speed vs governance
 - Standardization vs local optimization
 
-### Resolution ⚠️ CONFLICT — SEE BELOW
+### Resolution — Respectful Knowledge Handoff
 
-→ See **Conflict 1** in the Conflicts section.
+When HP drops to 0, `CEOBoss.triggerDefeat()` fires instead of a death animation:
+
+1. AI pauses. Boss plays stagger tween → straightens up → laughs.
+2. `boss:dialogue` event fires → `BossArenaScene` shows a 2–3 line dialogue panel.
+3. Boss acknowledges player's judgment, shares final architectural wisdom, ends with **"We'll manage this together."**
+4. Dialogue closes → `boss:defeated` fires.
+5. `VictoryOverlay` shows: major AU grant + `boss-defeated` achievement toast.
+6. Boss sprite fades out (no death). Scene returns to elevator after 3s.
+
+**Knowledge gate:** Boss HP cannot drop below 1 unless `phasePromptsAnsweredCorrectly > 0` for the current phase. Players who skip all prompts stay stuck at HP 1 and receive a toast: "You need to answer a challenge first!"
 
 ### CEO Fight Achievements
 
@@ -466,63 +475,46 @@ Ship **F4 Hostage Rescue** and **CEO Showdown** as separate PRs / milestones.
 
 ---
 
-## ⚠️ CONFLICTS — Decisions Needed
+## Design Decisions (Resolved)
 
-### Conflict 1: CEO Boss Defeat Resolution
+### Decision 1: CEO Boss Defeat Resolution → **Respectful Knowledge Handoff**
 
-The sources disagree on how the CEO boss fight **ends**.
+HP reaches 0 **triggers** the ending, but the boss does not collapse into a cartoon death.
 
-**Option A — Standard Boss Kill** (from `implementation-plan.md`):
-- HP reaches 0 → death animation → `boss:defeated` → `destroy()`.
-- `VictoryOverlay` → return to elevator after 3s.
-- Straightforward, matches platformer conventions.
+**Sequence:**
+1. Final mug hit drops HP to 0.
+2. Boss staggers, then straightens up — laughs.
+3. Short dialogue sequence (2–3 lines): he acknowledges the player's judgment, shares one final piece of architectural wisdom, ends with a last "We'll manage this together."
+4. `boss:defeated` event fires after dialogue closes.
+5. `VictoryOverlay` shows: major AU grant + `boss-defeated` achievement toast.
+6. Boss sprite fades out (no death animation) — scene returns to elevator after 3s.
 
-**Option B — Respectful Knowledge Handoff** (from `plan.md`):
-- Boss does not collapse into cartoon defeat.
-- Boss laughs, accepts the result, shares a final line of respect.
-- Turns the fight into a knowledge handoff / "architect approval" moment.
-- Reward: major AU grant + achievement + symbolic approval.
-- More unique, fits the "not a villain" characterization.
-
-**Recommendation**: Option B is more distinctive and aligns with the Knowledge Cowboy personality. Can still use HP-to-zero as the *trigger* but play a respectful cutscene instead of a death animation.
+**Implementation note:** `CEOBoss.triggerDefeat()` pauses AI, plays the stagger-then-steady tween, emits a `'boss:dialogue'` event that `BossArenaScene` handles to show the dialogue panel, then emits `boss:defeated` on close. The `destroy()` call moves to after the dialogue close callback.
 
 ---
 
-### Conflict 2: CEO Fight Mechanic Balance — Quiz vs Action Weight
+### Decision 2: CEO Fight Mechanic Balance → **Hybrid (action + knowledge)**
 
-The sources have different emphases on how much of the CEO fight is action vs knowledge.
+Both mug throws and architecture quiz prompts are required to win.
 
-**Option A — Action-Primary** (from `implementation-plan.md`):
-- 90% action. Throw mugs, dodge briefcases, 3 HP-based phases.
-- No architecture quiz prompts.
-- Simpler to build. Pure platformer energy.
+**Mechanic contract:**
+- **Mug throws deal HP damage** (direct action damage).
+- **Correct quiz answers disable hazards** and grant a temporary stun window (5s free mug throws).
+- **Wrong quiz answers restore 1 HP** and spawn an extra hazard (briefcase barrage or shockwave).
+- **Knowledge gate on the final blow:** the boss can only be reduced below 1 HP if the player has answered at least one prompt correctly in the current phase. A missed-all-prompts player stays stuck at HP 1 until they get a prompt right.
 
-**Option B — Knowledge-Primary** (from `plan.md`):
-- Quiz prompts are the *main* damage source. Correct answers weaken boss, wrong answers strengthen.
-- Action is mostly "survive while waiting for the next prompt."
-- Fits the "knowledge architect" fantasy best but risks losing platformer energy.
+**Why hybrid over pure action:** Pure action undersells the "knowledge architect" fantasy that is central to both source documents. Pure knowledge risks losing Phaser platformer energy. The hybrid ensures both skill types matter without either dominating.
 
-**Option C — Hybrid (Recommended)** (synthesized from both):
-- Both mechanics matter. Mugs deal damage (action), quiz answers deal bonus damage / disable hazards (knowledge).
-- Alternating action windows and knowledge windows per phase (as detailed in this plan).
-- Boss can only be *finished* if player has answered enough prompts correctly (knowledge gate on final blow).
-- Best of both worlds but most complex to build.
-
-**Recommendation**: Start with Option A (pure action) to prove the loop is fun, then layer in Option C (hybrid) as a second pass. The architecture is designed to support both.
+**Implementation note:** `CEOBoss` tracks `phasePromptsAnsweredCorrectly: number`. `BossArenaScene` checks this flag before calling `boss.takeDamage()` — if HP would drop to 0 and `phasePromptsAnsweredCorrectly === 0`, the hit clamps to HP 1 and a "You need to answer a challenge first!" toast fires. The quiz panel is a scene-local Phaser container (not the shared `QuizDialog`) to keep boss prompt pacing independent of the global quiz system.
 
 ---
 
-### Conflict 3: F4 Pistol vs CEO Mug — Attack Action Semantics
+### Decision 3: Attack Action Semantics → **Unified `Attack` (K.X)**
 
-Both encounters introduce ranged attacks but with different weapons.
+Single `Attack` GameAction (K.X) across both encounters. Scene determines projectile type:
+- F4 Executive Suite: fires `PistolProjectile` if `rescueState.collected.has('pistol')`.
+- CEO Showdown arena: throws `CoffeeMugProjectile` if `mugCount > 0`.
 
-**Option A — Unified Attack Action**:
-- Single `Attack` GameAction (K.X).
-- F4: fires pistol (if collected). CEO fight: throws mug (if in inventory).
-- Scene determines which projectile to spawn.
+**Why unified:** The player is always doing the same gesture — "throw/fire what I'm holding." Separate bindings would add cognitive load for no gain. Projectile identity is a scene concern, not an input concern.
 
-**Option B — Separate Actions**:
-- `Shoot` for F4 pistol, `Throw` for CEO mugs.
-- More explicit but adds input complexity.
-
-**Recommendation**: Option A — one `Attack` action, scene-contextual behavior. Simpler for the player. The projectile type is a scene concern, not an input concern.
+**Implementation note:** `InputService` exposes `isJustDown('Attack')`. Both scenes check this in their `update()` loop and branch on their local inventory state. No shared projectile base class is needed.
