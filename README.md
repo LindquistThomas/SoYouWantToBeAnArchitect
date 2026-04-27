@@ -35,6 +35,19 @@ Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (
 | 4 | Executive Suite | Penthouse — Strategy AU. |
 | 5 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
 
+## Bundle size budget
+
+The CI `size-budget` job (`npm run size`) runs `scripts/check-size.cjs` after every build and fails if any of these limits are exceeded:
+
+| Asset | Limit | Rationale |
+|-------|-------|-----------|
+| `dist/assets/index-*.js` (app chunk, gzipped) | 150 KB | App logic; well under today's size. |
+| `dist/assets/phaser-*.js` (engine chunk, gzipped) | 400 KB | Phaser 3.90 gzips to ~330 KB; guards against accidental engine duplication. |
+| Total `dist/` excluding `dist/music/**` (gzipped) | 700 KB | JS + HTML payload, minus streamed audio. |
+| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 2 MB | First-load audio; currently ~830 KB. |
+
+If a PR genuinely needs more weight, raise the appropriate limit in `scripts/check-size.cjs` with a comment explaining why.
+
 ## Development
 
 ```bash
