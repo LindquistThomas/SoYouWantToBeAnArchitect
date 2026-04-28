@@ -102,6 +102,7 @@ describe('BriefcaseProjectile', () => {
 
     expect(body.velocity.x).toBe(250);
     expect(body.setAllowGravity).toHaveBeenCalledWith(false);
+    expect(body.setCollideWorldBounds).toHaveBeenCalledWith(true);
     expect(body.setSize).toHaveBeenCalledWith(22, 14);
   });
 

@@ -16,7 +16,7 @@ export class BriefcaseProjectile extends Phaser.Physics.Arcade.Sprite {
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
-    body.setCollideWorldBounds(false);
+    body.setCollideWorldBounds(true);
     body.onWorldBounds = true;
     body.setSize(22, 14);
     body.setVelocityX(towardRight ? 250 : -250);

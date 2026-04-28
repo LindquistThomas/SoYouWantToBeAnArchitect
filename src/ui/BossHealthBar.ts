@@ -10,6 +10,7 @@ export class BossHealthBar {
   private readonly container: Phaser.GameObjects.Container;
   private readonly barGfx: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
+  private readonly bossLabel: string;
   private readonly maxHp: number;
   private lastHp: number;
 
@@ -19,18 +20,21 @@ export class BossHealthBar {
   private static readonly Y = 24;
 
   constructor(scene: Phaser.Scene, label: string, maxHp: number) {
+    this.bossLabel = label;
     this.maxHp = maxHp;
     this.lastHp = maxHp;
 
-    this.barGfx = scene.add.graphics().setScrollFactor(0).setDepth(60);
-    this.label = scene.add.text(BossHealthBar.X, BossHealthBar.Y - 16, label, {
+    this.barGfx = scene.add.graphics();
+    this.label = scene.add.text(0, -8, label, {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#ffd700',
       fontStyle: 'bold',
-    }).setOrigin(0.5, 1).setScrollFactor(0).setDepth(60);
+    }).setOrigin(0.5, 1);
 
-    this.container = scene.add.container(0, 0, [this.barGfx, this.label]).setScrollFactor(0).setDepth(60);
+    this.container = scene.add.container(BossHealthBar.X, BossHealthBar.Y, [this.barGfx, this.label])
+      .setScrollFactor(0)
+      .setDepth(60);
 
     this.draw(maxHp);
   }
@@ -46,11 +50,10 @@ export class BossHealthBar {
   private draw(hp: number): void {
     const g = this.barGfx;
     g.clear();
-    const cx = BossHealthBar.X;
-    const y = BossHealthBar.Y;
+    const y = 0;
     const w = BossHealthBar.BAR_W;
     const h = BossHealthBar.BAR_H;
-    const x = cx - w / 2;
+    const x = -w / 2;
 
     // Background track
     g.fillStyle(0x1a1a1a, 0.85);
@@ -67,25 +70,21 @@ export class BossHealthBar {
     g.strokeRoundedRect(x - 2, y - 2, w + 4, h + 4, 4);
 
     // HP text
-    this.label.setText(`${hp} / ${this.maxHp}`);
+    this.label.setText(`${this.bossLabel}: ${hp} / ${this.maxHp}`);
   }
 
   private shake(): void {
     const scene = this.barGfx.scene;
-    const origX = BossHealthBar.X;
     scene.tweens.add({
-      targets: this.barGfx,
-      x: origX + 4,
+      targets: this.container,
+      x: '+=4',
       duration: 40,
       yoyo: true,
       repeat: 2,
-      onComplete: () => this.barGfx.setX(0),
     });
   }
 
   destroy(): void {
     this.container.destroy();
-    this.barGfx.destroy();
-    this.label.destroy();
   }
 }

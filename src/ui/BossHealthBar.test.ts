@@ -140,14 +140,14 @@ describe('BossHealthBar', () => {
     expect(clearCallsAfter).toBe(clearCallsBefore);
   });
 
-  it('update() updates the label text to show new HP', () => {
+  it('update() updates the label text to show boss name and HP', () => {
     const scene = makeScene();
     const bar = new BossHealthBar(scene as unknown as Phaser.Scene, 'Boss', 10);
 
     bar.update(5);
 
     const label = scene._texts[0]!;
-    expect(label.setText).toHaveBeenCalledWith('5 / 10');
+    expect(label.setText).toHaveBeenCalledWith('Boss: 5 / 10');
   });
 
   it('draw() uses gold fill when HP > 70%', () => {
@@ -180,14 +180,14 @@ describe('BossHealthBar', () => {
     expect(redCall).toBeTruthy();
   });
 
-  it('destroy() destroys container, graphics, and label', () => {
+  it('destroy() destroys the container', () => {
     const scene = makeScene();
     const bar = new BossHealthBar(scene as unknown as Phaser.Scene, 'Boss', 10);
 
     bar.destroy();
 
     expect(scene._containers[0]!.destroy).toHaveBeenCalled();
-    expect(scene._graphics[0]!.destroy).toHaveBeenCalled();
-    expect(scene._texts[0]!.destroy).toHaveBeenCalled();
+    expect(scene._graphics[0]!.destroy).not.toHaveBeenCalled();
+    expect(scene._texts[0]!.destroy).not.toHaveBeenCalled();
   });
 });
