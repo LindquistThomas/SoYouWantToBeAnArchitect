@@ -84,8 +84,11 @@ export class ElevatorScene extends Phaser.Scene {
    * much of the shaft bottom is visible when the camera clamps at the lobby.
    */
   private static readonly PIT_DEPTH = 96;
+  private static readonly SPAWN_OFFSET = 56;
   /** How close the player must stand to a shaft-side call button to use it. */
   private static readonly CALL_BUTTON_RADIUS = 54;
+  private static readonly CALL_BUTTON_RADIUS_SQ =
+    ElevatorScene.CALL_BUTTON_RADIUS * ElevatorScene.CALL_BUTTON_RADIUS;
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -243,30 +246,31 @@ export class ElevatorScene extends Phaser.Scene {
    *   - otherwise                       → lobby default
    */
   private resolveInitialSpawn(positions: Record<FloorId, number>): { x: number; y: number } {
-    const SPAWN_OFFSET = 56;
     if (this.spawnAtProductDoor) {
       const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
       const door = ProductDoorManager.doors.find((d) => d.contentId === this.spawnAtProductDoor);
       if (door) {
-        return { x: door.x, y: productsWalkY - SPAWN_OFFSET };
+        return { x: door.x, y: productsWalkY - ElevatorScene.SPAWN_OFFSET };
       }
     }
     if (this.spawnAtFloor !== undefined && this.spawnAtFloor !== FLOORS.LOBBY) {
       const walkY = positions[this.spawnAtFloor] + ElevatorScene.FLOOR_H;
-      const cx = GAME_WIDTH / 2;
-      const sw = ElevatorScene.SHAFT_WIDTH;
-      const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
-      return { x, y: walkY - SPAWN_OFFSET };
+      return this.resolveShaftSideSpawn(walkY, this.spawnAtFloorSide);
     }
     const currentFloor = this.progression.getCurrentFloor();
     if (currentFloor !== FLOORS.LOBBY && positions[currentFloor] !== undefined) {
       const walkY = positions[currentFloor] + ElevatorScene.FLOOR_H;
-      const cx = GAME_WIDTH / 2;
-      const sw = ElevatorScene.SHAFT_WIDTH;
-      return { x: cx - sw / 2 - 60, y: walkY - SPAWN_OFFSET };
+      return this.resolveShaftSideSpawn(walkY, 'left');
     }
     const lobbyY = positions[FLOORS.LOBBY];
-    return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
+    return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - ElevatorScene.SPAWN_OFFSET };
+  }
+
+  private resolveShaftSideSpawn(walkY: number, side: 'left' | 'right'): { x: number; y: number } {
+    const cx = GAME_WIDTH / 2;
+    const sw = ElevatorScene.SHAFT_WIDTH;
+    const x = side === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
+    return { x, y: walkY - ElevatorScene.SPAWN_OFFSET };
   }
 
   /* ---- elevator ---- */
@@ -326,7 +330,8 @@ export class ElevatorScene extends Phaser.Scene {
     ];
 
     for (const [floorIdText, floorY] of Object.entries(positions)) {
-      const floorId = Number(floorIdText) as FloorId;
+      const floorId = Number(floorIdText);
+      if (!ElevatorScene.isFloorId(floorId)) continue;
       const y = floorY + ElevatorScene.FLOOR_H - 88;
       for (const { side, x } of sides) {
         const container = this.add.container(x, y).setDepth(4);
@@ -361,16 +366,22 @@ export class ElevatorScene extends Phaser.Scene {
     if (this.elevatorCtrl.isOnElevator) return undefined;
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
-    return this.floorCallButtons.find((button) =>
-      this.progression.isFloorUnlocked(button.floorId)
-      && Phaser.Math.Distance.Between(px, py, button.x, button.y) <= ElevatorScene.CALL_BUTTON_RADIUS,
-    );
+    return this.floorCallButtons.find((button) => {
+      const dx = px - button.x;
+      const dy = py - button.y;
+      return this.progression.isFloorUnlocked(button.floorId)
+        && dx * dx + dy * dy <= ElevatorScene.CALL_BUTTON_RADIUS_SQ;
+    });
   }
 
   private updateFloorCallButtonPrompts(activeButton?: FloorCallButton): void {
     for (const button of this.floorCallButtons) {
       button.prompt.setVisible(button === activeButton);
     }
+  }
+
+  private static isFloorId(value: number): value is FloorId {
+    return (Object.values(FLOORS) as number[]).includes(value);
   }
 
   /* ---- helpers ---- */
