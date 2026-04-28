@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -217,6 +218,140 @@ test.describe('Executive Suite — Geir Harald', () => {
     expect(joined).toContain('Geir Harald');
     expect(joined).toContain('OKR 1:');
     expect(joined).toContain('OKR 5:');
+
+    errors.assertClean();
+  });
+});
+
+/**
+ * Executive Suite — Hostage Rescue (Die Hard mode) — E2E happy path.
+ *
+ * Exercises the full rescue state machine introduced in #242:
+ *   1. All three mission items collected (pistol, keycard, bomb_code).
+ *   2. TerroristCommander defeated (requires pistol).
+ *   3. Bomb disarmed.
+ *   4. Inner sanctum opened and rescue dialog shown.
+ *
+ * We drive the scene's state directly via `page.evaluate` rather than
+ * simulating keyboard input.  This mirrors the approach used by the
+ * existing floor / dialog specs and stays deterministic under CPU
+ * pressure on CI runners.
+ */
+test.describe('Executive Suite — Hostage Rescue', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearStorage(page);
+    // totalAU: 50 matches what the Geir Harald tests use.  enterFloor(4)
+    // bypasses the AU gate, so the exact value doesn't matter here.
+    await seedFullProgressSave(page, { totalAU: 50 });
+  });
+
+  test('happy path: collect all items, defeat commander, disarm bomb, free leadership', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await navigateToElevator(page);
+
+    // Enter the Executive Suite (floor 4) using the same private method
+    // that the elevator cab uses when the player walks off.
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      (scene['enterFloor'] as (id: number) => void)(4);
+    });
+    await waitForScene(page, 'ExecutiveSuiteScene');
+
+    // ── Step 1: Collect all three mission items ───────────────────────────
+    // Call collect() directly on each MissionItem — the same method the
+    // physics overlap callback invokes when the player touches the sprite.
+    const itemCount = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as {
+          missionItems: Array<{ collect: () => void }>;
+        };
+      if (!scene.missionItems?.length) throw new Error('missionItems not found');
+      scene.missionItems.forEach((item) => item.collect());
+      return scene.missionItems.length;
+    });
+    expect(itemCount).toBe(3);
+
+    // Confirm all three IDs are now in rescueState.collected.
+    const allCollected = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as {
+          rescueState: { collected: { has: (id: string) => boolean } };
+        };
+      return (
+        scene.rescueState.collected.has('pistol') &&
+        scene.rescueState.collected.has('keycard') &&
+        scene.rescueState.collected.has('bomb_code')
+      );
+    });
+    expect(allCollected).toBe(true);
+
+    // ── Step 2: Defeat the TerroristCommander ────────────────────────────
+    // onCommanderOverlap() checks rescueState.collected.has('pistol') before
+    // calling commander.defeat(), so calling it after step 1 is correct.
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as Record<string, unknown>;
+      (scene['onCommanderOverlap'] as () => void)();
+    });
+
+    const commanderDefeated = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as {
+          rescueState: { commanderDefeated: boolean };
+        };
+      return scene.rescueState.commanderDefeated;
+    });
+    expect(commanderDefeated).toBe(true);
+
+    // ── Step 3: Disarm the bomb ───────────────────────────────────────────
+    // Set the bomb as disarmed and call checkSanctumUnlock() — this is what
+    // checkBombDisarm() does when the mini-game success accumulator reaches
+    // its threshold.  With all five conditions met (3 items + commander +
+    // bomb) the sanctum opens immediately.
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as Record<string, unknown>;
+      (scene['rescueState'] as { bombDisarmed: boolean }).bombDisarmed = true;
+      (scene['checkSanctumUnlock'] as () => void)();
+    });
+
+    // ── Step 4: Verify leadership freed and rescue dialog appears ─────────
+    const leadershipFreed = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ExecutiveSuiteScene') as unknown as {
+          rescueState: { leadershipFreed: boolean };
+        };
+      return scene.rescueState.leadershipFreed;
+    });
+    expect(leadershipFreed).toBe(true);
+
+    // openSanctum() opens the rescue dialog after a 600 ms delay.
+    await waitForDialogOpen(page, 'ExecutiveSuiteScene');
+
+    await page.screenshot({
+      path: `${SCREENSHOT_DIR}/executive-hostage-rescue-complete.png`,
+    });
 
     errors.assertClean();
   });
