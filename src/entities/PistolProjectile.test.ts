@@ -4,6 +4,7 @@ import type * as Phaser from 'phaser';
 type WorldListener = (body: unknown) => void;
 
 interface FakeWorld {
+  on: ReturnType<typeof vi.fn>;
   once: ReturnType<typeof vi.fn>;
   off: ReturnType<typeof vi.fn>;
   _emit: (event: string, arg: unknown) => void;
@@ -14,6 +15,11 @@ function makeWorld(): FakeWorld {
   const onceSet = new Set<WorldListener>();
 
   const world: FakeWorld = {
+    on: vi.fn((event: string, fn: WorldListener) => {
+      const list = listeners.get(event) ?? [];
+      list.push(fn);
+      listeners.set(event, list);
+    }),
     once: vi.fn((event: string, fn: WorldListener) => {
       onceSet.add(fn);
       const list = listeners.get(event) ?? [];
@@ -111,6 +117,7 @@ describe('PistolProjectile', () => {
 
     expect(body.velocity.x).toBe(500);
     expect(body.setAllowGravity).toHaveBeenCalledWith(false);
+    expect(scene.physics.world.on).toHaveBeenCalledWith('worldbounds', expect.any(Function));
   });
 
   it('launches left at -500 px/s when toRight = false', () => {

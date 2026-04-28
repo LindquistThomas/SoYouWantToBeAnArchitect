@@ -129,7 +129,7 @@ export class ExecutiveSuiteScene extends LevelScene {
       wordWrap: { width: W - 40 }, align: 'center',
     }).setOrigin(0.5, 0);
 
-    const hint = this.add.text(0, H / 2 - 18, 'Press Enter to continue', {
+    const hint = this.add.text(0, H / 2 - 18, `Press ${allKeyLabels('Interact')} to continue`, {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(0.5, 1);
 
@@ -137,17 +137,15 @@ export class ExecutiveSuiteScene extends LevelScene {
       .setDepth(90)
       .setScrollFactor(0);
 
-    const onEnter = (event: KeyboardEvent): void => {
-      if (event.key === 'Enter') {
-        window.removeEventListener('keydown', onEnter);
-        container.destroy();
-      }
+    const dismiss = (): void => {
+      this.inputs.off('Interact', dismiss);
+      container.destroy();
     };
-    window.addEventListener('keydown', onEnter);
+    this.inputs.on('Interact', dismiss);
 
     // Also clean up listener on scene shutdown
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      window.removeEventListener('keydown', onEnter);
+      this.inputs.off('Interact', dismiss);
     });
   }
 

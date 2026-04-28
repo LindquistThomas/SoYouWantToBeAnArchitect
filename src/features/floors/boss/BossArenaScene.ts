@@ -8,6 +8,7 @@ import { BossHealthBar } from '../../../ui/BossHealthBar';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
+import { allKeyLabels } from '../../../input';
 
 /** Architecture quiz prompts used during knowledge windows. */
 interface BossPrompt {
@@ -57,6 +58,9 @@ const DIALOGUES = [
   { lines: ['"Ha!"', '"You actually understand the trade-offs."', '"We\'ll manage this together."'] },
 ];
 
+const MUG_PICKUP_PLATFORM_OFFSET_Y = 16;
+const MUG_PLATFORM_HEIGHT_ABOVE_GROUND = 300;
+
 /**
  * Boss arena scene — CEO Showdown.
  *
@@ -85,6 +89,7 @@ export class BossArenaScene extends Phaser.Scene {
   /** Mug pickup platforms — each has a respawn timer. */
   private mugPlatforms: Array<{ x: number; y: number; count: number; respawnMs: number; elapsed: number }> = [];
   private mugCountText?: Phaser.GameObjects.Text;
+  private readonly maxMugsPerPlatform = 1;
 
   private promptActive = false;
   private promptPanel?: Phaser.GameObjects.Container;
@@ -120,6 +125,7 @@ export class BossArenaScene extends Phaser.Scene {
     this.spawnBoss();
     this.buildUI();
     this.wireColliders();
+    this.spawnInitialMugPickups();
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
     this.progression.markFloorVisited(FLOORS.BOSS);
@@ -149,16 +155,27 @@ export class BossArenaScene extends Phaser.Scene {
 
     // Boss dais — centre elevated platform
     this.addPlatformTile(GAME_WIDTH / 2 - 64, G - 200, 128, 16, 0x3a2a1a);
-    this.addPlatformTile(GAME_WIDTH / 2 - 64, G - 200, 128, 16, 0x3a2a1a); // registered for physics
 
     // Left + right mug platforms
-    this.addPlatformTile(160, G - 300, 96, 14, 0x2a1a0a);
-    this.addPlatformTile(GAME_WIDTH - 256, G - 300, 96, 14, 0x2a1a0a);
+    this.addPlatformTile(160, G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND, 96, 14, 0x2a1a0a);
+    this.addPlatformTile(GAME_WIDTH - 256, G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND, 96, 14, 0x2a1a0a);
 
     // Mug spawn points (linked to pickup platforms)
     this.mugPlatforms = [
-      { x: 208, y: G - 300 - 16, count: 2, respawnMs: 10000, elapsed: 0 },
-      { x: GAME_WIDTH - 208, y: G - 300 - 16, count: 2, respawnMs: 10000, elapsed: 0 },
+      {
+        x: 208,
+        y: G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y,
+        count: 0,
+        respawnMs: 10000,
+        elapsed: 0,
+      },
+      {
+        x: GAME_WIDTH - 208,
+        y: G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y,
+        count: 0,
+        respawnMs: 10000,
+        elapsed: 0,
+      },
     ];
 
     // Ambient backdrop — strategy war-room feel
@@ -220,8 +237,8 @@ export class BossArenaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
     }).setScrollFactor(0).setDepth(60);
 
-    // Hint text
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, 'X — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow', {
+    const attackHint = allKeyLabels('Attack');
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, `${attackHint} — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#888899',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
   }
@@ -257,12 +274,11 @@ export class BossArenaScene extends Phaser.Scene {
 
     // Mug platform respawns (visual + pickup items managed inline)
     for (const mp of this.mugPlatforms) {
-      if (mp.count < 2) {
+      if (mp.count < this.maxMugsPerPlatform) {
         mp.elapsed += delta;
         if (mp.elapsed >= mp.respawnMs) {
           mp.elapsed = 0;
-          mp.count++;
-          this.spawnMugPickup(mp.x, mp.y);
+          this.spawnMugPickup(mp);
         }
       }
     }
@@ -284,8 +300,17 @@ export class BossArenaScene extends Phaser.Scene {
     this.mugCountText?.setText(`Mugs: ${this.heldMugs}`);
   }
 
-  private spawnMugPickup(x: number, y: number): void {
-    const pickup = this.add.image(x, y, 'mug_projectile').setDepth(5);
+  private spawnInitialMugPickups(): void {
+    for (const mp of this.mugPlatforms) {
+      if (mp.count < this.maxMugsPerPlatform) {
+        this.spawnMugPickup(mp);
+      }
+    }
+  }
+
+  private spawnMugPickup(mp: { x: number; y: number; count: number; elapsed: number }): void {
+    mp.count++;
+    const pickup = this.add.image(mp.x, mp.y, 'mug_projectile').setDepth(5);
     this.physics.add.existing(pickup, true);
     this.physics.add.overlap(
       this.player.sprite,
@@ -294,6 +319,8 @@ export class BossArenaScene extends Phaser.Scene {
         if (this.heldMugs >= BossArenaScene.MAX_HELD_MUGS) return;
         pickup.destroy();
         this.heldMugs++;
+        mp.count = Math.max(0, mp.count - 1);
+        mp.elapsed = 0;
         eventBus.emit('sfx:item_pickup');
       },
     );
@@ -339,18 +366,6 @@ export class BossArenaScene extends Phaser.Scene {
       toRight,
     );
     this.briefcaseGroup.add(bc);
-    this.physics.add.overlap(
-      this.player.sprite,
-      bc,
-      () => {
-        if (!this.player.isInvulnerable()) {
-          this.playerHitCount++;
-          this.player.takeHit(0, -260);
-          eventBus.emit('sfx:hit');
-        }
-        bc.destroySelf();
-      },
-    );
   }
 
   private showPrompt(): void {
@@ -502,18 +517,24 @@ export class BossArenaScene extends Phaser.Scene {
       wordWrap: { width: panelW - 32 }, align: 'center',
     }).setOrigin(0.5);
 
-    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, 'Press Enter', {
+    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, `Press ${allKeyLabels('Interact')}`, {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(1, 1);
 
     const container = this.add.container(px, py, [bg, speaker, lineText, hint])
       .setScrollFactor(0).setDepth(90);
 
+    let finished = false;
+    const enableAdvanceCall: { event?: Phaser.Time.TimerEvent } = {};
     const showNextLine = (): void => {
+      if (finished) return;
       if (lineIdx < dialogue.lines.length) {
         lineText.setText(dialogue.lines[lineIdx] ?? '');
         lineIdx++;
       } else {
+        finished = true;
+        this.inputs.off('Interact', showNextLine);
+        enableAdvanceCall.event?.remove(false);
         container.destroy();
         this.boss.fadeOut();
         this.time.delayedCall(1400, () => this.showVictory());
@@ -521,9 +542,12 @@ export class BossArenaScene extends Phaser.Scene {
     };
     showNextLine();
 
-    this.input.keyboard?.once('keydown-ENTER', () => showNextLine());
-    this.time.delayedCall(600, () => {
-      this.input.keyboard?.on('keydown-ENTER', showNextLine);
+    enableAdvanceCall.event = this.time.delayedCall(600, () => {
+      this.inputs.on('Interact', showNextLine);
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.inputs.off('Interact', showNextLine);
+      enableAdvanceCall.event?.remove(false);
     });
   }
 
@@ -561,10 +585,8 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private onShutdown(): void {
-    eventBus.off('boss:defeated', this.onBossDefeated);
+    // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
+    const promptHandler = this.promptPanel?.getData('keyHandler');
+    if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);
   }
-
-  private onBossDefeated = (): void => {
-    // handled inline via triggerDefeat / showDefeatDialogue
-  };
 }
