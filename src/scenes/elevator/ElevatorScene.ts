@@ -51,6 +51,7 @@ export class ElevatorScene extends Phaser.Scene {
 
   private elevatorButtons?: ElevatorButtons;
   private elevatorPanel?: ElevatorPanel;
+  private floorCallButtons: FloorCallButton[] = [];
 
   /** Scene-transition hints derived from NavigationContext.init(). */
   private spawnAtProductDoor?: string;
@@ -83,6 +84,8 @@ export class ElevatorScene extends Phaser.Scene {
    * much of the shaft bottom is visible when the camera clamps at the lobby.
    */
   private static readonly PIT_DEPTH = 96;
+  /** How close the player must stand to a shaft-side call button to use it. */
+  private static readonly CALL_BUTTON_RADIUS = 54;
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -99,6 +102,7 @@ export class ElevatorScene extends Phaser.Scene {
 
   create(): void {
     this.isTransitioning = false;
+    this.floorCallButtons = [];
     this.zoneManager.bindScene(this);
     // Fallback colour behind the sky backdrop (drawn by ElevatorSceneLayout).
     // Matches the horizon band so any sub-pixel leak reads as "sky", not a
@@ -119,6 +123,7 @@ export class ElevatorScene extends Phaser.Scene {
       floorLabels: this.getFloorLabels(),
     });
     this.layout.build();
+    this.createFloorCallButtons(positions);
 
     this.createPlayer(positions);
 
@@ -206,8 +211,8 @@ export class ElevatorScene extends Phaser.Scene {
     // First-time onboarding: show welcome modal on a fresh save.
     this.maybeShowOnboarding();
 
-    // Mark the lobby as visited and check for first-time achievements.
-    this.progression.markFloorVisited(FLOORS.LOBBY);
+    // Mark the starting floor as visited and check for first-time achievements.
+    this.progression.markFloorVisited(this.progression.getCurrentFloor());
     this.gameState.checkAchievements();
   }
 
@@ -253,6 +258,13 @@ export class ElevatorScene extends Phaser.Scene {
       const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
       return { x, y: walkY - SPAWN_OFFSET };
     }
+    const currentFloor = this.progression.getCurrentFloor();
+    if (currentFloor !== FLOORS.LOBBY && positions[currentFloor] !== undefined) {
+      const walkY = positions[currentFloor] + ElevatorScene.FLOOR_H;
+      const cx = GAME_WIDTH / 2;
+      const sw = ElevatorScene.SHAFT_WIDTH;
+      return { x: cx - sw / 2 - 60, y: walkY - SPAWN_OFFSET };
+    }
     const lobbyY = positions[FLOORS.LOBBY];
     return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
   }
@@ -281,7 +293,7 @@ export class ElevatorScene extends Phaser.Scene {
   private createUI(): void {
     this.hud = new HUD(this, this.progression);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-4  Call Floor  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-5  Cab Panel  |  ENTER  Call/Open  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
@@ -301,6 +313,63 @@ export class ElevatorScene extends Phaser.Scene {
   private callFloorIfUnlocked(floorId: FloorId): void {
     if (this.progression.isFloorUnlocked(floorId)) {
       this.elevatorCtrl.elevator.moveToFloor(floorId);
+    }
+  }
+
+  /** Draw one hallway call button on each side of every shaft opening. */
+  private createFloorCallButtons(positions: Record<FloorId, number>): void {
+    const cx = GAME_WIDTH / 2;
+    const sw = ElevatorScene.SHAFT_WIDTH;
+    const sides: Array<{ side: 'left' | 'right'; x: number }> = [
+      { side: 'left', x: cx - sw / 2 - 28 },
+      { side: 'right', x: cx + sw / 2 + 28 },
+    ];
+
+    for (const [floorIdText, floorY] of Object.entries(positions)) {
+      const floorId = Number(floorIdText) as FloorId;
+      const y = floorY + ElevatorScene.FLOOR_H - 88;
+      for (const { side, x } of sides) {
+        const container = this.add.container(x, y).setDepth(4);
+        const panel = this.add.graphics();
+        panel.fillStyle(0x101018, 0.95);
+        panel.fillRoundedRect(-14, -18, 28, 36, 4);
+        panel.lineStyle(1, 0x6a6a82, 1);
+        panel.strokeRoundedRect(-14, -18, 28, 36, 4);
+        panel.fillStyle(0x223344, 1);
+        panel.fillCircle(0, -6, 6);
+        panel.lineStyle(1, 0x88bbff, 1);
+        panel.strokeCircle(0, -6, 6);
+        panel.fillStyle(0x44ccff, 1);
+        panel.fillTriangle(-5, 8, 5, 8, 0, -1);
+        container.add(panel);
+
+        const prompt = this.add.text(0, -36, 'ENTER', {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: theme.color.css.textWhite,
+          backgroundColor: theme.color.css.bgPanel,
+          padding: { x: 4, y: 2 },
+        }).setOrigin(0.5).setVisible(false);
+        container.add(prompt);
+
+        this.floorCallButtons.push({ floorId, side, x, y, prompt });
+      }
+    }
+  }
+
+  private getActiveFloorCallButton(): FloorCallButton | undefined {
+    if (this.elevatorCtrl.isOnElevator) return undefined;
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    return this.floorCallButtons.find((button) =>
+      this.progression.isFloorUnlocked(button.floorId)
+      && Phaser.Math.Distance.Between(px, py, button.x, button.y) <= ElevatorScene.CALL_BUTTON_RADIUS,
+    );
+  }
+
+  private updateFloorCallButtonPrompts(activeButton?: FloorCallButton): void {
+    for (const button of this.floorCallButtons) {
+      button.prompt.setVisible(button === activeButton);
     }
   }
 
@@ -399,6 +468,13 @@ export class ElevatorScene extends Phaser.Scene {
       return;
     }
 
+    const activeCallButton = this.getActiveFloorCallButton();
+    this.updateFloorCallButtonPrompts(activeCallButton);
+    if (interactPressed && activeCallButton) {
+      this.callFloorIfUnlocked(activeCallButton.floorId);
+      return;
+    }
+
     // While seated, the player is frozen — skip physics-input processing,
     // pin them to the sofa, and let the camera continue to follow. Player
     // can only stand up via the sit/stand toggle above.
@@ -442,8 +518,8 @@ export class ElevatorScene extends Phaser.Scene {
       delta,
     );
 
-    // Keyboard floor-call: digit keys 0..4 map to the visual floor order
-    // (F0 = lobby at the bottom, F4 = executive at the top). Only honoured
+    // Keyboard floor-call: digit keys 0..5 map to the visual floor order
+    // (F0 = lobby at the bottom, F5 = boardroom at the top). Only honoured
     // while the player is riding the cab — matches the on-screen ▲/▼ buttons.
     if (this.elevatorCtrl.isOnElevator) {
       this.handleFloorCallInput();
@@ -455,10 +531,11 @@ export class ElevatorScene extends Phaser.Scene {
     this.layout.updateFloorLEDs(this.elevatorCtrl);
     this.layout.updateFacadeMotion(this.elevatorCtrl, delta);
 
-    // Keep progression.currentFloor aligned with the docked cab so the HUD
-    // floor label tracks the player as they ride between floors.
+    // Keep progression.currentFloor aligned with the player while riding.
+    // Hallway call buttons can move the cab without the player, and that must
+    // not rewrite the saved player floor.
     const elevFloor = this.elevatorCtrl.elevator.getCurrentFloor() as FloorId;
-    if (elevFloor !== this.progression.getCurrentFloor()) {
+    if (this.elevatorCtrl.isOnElevator && elevFloor !== this.progression.getCurrentFloor()) {
       this.progression.setCurrentFloor(elevFloor);
     }
 
@@ -592,4 +669,12 @@ export class ElevatorScene extends Phaser.Scene {
       }
     }
   }
+}
+
+interface FloorCallButton {
+  floorId: FloorId;
+  side: 'left' | 'right';
+  x: number;
+  y: number;
+  prompt: Phaser.GameObjects.Text;
 }
