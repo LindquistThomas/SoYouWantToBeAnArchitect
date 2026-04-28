@@ -362,7 +362,7 @@ export class LevelScene extends Phaser.Scene {
     const launchPauseIfRunning = (): void => {
       if (!this.isTransitioning && !this.dialogs.isOpen
           && !this.scene.isActive('PauseScene')
-          && this.scene.isActive()) {
+          && this.scene.isActive(this.sys.settings.key)) {
         this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
       }
     };
