@@ -16,8 +16,12 @@ Performed against commit history as of the branch
 All scene-local EventBus subscriptions already go through one of:
 
 - `this.scopedEvents.on(...)` — `ScopedEventBus` plugin, auto-cleaned on shutdown.
-- `createSceneLifecycle(this).bindEventBus(...)` — `sceneLifecycle` helper,
-  auto-cleaned on shutdown.
+- One lifecycle token per scene, then reused for all subscriptions:
+  ```ts
+  const lc = createSceneLifecycle(this);
+  lc.bindEventBus('zone:enter', handler);
+  ```
+  `sceneLifecycle` helper, auto-cleaned on shutdown.
 
 An ESLint `no-restricted-syntax` rule has been added to `eslint.config.js` to
 enforce this going forward (see **Prevention** section below).
