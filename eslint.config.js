@@ -47,4 +47,28 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  // Guard: raw eventBus.on/once inside scene files leaks listeners across
+  // scene restarts (Phaser reuses scene instances).  Use either:
+  //   • this.scopedEvents.on(...)  — auto-cleaned on shutdown
+  //   • createSceneLifecycle(this).bindEventBus(...)  — same guarantee
+  {
+    files: ['**/*Scene.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.type="MemberExpression"][callee.object.name="eventBus"][callee.property.name="on"]',
+          message:
+            'Use this.scopedEvents.on() or createSceneLifecycle(this).bindEventBus() instead of raw eventBus.on() in scene files — unmanaged subscriptions accumulate across scene restarts.',
+        },
+        {
+          selector:
+            'CallExpression[callee.type="MemberExpression"][callee.object.name="eventBus"][callee.property.name="once"]',
+          message:
+            'Use this.scopedEvents.once() or createSceneLifecycle(this).bindEventBus() instead of raw eventBus.once() in scene files — unmanaged subscriptions accumulate across scene restarts.',
+        },
+      ],
+    },
+  },
 ];
