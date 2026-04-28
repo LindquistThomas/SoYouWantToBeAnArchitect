@@ -67,6 +67,9 @@ export class ExecutiveSuiteScene extends LevelScene {
   /** Cooldown label shown after a failed attempt. */
   private bombCooldownText?: Phaser.GameObjects.Text;
 
+  /** Milliseconds the player must wait after a failed disarm attempt. */
+  private static readonly BOMB_RETRY_COOLDOWN_MS = 4000;
+
   /**
    * When `true`, the bomb is disarmed instantly on zone entry without opening
    * the modal.  Set by tests that need to skip the mini-game.
@@ -311,7 +314,7 @@ export class ExecutiveSuiteScene extends LevelScene {
           },
           onFailure: () => {
             this.bombDialogOpen = false;
-            this.bombCooldownMs = 4000;
+            this.bombCooldownMs = ExecutiveSuiteScene.BOMB_RETRY_COOLDOWN_MS;
           },
         });
       }

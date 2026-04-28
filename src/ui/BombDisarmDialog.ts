@@ -35,7 +35,9 @@ function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j]!, a[i]!];
+    const tmp = a[i] as T;
+    a[i] = a[j] as T;
+    a[j] = tmp;
   }
   return a;
 }
@@ -222,7 +224,7 @@ export class BombDisarmDialog extends ModalBase {
     const hintY = py + PH - PAD - 28;
     const hints = this.scene.add.text(
       GAME_WIDTH / 2, hintY,
-      '← → Navigate   Enter/Space Cut   1/2/3 Direct   Esc Cancel',
+      '← → Navigate   Enter Cut   1/2/3 Direct   Esc Cancel',
       { fontFamily: 'monospace', fontSize: '11px', color: theme.color.css.textDisabled, align: 'center' },
     ).setOrigin(0.5, 0).setScrollFactor(0);
     this.container.add(hints);
