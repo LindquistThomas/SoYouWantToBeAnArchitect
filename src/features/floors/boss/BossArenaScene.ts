@@ -289,7 +289,7 @@ export class BossArenaScene extends Phaser.Scene {
 
   private spawnInitialMugPickups(): void {
     for (const mp of this.mugPlatforms) {
-      while (mp.count < this.maxMugsPerPlatform) {
+      if (mp.count < this.maxMugsPerPlatform) {
         this.spawnMugPickup(mp);
       }
     }
@@ -572,6 +572,7 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private onShutdown(): void {
+    // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
     const promptHandler = this.promptPanel?.getData('keyHandler');
     if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);
   }
