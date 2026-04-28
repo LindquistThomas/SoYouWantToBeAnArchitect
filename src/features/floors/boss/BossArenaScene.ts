@@ -58,6 +58,8 @@ const DIALOGUES = [
   { lines: ['"Ha!"', '"You actually understand the trade-offs."', '"We\'ll manage this together."'] },
 ];
 
+const MUG_PICKUP_PLATFORM_OFFSET_Y = 16;
+
 /**
  * Boss arena scene — CEO Showdown.
  *
@@ -159,8 +161,8 @@ export class BossArenaScene extends Phaser.Scene {
 
     // Mug spawn points (linked to pickup platforms)
     this.mugPlatforms = [
-      { x: 208, y: G - 300 - 16, count: 0, respawnMs: 10000, elapsed: 0 },
-      { x: GAME_WIDTH - 208, y: G - 300 - 16, count: 0, respawnMs: 10000, elapsed: 0 },
+      { x: 208, y: G - 300 - MUG_PICKUP_PLATFORM_OFFSET_Y, count: 0, respawnMs: 10000, elapsed: 0 },
+      { x: GAME_WIDTH - 208, y: G - 300 - MUG_PICKUP_PLATFORM_OFFSET_Y, count: 0, respawnMs: 10000, elapsed: 0 },
     ];
 
     // Ambient backdrop — strategy war-room feel
