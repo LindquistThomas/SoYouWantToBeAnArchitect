@@ -9,9 +9,11 @@ A one-page map of the codebase. For setup and conventions see
 src/
 ├── main.ts                   Phaser game bootstrap; scene registration.
 ├── config/                   Shared constants + back-compat barrels.
+│   ├── achievements.ts       Achievement definitions catalogue — id, label, description, and secret flag per achievement.
+│   ├── audioConfig.ts        SFX key ↔ event-name map; music track list.
 │   ├── gameConfig.ts         World dimensions, physics, colours, FLOORS enum.
 │   ├── levelData.ts          Per-floor metadata: name, scene key, AU thresholds, theme.
-│   ├── audioConfig.ts        SFX key ↔ event-name map; music track list.
+│   ├── levelGeometry.ts      Shared geometry constants — mezzanine tier Y positions and catwalk thicknesses.
 │   ├── info/                 Barrel — merges per-floor info into INFO_POINTS.
 │   │   ├── index.ts          Re-export barrel + `getInfoPointsFor(floorId)`.
 │   │   └── types.ts          `InfoPointDef` shape.
@@ -128,16 +130,19 @@ src/
 │   ├── SoundGenerator.ts     Composition root → `./sounds/` per-family modules.
 │   ├── sounds/               One file per SFX family (combat, footsteps, ui, …).
 │   │   ├── ambience.ts
+│   │   ├── boss.ts           Boss-arena SFX — hit thud, defeated fanfare, phase sting, projectile and mission-event sounds.
 │   │   ├── combat.ts
 │   │   ├── footsteps.ts
 │   │   ├── items.ts
 │   │   ├── lullaby.ts
+│   │   ├── mission.ts        Mission-sequence SFX — item pickup chime, bomb-disarm beeps, hostage-freed fanfare.
 │   │   ├── movement.ts
 │   │   ├── quiz.ts
 │   │   ├── ui.ts
 │   │   └── wav.ts
 │   └── sprites/              One file per asset family (player, tiles, token, …).
 ├── ui/                       Modal + HUD widgets built on Phaser containers.
+│   ├── BombDisarmDialog.ts     Wire-cutting mini-game modal for the executive rescue (extends ModalBase).
 │   ├── BossHealthBar.ts        Boss HP bar (boss arena).
 │   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
