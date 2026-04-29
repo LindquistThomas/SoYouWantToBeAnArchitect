@@ -68,6 +68,10 @@ export interface GameEvents {
   'sfx:hit': [];
   /** Enemy defeated via stomp. */
   'sfx:stomp': [];
+  /** Low heartbeat pulse — plays while the player is in the danger zone. */
+  'sfx:heartbeat': [];
+  /** Player activated a checkpoint. */
+  'checkpoint:activate': [id: string];
   /** AU dropped by the player on hit. */
   'sfx:drop_au': [];
   /** Dropped AU recovered. */

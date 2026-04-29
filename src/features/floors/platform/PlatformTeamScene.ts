@@ -631,6 +631,14 @@ export class PlatformTeamScene extends LevelScene {
       ],
 
       enemies: enemiesForGroundY(G),
+
+      checkpoints: [
+        // Mid-floor: at the T2 main platform — gives a respawn point after
+        // the player has ascended from ground level.
+        { id: 'platform-cp-1', x: 300, y: T2 - 10 },
+        // Upper tier: near T3 Scaling Lab — for the upper sections of the room.
+        { id: 'platform-cp-2', x: 340, y: T3 - 10 },
+      ],
     };
   }
 }

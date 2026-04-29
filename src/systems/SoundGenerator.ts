@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { loadWav } from './sounds/wav';
 import { generateFootstepSound } from './sounds/footsteps';
 import { generateInfoOpenSound, generateLinkClickSound } from './sounds/ui';
-import { generateHitSound, generateStompSound } from './sounds/combat';
+import { generateHitSound, generateStompSound, generateHeartbeatSound } from './sounds/combat';
 import {
   generateQuizCorrectSound,
   generateQuizWrongSound,
@@ -52,6 +52,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'link_click', generateLinkClickSound());
   loadWav(scene, 'hit', generateHitSound());
   loadWav(scene, 'stomp', generateStompSound());
+  loadWav(scene, 'heartbeat', generateHeartbeatSound());
   loadWav(scene, 'drop_au', generateDropAUSound());
   loadWav(scene, 'recover_au', generateRecoverAUSound());
   loadWav(scene, 'ambience_datacenter', generateDatacenterAmbience());

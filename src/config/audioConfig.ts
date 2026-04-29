@@ -131,6 +131,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:link_click':        'link_click',
   'sfx:hit':               'hit',
   'sfx:stomp':             'stomp',
+  'sfx:heartbeat':         'heartbeat',
   'sfx:drop_au':           'drop_au',
   'sfx:recover_au':        'recover_au',
   'sfx:coffee_sip':        'coffee_sip',
