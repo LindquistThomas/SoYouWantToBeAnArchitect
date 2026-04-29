@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
 import { theme } from '../style/theme';
 import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_QUESTION_COUNT, QUIZ_DIFFICULTY_MIX } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { isQuizPassed } from '../systems/QuizManager';
+import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
@@ -33,7 +33,8 @@ export class QuizDialog extends ModalBase {
   private score = 0;
   private answered = false;
   private alreadyPassed: boolean;
-  private screen: 'question' | 'feedback' | 'results' = 'question';
+  private screen: 'question' | 'feedback' | 'results' | 'cooldown' = 'question';
+  private cooldownTimer?: Phaser.Time.TimerEvent;
 
   private nav!: ModalKeyboardNavigator;
 
@@ -45,7 +46,13 @@ export class QuizDialog extends ModalBase {
 
     this.nav = new ModalKeyboardNavigator(scene);
     this.registerKeyboardBindings();
-    this.showQuestion();
+
+    if (!canRetryQuiz(options.infoId)) {
+      this.showCooldownScreen(getCooldownRemaining(options.infoId));
+    } else {
+      this.showQuestion();
+    }
+
     this.fadeIn();
     eventBus.emit('music:request-push', 'music_quiz');
   }
@@ -95,6 +102,93 @@ export class QuizDialog extends ModalBase {
   }
 
   /* ---- question rendering ---- */
+
+  private showCooldownScreen(initialRemainingMs: number): void {
+    this.clearPanel();
+    this.screen = 'cooldown';
+
+    const PANEL_W = 620;
+    const PADDING = 32;
+    const panelX = (GAME_WIDTH - PANEL_W) / 2;
+    const panelH = 260;
+    const panelY = (GAME_HEIGHT - panelH) / 2;
+
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(theme.color.ui.quizPanel, 0.95);
+    bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
+    bg.lineStyle(2, theme.color.status.warning, 0.7);
+    bg.strokeRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
+    this.container.add(bg);
+
+    const title = this.scene.add.text(
+      GAME_WIDTH / 2, panelY + PADDING,
+      'Quiz Locked',
+      { fontFamily: 'monospace', fontSize: '22px', color: theme.color.css.textWarn, fontStyle: 'bold' },
+    ).setOrigin(0.5, 0);
+    this.container.add(title);
+
+    const body = this.scene.add.text(
+      GAME_WIDTH / 2, panelY + PADDING + 44,
+      'You must wait before retrying this quiz.',
+      { fontFamily: 'monospace', fontSize: '15px', color: theme.color.css.textQuizMuted },
+    ).setOrigin(0.5, 0);
+    this.container.add(body);
+
+    let remainingMs = initialRemainingMs;
+    const formatTime = (ms: number): string => {
+      const totalSec = Math.ceil(ms / 1000);
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    };
+
+    const countdownText = this.scene.add.text(
+      GAME_WIDTH / 2, panelY + PADDING + 90,
+      formatTime(remainingMs),
+      { fontFamily: 'monospace', fontSize: '36px', color: theme.color.css.textWarn, fontStyle: 'bold' },
+    ).setOrigin(0.5, 0);
+    this.container.add(countdownText);
+
+    this.cooldownTimer = this.scene.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        remainingMs = getCooldownRemaining(this.options.infoId);
+        if (remainingMs <= 0) {
+          if (this.cooldownTimer) {
+            this.cooldownTimer.destroy();
+            this.cooldownTimer = undefined;
+          }
+          this.showQuestion();
+        } else {
+          countdownText.setText(formatTime(remainingMs));
+        }
+      },
+    });
+
+    const closeY = panelY + panelH - PADDING - 20;
+    const closeText = this.scene.add.text(
+      GAME_WIDTH / 2, closeY,
+      '[Esc] Close',
+      { fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textQuizHint },
+    ).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    closeText.on('pointerover', () => closeText.setColor(theme.color.css.textQuizMuted));
+    closeText.on('pointerout', () => closeText.setColor(theme.color.css.textQuizHint));
+    closeText.on('pointerdown', () => this.close());
+    this.container.add(closeText);
+    this.nav.add(makeTextFocusable(closeText, theme.color.css.textQuizHint, theme.color.css.textQuizMuted));
+
+    const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizMuted, fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
+    xBtn.on('pointerover', () => xBtn.setColor(theme.color.css.textQuizDanger));
+    xBtn.on('pointerout', () => xBtn.setColor(theme.color.css.textQuizMuted));
+    xBtn.on('pointerdown', () => this.close());
+    this.container.add(xBtn);
+    this.nav.add(makeTextFocusable(xBtn, theme.color.css.textQuizMuted, theme.color.css.textQuizDanger));
+
+    this.nav.setFocus(0);
+  }
 
   private showQuestion(): void {
     this.clearPanel();
@@ -467,6 +561,10 @@ export class QuizDialog extends ModalBase {
   }
 
   protected override onBeforeClose(): void {
+    if (this.cooldownTimer) {
+      this.cooldownTimer.destroy();
+      this.cooldownTimer = undefined;
+    }
     eventBus.emit('music:pop');
     this.nav.destroy();
   }

@@ -3,6 +3,7 @@ import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
 import { primaryKeyLabel } from '../input';
 import type { GameAction } from '../input';
 import { theme } from '../style/theme';
+import { getCooldownRemaining } from '../systems/QuizManager';
 
 const RADIUS = 18;
 const BADGE_RADIUS = 10;
@@ -152,6 +153,9 @@ export class InfoIcon {
   private badge?: Phaser.GameObjects.Container;
   private hint?: Phaser.GameObjects.Container;
   private mode: 'idle' | 'attention' | 'calm' = 'idle';
+  private cooldownChip?: Phaser.GameObjects.Container;
+  private cooldownChipText?: Phaser.GameObjects.Text;
+  private cooldownTimer?: Phaser.Time.TimerEvent;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void,
               contentId?: string, worldSpace = false,
@@ -202,6 +206,7 @@ export class InfoIcon {
       // offset reset is handled by stopAllTweens via setScale
       if (this.ring) { this.ring.setVisible(false); this.ring.setScale(1).setAlpha(1); }
       this.hint?.setVisible(false);
+      this.stopCooldown();
       this.mode = 'idle';
       return;
     }
@@ -274,7 +279,88 @@ export class InfoIcon {
 
   destroy(): void {
     this.stopAllTweens();
+    this.stopCooldown();
     this.container.destroy();
+  }
+
+  /**
+   * Begin showing a live "Retry in 0:XX" countdown chip below the icon.
+   * Reuses the remaining ms from QuizManager each tick so the display
+   * stays in sync even if the icon is shown after a partial cooldown.
+   * Clears automatically when the cooldown expires and swaps to the
+   * normal hint/animation with a brief flash.
+   */
+  startCooldown(initialRemainingMs: number): void {
+    this.stopCooldown();
+
+    let remainingMs = initialRemainingMs;
+    if (remainingMs <= 0) return;
+
+    if (!this.cooldownChip) {
+      this.cooldownChip = this.createCooldownChip();
+    }
+    this.cooldownChipText!.setText(this.formatCooldown(remainingMs));
+    this.cooldownChip.setVisible(true);
+    this.hint?.setVisible(false);
+
+    this.cooldownTimer = this.scene.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        remainingMs = this.contentId ? getCooldownRemaining(this.contentId) : Math.max(0, remainingMs - 1000);
+        if (remainingMs <= 0) {
+          this.stopCooldown();
+          // Brief flash to signal the quiz is available again.
+          this.scene.tweens.add({
+            targets: this.container,
+            alpha: { from: 0.3, to: 1 },
+            duration: 400,
+            ease: 'Sine.easeOut',
+          });
+          this.refreshHint();
+        } else {
+          this.cooldownChipText!.setText(this.formatCooldown(remainingMs));
+        }
+      },
+    });
+  }
+
+  /** Remove the cooldown chip and cancel its timer. */
+  stopCooldown(): void {
+    if (this.cooldownTimer) {
+      this.cooldownTimer.destroy();
+      this.cooldownTimer = undefined;
+    }
+    this.cooldownChip?.setVisible(false);
+  }
+
+  private createCooldownChip(): Phaser.GameObjects.Container {
+    const text = this.scene.add.text(0, 0, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: theme.color.css.textWarn,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.cooldownChipText = text;
+
+    // Fixed-width chip: "Retry in 0:30" is the longest string we'll show.
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(theme.color.bg.dark, 0.85);
+    bg.fillRoundedRect(-40, -10, 80, 20, 4);
+    bg.lineStyle(1, theme.color.status.warning, 0.9);
+    bg.strokeRoundedRect(-40, -10, 80, 20, 4);
+
+    const chip = this.scene.add.container(0, RADIUS + 14, [bg, text]);
+    chip.setVisible(false);
+    this.container.add(chip);
+    return chip;
+  }
+
+  private formatCooldown(remainingMs: number): string {
+    const totalSec = Math.ceil(remainingMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `Retry in ${m}:${String(s).padStart(2, '0')}`;
   }
 
   /**
