@@ -90,13 +90,21 @@ src/
 │   │   ├── ControlsScene.ts  Keyboard-rebinding submenu.
 │   │   └── SaveSlotScene.ts  Save-slot picker (new game / continue / delete).
 │   ├── elevator/             Elevator-shaft orchestrator + collaborators.
-│   │   ├── ElevatorScene.ts               Thin orchestrator — delegates layout, transitions, doors, zones to the collaborators below.
-│   │   ├── ElevatorController.ts          Owns the Elevator entity + ride loop.
-│   │   ├── ElevatorSceneLayout.ts         Shaft visuals, floor labels, unlock rendering.
-│   │   ├── ElevatorFloorTransitionManager.ts  Floor-to-floor transition state.
-│   │   ├── ElevatorShaftDoors.ts          Side-view landing doors that open on dock.
-│   │   ├── ElevatorZones.ts               Lobby zones, info icons, first-ride intro.
-│   │   └── ProductDoorManager.ts          Per-product door state on the products floor.
+│   │   ├── ElevatorScene.ts                     Thin orchestrator — delegates layout, transitions, doors, zones to the collaborators below.
+│   │   ├── ElevatorController.ts                Owns the Elevator entity + ride loop.
+│   │   ├── ElevatorSceneLayout.ts               Shaft visuals, floor labels, unlock rendering.
+│   │   ├── ElevatorFloorTransitionManager.ts    Floor-to-floor transition state.
+│   │   ├── ElevatorShaftDoors.ts                Side-view landing doors that open on dock.
+│   │   ├── ElevatorZones.ts                     Lobby zones, info icons, first-ride intro.
+│   │   ├── ProductDoorManager.ts                Per-product door state on the products floor.
+│   │   ├── buildingFacade.ts                    Outer-building façade (dark office-tower wall with animated lit windows) painted in the hallway strips flanking the shaft.
+│   │   ├── distantSkyline.ts                    City-skyline silhouette above the rooftop; parallax-scrolled, visible only near the shaft top.
+│   │   ├── elevatorCabGeometry.ts               Pure cab geometry helpers (rider clamping); no Phaser dependency, used by ElevatorController.
+│   │   ├── floorBackdrops.ts                    Per-floor themed near-layer hallway backdrops; pure spec helpers + thin Phaser renderer.
+│   │   ├── floorDecorations.ts                  Lobby and per-floor decoration sprites; single entry-point drawAllDecorations().
+│   │   ├── platformTiles.ts                     Hallway floor tiles, walkable strips, floor-signage plaques, and invisible shaft-wall segments.
+│   │   ├── shaftWalls.ts                        Shaft structural drawing: walls, caps, rooftop props, machine room, dust motes, doors, cable, and LEDs.
+│   │   └── skyBackdrop.ts                       Screen-locked night-sky backdrop: gradient sky, moon with halo, and static starfield with slow twinklers.
 ├── style/                    Design tokens.
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
