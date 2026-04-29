@@ -98,6 +98,8 @@ export interface GameEvents {
   'sfx:hostage_freed': [];
   /** Short sharp crack — pistol shot. */
   'sfx:pistol_shot': [];
+  /** Bright ascending four-note fanfare — floor unlocked. */
+  'sfx:floor_unlocked': [];
 
   // ---- Boss lifecycle events ----
   /** CEO boss has been defeated — carry the victory state to the scene. */

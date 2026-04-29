@@ -291,6 +291,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.createAtmosphericFx();
     this.setupPause();
+    this.setupFloorUnlockCelebration();
   }
 
   /**
@@ -382,6 +383,44 @@ export class LevelScene extends Phaser.Scene {
     // double-launch if both blur and visibilitychange fire together.
     window.addEventListener('blur', launchPauseIfRunning);
     lc.add(() => window.removeEventListener('blur', launchPauseIfRunning));
+  }
+
+  /**
+   * Subscribe to `progression:floor_unlocked` and fire a brief in-world
+   * celebration: camera flash, camera shake, and a gold particle burst at
+   * the player's position. Skipped under reduced-motion preference.
+   */
+  private setupFloorUnlockCelebration(): void {
+    const lc = createSceneLifecycle(this);
+    lc.bindEventBus('progression:floor_unlocked', () => {
+      if (isReducedMotion()) return;
+      const px = this.player.sprite.x;
+      const py = this.player.sprite.y;
+      // Warm golden screen flash.
+      this.cameras.main.flash(350, 255, 200, 0, false);
+      // Gentle shake so the impact is felt without disorienting the player.
+      this.cameras.main.shake(280, 0.006);
+      // Gold particle burst centred on the player.
+      this.spawnFloorUnlockParticles(px, py);
+    });
+  }
+
+  /** Emit a large gold particle burst at `(x, y)` to celebrate a floor unlock. */
+  private spawnFloorUnlockParticles(x: number, y: number): void {
+    if (!this.textures.exists('particle')) return;
+    const emitter = this.add.particles(x, y, 'particle', {
+      speed: { min: 80, max: 260 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1.4, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 900,
+      gravityY: 100,
+      tint: [0xffd700, 0xffed4a, 0xffa500, 0xffffff, 0xffcc00],
+      emitting: false,
+    });
+    emitter.setDepth(12);
+    emitter.explode(45);
+    this.time.delayedCall(1000, () => emitter.destroy());
   }
 
   private updateAtmosphericFx(): void {

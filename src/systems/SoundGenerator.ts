@@ -28,6 +28,7 @@ import {
   generateHostageFreedSound,
   generatePistolShotSound,
 } from './sounds/boss';
+import { generateFloorUnlockedSound } from './sounds/mission';
 
 /**
  * Composition root for runtime audio generation.
@@ -68,6 +69,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'bomb_disarm',     generateBombDisarmSound());
   loadWav(scene, 'hostage_freed',   generateHostageFreedSound());
   loadWav(scene, 'pistol_shot',     generatePistolShotSound());
+  loadWav(scene, 'floor_unlocked',  generateFloorUnlockedSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';
