@@ -155,10 +155,7 @@ export class QuizDialog extends ModalBase {
       callback: () => {
         remainingMs = getCooldownRemaining(this.options.infoId);
         if (remainingMs <= 0) {
-          if (this.cooldownTimer) {
-            this.cooldownTimer.destroy();
-            this.cooldownTimer = undefined;
-          }
+          this.clearCooldownTimer();
           this.showQuestion();
         } else {
           countdownText.setText(formatTime(remainingMs));
@@ -561,11 +558,15 @@ export class QuizDialog extends ModalBase {
   }
 
   protected override onBeforeClose(): void {
+    this.clearCooldownTimer();
+    eventBus.emit('music:pop');
+    this.nav.destroy();
+  }
+
+  private clearCooldownTimer(): void {
     if (this.cooldownTimer) {
       this.cooldownTimer.destroy();
       this.cooldownTimer = undefined;
     }
-    eventBus.emit('music:pop');
-    this.nav.destroy();
   }
 }

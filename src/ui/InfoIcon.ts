@@ -9,6 +9,8 @@ const RADIUS = 18;
 const BADGE_RADIUS = 10;
 const TEXTURE_KEY = 'info_icon_bg_v2';
 const RING_TEXTURE_KEY = 'info_icon_ring_v2';
+const CHIP_W = 80;
+const CHIP_H = 20;
 
 /**
  * Generate antialiased textures for the info icon once per game.
@@ -291,6 +293,7 @@ export class InfoIcon {
    * normal hint/animation with a brief flash.
    */
   startCooldown(initialRemainingMs: number): void {
+    if (!this.contentId) return;
     this.stopCooldown();
 
     let remainingMs = initialRemainingMs;
@@ -303,11 +306,12 @@ export class InfoIcon {
     this.cooldownChip.setVisible(true);
     this.hint?.setVisible(false);
 
+    const contentId = this.contentId;
     this.cooldownTimer = this.scene.time.addEvent({
       delay: 1000,
       loop: true,
       callback: () => {
-        remainingMs = this.contentId ? getCooldownRemaining(this.contentId) : Math.max(0, remainingMs - 1000);
+        remainingMs = getCooldownRemaining(contentId);
         if (remainingMs <= 0) {
           this.stopCooldown();
           // Brief flash to signal the quiz is available again.
@@ -346,9 +350,9 @@ export class InfoIcon {
     // Fixed-width chip: "Retry in 0:30" is the longest string we'll show.
     const bg = this.scene.add.graphics();
     bg.fillStyle(theme.color.bg.dark, 0.85);
-    bg.fillRoundedRect(-40, -10, 80, 20, 4);
+    bg.fillRoundedRect(-CHIP_W / 2, -CHIP_H / 2, CHIP_W, CHIP_H, 4);
     bg.lineStyle(1, theme.color.status.warning, 0.9);
-    bg.strokeRoundedRect(-40, -10, 80, 20, 4);
+    bg.strokeRoundedRect(-CHIP_W / 2, -CHIP_H / 2, CHIP_W, CHIP_H, 4);
 
     const chip = this.scene.add.container(0, RADIUS + 14, [bg, text]);
     chip.setVisible(false);
