@@ -80,7 +80,8 @@ src/
 │   └── phaser-augment.d.ts   Phaser typings adjustments for the service.
 ├── scenes/                   Infrastructure scenes (non-floor).
 │   ├── NavigationContext.ts  Typed hand-off for `scene.start(key, ctx)`.
-│   ├── sceneRegistry.ts      SCENE_REGISTRY — single source of truth for all scene classes.
+│   ├── sceneRegistry.ts      EAGER_REGISTRY + validateSceneRegistry(); derives SCENE_REGISTRY.
+│   ├── lazySceneLoaders.ts   LAZY_SCENE_LOADERS map — loader thunks for floor/product/boss scenes.
 │   ├── core/
 │   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
@@ -333,3 +334,8 @@ adding an event there type-checks every call site automatically.
   spacing catalogue; both numeric (`0x…`) and CSS (`#…`) forms are
   co-located so Phaser graphics and Text styles share the same
   source of truth.
+- **Eager/lazy scene split.** Core/elevator scenes are bundled in the
+  main chunk (`EAGER_REGISTRY` in `sceneRegistry.ts`); floor, product-room,
+  and boss scenes are split into separate Vite chunks and fetched on demand
+  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts`. The elevator fade acts
+  as the loading screen.
