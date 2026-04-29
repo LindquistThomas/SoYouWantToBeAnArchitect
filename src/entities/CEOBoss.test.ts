@@ -45,8 +45,10 @@ vi.mock('phaser', () => {
     setDepth() { return this; }
     setFlipX() { return this; }
     setTint() { return this; }
+    clearTint() { return this; }
     setTexture() { return this; }
     setAngle() { return this; }
+    setScale() { return this; }
     destroy() { /* no-op */ }
 
     emit(event: string, ...args: unknown[]): void {
@@ -157,7 +159,7 @@ describe('CEOBoss', () => {
     const scene = createFakeScene();
     const boss = new CEOBoss(scene as unknown as Phaser.Scene, 640, 500, 200, 1000);
     const phaseSpy = vi.fn();
-    eventBus.on('sfx:boss_phase', phaseSpy);
+    eventBus.on('sfx:boss_phase_2', phaseSpy);
 
     // Drain 3 HP with no knowledge gate issue (HP goes 10 → 7)
     for (let i = 0; i < 3; i++) {
@@ -168,12 +170,14 @@ describe('CEOBoss', () => {
     expect(boss.phase).toBe(2);
     expect(phaseSpy).toHaveBeenCalledTimes(1);
 
-    eventBus.off('sfx:boss_phase', phaseSpy);
+    eventBus.off('sfx:boss_phase_2', phaseSpy);
   });
 
   it('transitions from phase 2 → 3 at HP ≤ 3', () => {
     const scene = createFakeScene();
     const boss = new CEOBoss(scene as unknown as Phaser.Scene, 640, 500, 200, 1000);
+    const phase3Spy = vi.fn();
+    eventBus.on('sfx:boss_phase_3', phase3Spy);
 
     for (let i = 0; i < 7; i++) {
       (boss as unknown as { iFrameTimer: number }).iFrameTimer = 0;
@@ -181,6 +185,41 @@ describe('CEOBoss', () => {
     }
 
     expect(boss.phase).toBe(3);
+    expect(phase3Spy).toHaveBeenCalledTimes(1);
+
+    eventBus.off('sfx:boss_phase_3', phase3Spy);
+  });
+
+  it('boss:phase_changed fires exactly once per threshold', () => {
+    const scene = createFakeScene();
+    const boss = new CEOBoss(scene as unknown as Phaser.Scene, 640, 500, 200, 1000);
+    const phaseChangedSpy = vi.fn();
+    eventBus.on('boss:phase_changed', phaseChangedSpy);
+
+    // Drive boss from phase 1 → 2 (HP 10 → 7)
+    for (let i = 0; i < 3; i++) {
+      (boss as unknown as { iFrameTimer: number }).iFrameTimer = 0;
+      boss.takeDamage(true);
+    }
+    expect(boss.phase).toBe(2);
+    expect(phaseChangedSpy).toHaveBeenCalledTimes(1);
+    expect(phaseChangedSpy).toHaveBeenLastCalledWith(2);
+
+    // Drive boss from phase 2 → 3 (HP 7 → 3)
+    for (let i = 0; i < 4; i++) {
+      (boss as unknown as { iFrameTimer: number }).iFrameTimer = 0;
+      boss.takeDamage(true);
+    }
+    expect(boss.phase).toBe(3);
+    expect(phaseChangedSpy).toHaveBeenCalledTimes(2);
+    expect(phaseChangedSpy).toHaveBeenLastCalledWith(3);
+
+    // Extra hits in phase 3 should not re-trigger
+    (boss as unknown as { iFrameTimer: number }).iFrameTimer = 0;
+    boss.takeDamage(true);
+    expect(phaseChangedSpy).toHaveBeenCalledTimes(2);
+
+    eventBus.off('boss:phase_changed', phaseChangedSpy);
   });
 
   it('onCorrectAnswer() grants a correct-prompt credit and deals damage', () => {
@@ -304,9 +343,10 @@ describe('CEOBoss', () => {
     }
     expect(boss.phase).toBe(2);
 
-    // Force briefcase timer to expired and charge timer to high (no charge)
+    // Force briefcase timer to expired, charge timer to high (no charge), and clear stagger
     (boss as unknown as { briefcaseTimer: number }).briefcaseTimer = -1;
     (boss as unknown as { chargeTimer: number }).chargeTimer = 10000;
+    (boss as unknown as { stunTimer: number }).stunTimer = 0;
 
     boss.update(16, 640, 500);
 

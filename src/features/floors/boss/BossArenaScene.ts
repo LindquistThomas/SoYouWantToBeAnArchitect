@@ -10,6 +10,7 @@ import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 
@@ -147,6 +148,7 @@ export class BossArenaScene extends Phaser.Scene {
     this.progression.markFloorVisited(FLOORS.BOSS);
     this.gameState.checkAchievements();
 
+    this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
   }
 
@@ -604,6 +606,28 @@ export class BossArenaScene extends Phaser.Scene {
       } satisfies import('../../../scenes/NavigationContext').NavigationContext));
     });
   }
+
+  private onPhaseChanged = (phase: number): void => {
+    const reducedMotion = isReducedMotion();
+
+    // Camera reaction
+    if (!reducedMotion) {
+      this.cameras.main.shake(150, 0.008);
+      this.cameras.main.flash(200, 255, 255, 255, false);
+    }
+
+    // HP bar glow
+    this.healthBar.flash(phase);
+
+    // Phase-specific toast
+    if (phase === 2) {
+      this.showToast('⚡ HOSTILE TAKEOVER', '#ff8800', GAME_HEIGHT / 2 - 60);
+    } else if (phase === 3) {
+      this.showToast('💀 GOLDEN PARACHUTE', '#ff2222', GAME_HEIGHT / 2 - 60);
+      // Rage tell — warn player about the faster briefcase pattern
+      this.showToast('⚠ RAGE MODE — Briefcases incoming!', '#ff8844', GAME_HEIGHT / 2 - 20, 600);
+    }
+  };
 
   private onShutdown(): void {
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.

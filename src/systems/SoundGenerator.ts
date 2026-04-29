@@ -21,7 +21,8 @@ import {
   generateBossHitSound,
   generateBossDefeatedSound,
   generateMugThrowSound,
-  generateBossPhaseSound,
+  generateBossPhase2Sound,
+  generateBossPhase3Sound,
   generateBriefcaseThrowSound,
   generateItemPickupSound,
   generateBombDisarmSound,
@@ -64,7 +65,8 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'boss_hit',        generateBossHitSound());
   loadWav(scene, 'boss_defeated',   generateBossDefeatedSound());
   loadWav(scene, 'mug_throw',       generateMugThrowSound());
-  loadWav(scene, 'boss_phase',      generateBossPhaseSound());
+  loadWav(scene, 'boss_phase_2',    generateBossPhase2Sound());
+  loadWav(scene, 'boss_phase_3',    generateBossPhase3Sound());
   loadWav(scene, 'briefcase_throw', generateBriefcaseThrowSound());
   loadWav(scene, 'item_pickup',     generateItemPickupSound());
   loadWav(scene, 'bomb_disarm',     generateBombDisarmSound());
