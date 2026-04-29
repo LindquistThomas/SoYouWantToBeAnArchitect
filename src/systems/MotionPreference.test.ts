@@ -105,4 +105,38 @@ describe('MotionPreference', () => {
       expect(isReducedMotion()).toBe(true);
     });
   });
+
+  describe('UI three-state model (Off / On / System)', () => {
+    it('System state: null override defers to system=false → not reduced', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+      setReducedMotionOverride(null);
+      expect(isReducedMotion()).toBe(false);
+    });
+
+    it('System state: null override defers to system=true → reduced', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+      setReducedMotionOverride(null);
+      expect(isReducedMotion()).toBe(true);
+    });
+
+    it('On state: override=true forces reduced regardless of system', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+      setReducedMotionOverride(true);
+      expect(isReducedMotion()).toBe(true);
+    });
+
+    it('Off state: override=false forces not-reduced regardless of system', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+      setReducedMotionOverride(false);
+      expect(isReducedMotion()).toBe(false);
+    });
+
+    it('switching from On to System reverts to media query', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList);
+      setReducedMotionOverride(true);
+      expect(isReducedMotion()).toBe(true);
+      setReducedMotionOverride(null);
+      expect(isReducedMotion()).toBe(false);
+    });
+  });
 });

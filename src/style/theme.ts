@@ -146,7 +146,7 @@ export const theme = {
       textPrimary: '#e0e0e0',
       textSecondary: '#aabbcc',
       textMuted: '#9aa0a6',
-      textDisabled: '#666',
+      textDisabled: '#888',
       textAccent: '#00d4ff',
       textTitle: '#00d4ff',
       textWhite: '#ffffff',
