@@ -66,7 +66,7 @@ export function generateBossPhase2Sound(): ArrayBuffer {
   const notes = [440, 330];
   const noteLen = Math.floor(n / notes.length);
   for (let ni = 0; ni < notes.length; ni++) {
-    const freq = notes[ni]!;
+    const freq = notes[ni] ?? 440;
     const start = ni * noteLen;
     const end = Math.min(start + noteLen, n);
     let ph = 0;
@@ -90,7 +90,7 @@ export function generateBossPhase3Sound(): ArrayBuffer {
   const notes = [220, 165, 110];
   const noteLen = Math.floor(n / notes.length);
   for (let ni = 0; ni < notes.length; ni++) {
-    const freq = notes[ni]!;
+    const freq = notes[ni] ?? 220;
     const start = ni * noteLen;
     const end = Math.min(start + noteLen, n);
     let ph = 0; let phSub = 0;
