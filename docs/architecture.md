@@ -194,18 +194,24 @@ Use this to find the right file to edit for a given feature.
 ### Scene graph
 
 ```
-BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*, incl. BossArenaScene)
-                                            ↘  product rooms (features/products/rooms/*)
+BootScene  →  MenuScene  →  SaveSlotScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*, incl. BossArenaScene)
+                                                              ↘  product rooms (features/products/rooms/*)
 ```
 
 `BootScene` generates every sprite + sound once, creates the
-`GameStateManager`, and hands off to `MenuScene`. `ElevatorScene` is
-the central shaft; rides transition into the floor scenes in
-`features/floors/<floor>/` (each a thin wrapper around the shared
-`LevelScene`). The Products floor is rendered directly by
-`ElevatorScene` / `scenes/elevator/ProductDoorManager.ts` — one door
-per ISY product, each door launching the corresponding
+`GameStateManager`, and hands off to `MenuScene`. `SaveSlotScene` is
+the slot picker — every new game and continue passes through it before
+reaching `ElevatorScene`. `ElevatorScene` is the central shaft; rides
+transition into the floor scenes in `features/floors/<floor>/` (each a
+thin wrapper around the shared `LevelScene`). The Products floor is
+rendered directly by `ElevatorScene` /
+`scenes/elevator/ProductDoorManager.ts` — one door per ISY product,
+each door launching the corresponding
 `features/products/rooms/Product*Scene.ts`.
+
+`SettingsScene`, `ControlsScene`, and `PauseScene` are eager overlay
+scenes reachable from the menu and pause menu respectively; they do not
+sit in the linear flow above.
 
 ### Scene hand-off
 
