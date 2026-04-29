@@ -145,6 +145,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:bomb_disarm':       'bomb_disarm',
   'sfx:hostage_freed':     'hostage_freed',
   'sfx:pistol_shot':       'pistol_shot',
+  'sfx:floor_unlocked':   'floor_unlocked',
 };
 
 /** Default volume for background music (0–1). */
