@@ -46,16 +46,27 @@ export class NameScene extends Phaser.Scene {
 
 ## Integration
 
-1. Register the scene in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` is no longer the touchpoint):
-    ```ts
-    import { NameScene } from './core/NameScene';
-    // …
-    export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
-      // …existing entries…
-      { key: 'NameScene', cls: NameScene },
-    ];
-    ```
-   Floor scenes import from `'../features/floors/<floor>/...'`; product content scenes import from `'../features/products/rooms/...'`.
+1. Register the scene — **two cases depending on scene type**:
+
+   - **Eager** (core / elevator infrastructure — available immediately at startup): add an `import` and a `{ key, cls }` entry to `EAGER_REGISTRY` in `src/scenes/sceneRegistry.ts`:
+     ```ts
+     import { NameScene } from './core/NameScene';
+     // …
+     const EAGER_REGISTRY: ReadonlyArray<EagerSceneRegistration> = [
+       // …existing entries…
+       { key: 'NameScene', cls: NameScene },
+     ];
+     ```
+
+   - **Lazy** (floor / product-room / boss — fetched on demand): add a loader entry to `LOADERS` in `src/scenes/lazySceneLoaders.ts`. Do **not** add a static import — the dynamic `import()` is the whole point:
+     ```ts
+     const LOADERS: ReadonlyArray<{ key: string; loader: LazySceneLoader }> = [
+       // …existing entries…
+       { key: 'NameScene', loader: () => import('../features/floors/<floor>/NameScene').then((m) => m.NameScene) },
+     ];
+     ```
+     `ElevatorScene` picks these up via `lazyStartScene()`.
+
    `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys are not found in the registry.
 2. If the scene has background music, add it to `SCENE_MUSIC` in `src/config/audioConfig.ts`:
    ```ts
@@ -93,7 +104,10 @@ export class MyFloorTeamScene extends LevelScene {
 }
 ```
 
-Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a `{ key: 'MyFloorTeamScene', cls: MyFloorTeamScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`.
+Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a lazy entry to `LOADERS` in `src/scenes/lazySceneLoaders.ts`:
+```ts
+{ key: 'MyFloorTeamScene', loader: () => import('../features/floors/<floor>/MyFloorTeamScene').then((m) => m.MyFloorTeamScene) },
+```
 
 ## Conventions checklist
 
