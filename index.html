@@ -145,8 +145,8 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.18);
-      border: 2px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.32);
+      border: 2px solid rgba(255, 255, 255, 0.5);
       color: rgba(255, 255, 255, 0.9);
       font-size: 20px;
       line-height: 1;
@@ -155,14 +155,26 @@
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
       transition: background 80ms ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
       /* Ensure tap/hold state visually responds */
       -webkit-appearance: none;
       appearance: none;
     }
     .vpad-btn:active,
     .vpad-btn.pressed {
-      background: rgba(255, 255, 255, 0.42);
-      border-color: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.55);
+      border-color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* High-contrast controls — toggled via Settings → "High Contrast Controls" */
+    #virtual-pad.vpad-high-contrast .vpad-btn {
+      background: rgba(255, 255, 255, 0.55);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+    }
+    #virtual-pad.vpad-high-contrast .vpad-btn:active,
+    #virtual-pad.vpad-high-contrast .vpad-btn.pressed {
+      background: rgba(255, 255, 255, 0.78);
     }
 
     /* Action buttons (A/B) are slightly larger */

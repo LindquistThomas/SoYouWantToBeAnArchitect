@@ -77,6 +77,8 @@ function makeText(text: string) {
     return t;
   });
   t.setAlpha = vi.fn().mockReturnValue(t);
+  t.setVisible = vi.fn().mockReturnValue(t);
+  t.setStyle = vi.fn().mockReturnValue(t);
   t.destroy = vi.fn();
   return t as unknown as {
     text: string;
@@ -88,6 +90,8 @@ function makeText(text: string) {
     setDepth: ReturnType<typeof vi.fn>;
     setY: ReturnType<typeof vi.fn>;
     setAlpha: ReturnType<typeof vi.fn>;
+    setVisible: ReturnType<typeof vi.fn>;
+    setStyle: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
   };
 }
@@ -163,6 +167,12 @@ function makeScene(muted = false) {
         onceHandlers[event] = [];
         handlers.forEach((fn) => fn());
       },
+    },
+    /** Mock Phaser ScaleManager — displaySize.width defaults to GAME_WIDTH so tests use 'wide' tokens. */
+    scale: {
+      displaySize: { width: GAME_WIDTH },
+      on: vi.fn(),
+      off: vi.fn(),
     },
     zoneHandlers,
     texts,

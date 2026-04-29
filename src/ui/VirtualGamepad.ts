@@ -3,6 +3,7 @@ import type { GameAction } from '../input';
 import { showTouchHintIfNeeded } from './TouchHintOverlay';
 export { isTouchPrimary } from './touchPrimary';
 import { isTouchPrimary } from './touchPrimary';
+import { settingsStore } from '../systems/SettingsStore';
 
 /**
  * Space-separated list of `GameAction` names stored on a button element.
@@ -86,6 +87,11 @@ export function initVirtualGamepad(): void {
 
   // Make the pad visible (CSS default is display:none until .active is added).
   pad.classList.add('active');
+
+  // Apply high-contrast controls CSS class if the player has enabled it.
+  if (settingsStore.read().highContrastControls) {
+    pad.classList.add('vpad-high-contrast');
+  }
 
   // Wire every button to the virtual button API.
   pad.querySelectorAll('.vpad-btn').forEach((btn) => {

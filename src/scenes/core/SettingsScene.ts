@@ -91,6 +91,12 @@ export class SettingsScene extends Phaser.Scene {
         set: (v) => settingsStore.setMuteAll(v),
       },
       {
+        kind: 'toggle',
+        label: 'HIGH CONTRAST CONTROLS',
+        get: () => settingsStore.read().highContrastControls,
+        set: (v) => settingsStore.setHighContrastControls(v),
+      },
+      {
         kind: 'action',
         label: '[ CONTROLS ]',
         action: () => this.openControls(),
