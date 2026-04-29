@@ -4,11 +4,14 @@ import { Player } from '../../../entities/Player';
 import { CEOBoss } from '../../../entities/CEOBoss';
 import { CoffeeMugProjectile } from '../../../entities/CoffeeMugProjectile';
 import { BriefcaseProjectile } from '../../../entities/BriefcaseProjectile';
+import { Checkpoint } from '../../../entities/Checkpoint';
 import { BossHealthBar } from '../../../ui/BossHealthBar';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { allKeyLabels } from '../../../input';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 
 /** Architecture quiz prompts used during knowledge windows. */
 interface BossPrompt {
@@ -98,6 +101,14 @@ export class BossArenaScene extends Phaser.Scene {
   private isTransitioning = false;
   private playerHitCount = 0;
 
+  /** Per-visit hit / checkpoint tracking. */
+  private readonly floorHazard = new FloorHitState();
+  /** Danger vignette overlay. */
+  private dangerVignette?: Phaser.GameObjects.Graphics;
+  /** Heartbeat SFX accumulator (ms). */
+  private heartbeatElapsed = 0;
+  private static readonly HEARTBEAT_INTERVAL_MS = 850;
+
   constructor() {
     super({ key: 'BossArenaScene' });
   }
@@ -105,6 +116,9 @@ export class BossArenaScene extends Phaser.Scene {
   init(): void {
     this.gameState = this.registry.get('gameState') as GameStateManager;
     this.progression = this.gameState.progression;
+    this.floorHazard.reset();
+    this.heartbeatElapsed = 0;
+    this.playerHitCount = 0;
   }
 
   create(): void {
@@ -126,6 +140,8 @@ export class BossArenaScene extends Phaser.Scene {
     this.buildUI();
     this.wireColliders();
     this.spawnInitialMugPickups();
+    this.spawnCheckpoint();
+    this.buildDangerVignette();
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
     this.progression.markFloorVisited(FLOORS.BOSS);
@@ -257,7 +273,11 @@ export class BossArenaScene extends Phaser.Scene {
           this.playerHitCount++;
           this.player.takeHit(0, -260);
           eventBus.emit('sfx:hit');
-          this.cameras.main.shake(120, 0.005);
+          if (!isReducedMotion()) this.cameras.main.shake(120, 0.005);
+          const shouldRespawn = this.floorHazard.recordHit();
+          if (shouldRespawn) {
+            this.triggerRespawn();
+          }
         }
         b.destroySelf();
       },
@@ -271,6 +291,7 @@ export class BossArenaScene extends Phaser.Scene {
     this.player.update(delta);
     this.boss.update(delta, this.player.sprite.x, this.player.sprite.y);
     this.healthBar.update(this.boss.currentHp);
+    this.updateDangerState(delta);
 
     // Mug platform respawns (visual + pickup items managed inline)
     for (const mp of this.mugPlatforms) {
@@ -588,5 +609,75 @@ export class BossArenaScene extends Phaser.Scene {
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
     const promptHandler = this.promptPanel?.getData('keyHandler');
     if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);
+  }
+
+  /* ---- checkpoint ---- */
+
+  private spawnCheckpoint(): void {
+    const G = GAME_HEIGHT - 64;
+    // Place the checkpoint on the left mug platform — gives a mid-arena
+    // respawn point after the player reaches the elevated area.
+    const cpX = 208;
+    const cpY = G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y - 20;
+    const cp = new Checkpoint(this, cpX, cpY, 'boss-cp-1', () => {
+      this.floorHazard.registerCheckpoint(cpX, cpY);
+      eventBus.emit('checkpoint:activate', 'boss-cp-1');
+    });
+    cp.wireOverlap(this.physics, this.player.sprite);
+  }
+
+  private buildDangerVignette(): void {
+    this.dangerVignette = this.add.graphics()
+      .setDepth(98)
+      .setScrollFactor(0)
+      .setVisible(false);
+    const g = this.dangerVignette;
+    const alpha = 0.35;
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    const band = 80;
+    g.fillStyle(0xff2222, alpha);
+    g.fillRect(0,       0,       w,    band);
+    g.fillRect(0,       h - band, w,   band);
+    g.fillRect(0,       0,       band, h);
+    g.fillRect(w - band, 0,      band, h);
+  }
+
+  /* ---- respawn ---- */
+
+  private triggerRespawn(): void {
+    const cp = this.floorHazard.getCheckpointPos();
+    const G = GAME_HEIGHT - 64;
+    const target = cp ?? { x: 140, y: G - 80 };
+
+    this.floorHazard.reset();
+    this.heartbeatElapsed = 0;
+    this.dangerVignette?.setVisible(false);
+
+    if (!isReducedMotion()) {
+      this.cameras.main.flash(180, 255, 255, 255, true);
+    }
+    this.player.setPosition(target.x, target.y);
+  }
+
+  /* ---- danger state ---- */
+
+  private updateDangerState(delta: number): void {
+    const inDanger = this.floorHazard.isDangerZone()
+      && this.progression.getFloorAU(FLOORS.BOSS) <= 1;
+
+    if (this.dangerVignette) {
+      this.dangerVignette.setVisible(inDanger && !isReducedMotion());
+    }
+
+    if (inDanger) {
+      this.heartbeatElapsed += delta;
+      if (this.heartbeatElapsed >= BossArenaScene.HEARTBEAT_INTERVAL_MS) {
+        this.heartbeatElapsed = 0;
+        eventBus.emit('sfx:heartbeat');
+      }
+    } else {
+      this.heartbeatElapsed = 0;
+    }
   }
 }
