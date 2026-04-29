@@ -257,7 +257,7 @@ export class LevelScene extends Phaser.Scene {
       platformGroup: this.platformGroup,
       droppedAUGroup: this.tokenMgr.droppedAUGroup,
       camera: this.cameras.main,
-      onPlayerHit: () => this.onEnemyHit(),
+      onPlayerHit: () => this.onPlayerHit(),
     });
     this.coffeeMgr = new LevelCoffeeManager({
       scene: this,
@@ -846,7 +846,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- hit counter / respawn ---- */
 
   /** Called by `LevelEnemySpawner` after every successful player hit. */
-  private onEnemyHit(): void {
+  private onPlayerHit(): void {
     const shouldRespawn = this.floorHazard.recordHit();
     if (shouldRespawn) {
       this.triggerRespawn();
@@ -869,8 +869,10 @@ export class LevelScene extends Phaser.Scene {
     this.heartbeatElapsed = 0;
     this.dangerVignette?.setVisible(false);
 
-    // Brief white flash then fade back in.
-    this.cameras.main.flash(180, 255, 255, 255, true);
+    // Brief white flash then fade back in (skipped under reduced motion).
+    if (!isReducedMotion()) {
+      this.cameras.main.flash(180, 255, 255, 255, true);
+    }
     this.player.setPosition(target.x, target.y);
   }
 

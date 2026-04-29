@@ -654,7 +654,9 @@ export class BossArenaScene extends Phaser.Scene {
     this.heartbeatElapsed = 0;
     this.dangerVignette?.setVisible(false);
 
-    this.cameras.main.flash(180, 255, 255, 255, true);
+    if (!isReducedMotion()) {
+      this.cameras.main.flash(180, 255, 255, 255, true);
+    }
     this.player.setPosition(target.x, target.y);
   }
 
