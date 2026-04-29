@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { eventBus } from './EventBus';
+import { eventBus, type GameEventName, type GameEventHandler } from './EventBus';
 import { SFX_EVENTS, MUSIC_VOLUME, MUSIC_FADE_MS, AMBIENCE_VOLUME } from '../config/audioConfig';
 import { settingsStore } from './SettingsStore';
 
@@ -58,6 +58,9 @@ export class AudioManager {
   private currentAmbience: Phaser.Sound.BaseSound | null = null;
   private currentAmbienceKey: string | null = null;
 
+  /** Cleanup callbacks for every EventBus subscription — drained by `destroy()`. */
+  private readonly disposers: Array<() => void> = [];
+
   /**
    * @param sound           Phaser sound manager.
    * @param game            The Phaser game instance.  `AudioManager` resolves
@@ -96,22 +99,43 @@ export class AudioManager {
    * Call once after construction (from BootScene).
    */
   registerEventListeners(): void {
-    eventBus.on('music:play', (key) => this.playMusic(key));
-    eventBus.on('music:stop', () => this.stopMusic());
-    eventBus.on('music:push', (key) => this.pushMusic(key));
-    eventBus.on('music:pop', () => this.popMusic());
-    eventBus.on('music:pause', () => this.pauseMusic());
-    eventBus.on('music:resume', () => this.resumeMusic());
-    eventBus.on('ambience:play', (key) => this.playAmbience(key));
-    eventBus.on('ambience:stop', () => this.stopAmbience());
-    eventBus.on('audio:toggle-mute', () => this.toggleMute());
-    eventBus.on('audio:volume-changed', () => this.applyVolumeSettings());
+    // Helper that registers and tracks each subscription for later teardown.
+    const sub = <K extends GameEventName>(event: K, fn: GameEventHandler<K>): void => {
+      eventBus.on(event, fn);
+      this.disposers.push(() => eventBus.off(event, fn));
+    };
+
+    sub('music:play', (key) => this.playMusic(key));
+    sub('music:stop', () => this.stopMusic());
+    sub('music:push', (key) => this.pushMusic(key));
+    sub('music:pop', () => this.popMusic());
+    sub('music:pause', () => this.pauseMusic());
+    sub('music:resume', () => this.resumeMusic());
+    sub('ambience:play', (key) => this.playAmbience(key));
+    sub('ambience:stop', () => this.stopAmbience());
+    sub('audio:toggle-mute', () => this.toggleMute());
+    sub('audio:volume-changed', () => this.applyVolumeSettings());
 
     const events = Object.keys(SFX_EVENTS) as Array<keyof typeof SFX_EVENTS>;
     for (const event of events) {
       const sfxKey = SFX_EVENTS[event];
-      eventBus.on(event, () => this.playSfx(sfxKey));
+      sub(event, () => this.playSfx(sfxKey));
     }
+
+    // Self-clean when the Phaser game is destroyed (e.g. test teardown or HMR).
+    if (this.game?.events) {
+      this.game.events.once('destroy', () => this.destroy());
+    }
+  }
+
+  /**
+   * Unsubscribe every EventBus handler registered by `registerEventListeners()`.
+   * Called automatically when the Phaser game is destroyed; may also be called
+   * explicitly in tests or when the AudioManager is no longer needed.
+   */
+  destroy(): void {
+    for (const dispose of this.disposers) dispose();
+    this.disposers.length = 0;
   }
 
   /** Play a one-shot sound effect. */

@@ -545,4 +545,34 @@ describe('AudioManager', () => {
       settingsStore.setMuteAll(false);
     });
   });
+
+  describe('destroy', () => {
+    it('unsubscribes every EventBus handler registered by registerEventListeners()', () => {
+      // Sanity check: before destroy the manager reacts to music:play.
+      eventBus.emit('music:play', 'track_before');
+      expect(fakeSound.add).toHaveBeenCalledTimes(1);
+      fakeSound.add.mockClear();
+
+      manager.destroy();
+
+      // After destroy, none of the registered events should trigger the manager.
+      eventBus.emit('music:play', 'track_after');
+      expect(fakeSound.add).not.toHaveBeenCalled();
+
+      eventBus.emit('sfx:jump');
+      expect(fakeSound.play).not.toHaveBeenCalled();
+
+      // audio:toggle-mute should no longer reach toggleMute().
+      const muteBefore = manager.isMuted();
+      eventBus.emit('audio:toggle-mute');
+      expect(manager.isMuted()).toBe(muteBefore);
+    });
+
+    it('calling destroy() twice is a no-op (does not throw)', () => {
+      expect(() => {
+        manager.destroy();
+        manager.destroy();
+      }).not.toThrow();
+    });
+  });
 });

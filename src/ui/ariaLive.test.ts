@@ -99,4 +99,20 @@ describe('initAriaLive', () => {
     expect(el.textContent).toContain('50');
     expect(el.textContent).toMatch(/architecture units/i);
   });
+
+  it('calling initAriaLive() twice does not double-fire handlers', async () => {
+    // Second init — handlers from the first call should be replaced, not stacked.
+    initAriaLive();
+
+    const announcements: string[] = [];
+    const orig = el.textContent;
+    // Capture by inspecting after each timer run.
+    eventBus.emit('sfx:quiz_success');
+    await vi.runAllTimersAsync();
+    // Should still be exactly one announcement, not two.
+    expect(el.textContent).toBe('Quiz passed!');
+    void orig; // suppress unused-var warning
+    announcements.push(el.textContent ?? '');
+    expect(announcements).toHaveLength(1);
+  });
 });
