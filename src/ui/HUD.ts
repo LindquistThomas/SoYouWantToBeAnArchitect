@@ -69,6 +69,13 @@ export class HUD {
     this.caffeineRing.setVisible(false);
   };
 
+  /** Timestamp (scene.time.now) when the player first entered the "2 AU from unlock" zone. 0 = inactive. */
+  private nudgeTimerStart = 0;
+  /** FloorId of the floor for which a nudge was already shown (prevents repeat spam). */
+  private nudgeShownForFloor: number | null = null;
+  /** Cached result of the last findNextUnlockFloor() call; updated whenever AU or floor changes. */
+  private cachedNextFloor: typeof LEVEL_DATA[FloorId] | undefined = undefined;
+
   constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
     this.scene = scene;
     this.progression = progression;
@@ -158,6 +165,9 @@ export class HUD {
     });
     lifecycle.bindEventBus('achievement:unlocked', (_id, label) => {
       this.toast.show(`\u{1F3C6} Achievement unlocked: ${label}`);
+    });
+    lifecycle.bindEventBus('progression:au_milestone', (total) => {
+      this.toast.show(`\u2B50 ${total} AU collected!`);
     });
 
     // Trophy button — opens AchievementsDialog.
@@ -507,6 +517,7 @@ export class HUD {
 
     if (auChanged || floorChanged) {
       const next = this.findNextUnlockFloor();
+      this.cachedNextFloor = next;
       const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
       if (sig !== this.lastProgressSig) {
         this.lastProgressSig = sig;
@@ -522,6 +533,26 @@ export class HUD {
       } else {
         this.renderCaffeineIcon(remaining / this.caffeineDuration);
       }
+    }
+
+    // Tutorial nudge: when within 2 AU of the next floor unlock and the
+    // player has been idle in that state for 20 s, show a hint toast once.
+    const nextForNudge = this.cachedNextFloor;
+    if (nextForNudge && nextForNudge.auRequired - au <= 2) {
+      if (this.nudgeShownForFloor !== nextForNudge.id) {
+        if (this.nudgeTimerStart === 0) {
+          this.nudgeTimerStart = this.scene.time.now;
+        } else if (this.scene.time.now - this.nudgeTimerStart >= 20_000) {
+          const needed = nextForNudge.auRequired - au;
+          this.toast.show(
+            `\u{1F4A1} Just ${needed} more AU to unlock ${nextForNudge.name}! Check the elevator panel.`,
+          );
+          this.nudgeShownForFloor = nextForNudge.id;
+          this.nudgeTimerStart = 0;
+        }
+      }
+    } else {
+      this.nudgeTimerStart = 0;
     }
   }
 }

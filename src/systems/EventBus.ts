@@ -122,8 +122,8 @@ export interface GameEvents {
   'progression:floor_unlocked': [floorId: FloorId];
 
   /**
-   * The player's total AU has crossed a multiple-of-50 milestone.
-   * Payload is the current total AU count.
+   * The player's total AU has crossed one of the explicit milestone thresholds
+   * (5, 15, 30, 50, 75, 100, …).  Payload is the milestone value crossed.
    * Useful for screen-reader announcements and HUD celebrations.
    */
   'progression:au_milestone': [total: number];

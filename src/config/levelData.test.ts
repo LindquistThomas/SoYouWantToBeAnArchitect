@@ -64,4 +64,19 @@ describe('LEVEL_DATA', () => {
   it('the lobby floor is free to enter (auRequired === 0)', () => {
     expect(LEVEL_DATA[FLOORS.LOBBY].auRequired).toBe(0);
   });
+
+  it('cumulative token AU available (Σ totalAU for all lower-numbered floors) >= auRequired for every floor', () => {
+    // Sort floors by their display order (floorNumber) so we accumulate AU
+    // in the same order a player would encounter them.
+    const sorted = Object.values(LEVEL_DATA).sort((a, b) => a.floorNumber - b.floorNumber);
+    let cumulativeAU = 0;
+    for (const floor of sorted) {
+      expect(
+        cumulativeAU,
+        `Floor "${floor.name}" (auRequired=${floor.auRequired}) requires more AU than is ` +
+        `available from all preceding floors (cumulative available=${cumulativeAU})`,
+      ).toBeGreaterThanOrEqual(floor.auRequired);
+      cumulativeAU += floor.totalAU;
+    }
+  });
 });
