@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 60% on src/ui & src/entities)
+├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% (60% branches) on src/ui; 60% on src/entities)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
@@ -72,7 +72,7 @@ Scripts from `package.json`:
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
-| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 60% floor on `src/ui/**` and `src/entities/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`. |
 | `npm run test:e2e` | Playwright integration specs. |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Refresh visual snapshot PNGs. |
@@ -165,7 +165,7 @@ zoneManager.update();
 
 Two suites, different purposes:
 
-- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 60% on `src/ui/**` and `src/entities/**`. Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`. Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
 - **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
 Playwright helpers in `tests/helpers/playwright.ts`:
