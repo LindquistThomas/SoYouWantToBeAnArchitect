@@ -109,29 +109,32 @@ describe('theme', () => {
       return (lighter + 0.05) / (darker + 0.05);
     }
 
-    // COLORS.background is 0x1a1a2e — the dark canvas behind all UI.
-    const bg = '#1a1a2e';
+    // Derive the background from the theme token so the test stays correct
+    // if bg.default ever changes (0xRRGGBB → '#rrggbb').
+    const bgHex = theme.color.bg.default.toString(16).padStart(6, '0');
+    const bg = `#${bgHex}`;
 
     const cssPalette = theme.color.css as Record<string, string>;
     const textTokens = Object.entries(cssPalette).filter(
       ([key]) => key.startsWith('text'),
     );
 
+    // Skip tokens that are intentionally decorative / non-body colours
+    // whose primary background is not the default dark canvas:
+    //   textQuizCorrect / textQuizDanger — green/red status colours rendered
+    //     on a per-choice panel background, not on bg.default.
+    //   textQuizHard — warning accent used with heavy glow, not body text.
+    //   textDisabled — intentionally low-contrast (indicates inactivity).
+    //   textAccent / textTitle / textQuizAccentHover —
+    //     decorative accent/title colours; contrast is supplemented by
+    //     weight, size, or glow effects.
+    const skip = new Set([
+      'textQuizCorrect', 'textQuizDanger', 'textQuizHard',
+      'textDisabled',
+      'textAccent', 'textTitle', 'textQuizAccentHover',
+    ]);
+
     for (const [key, value] of textTokens) {
-      // Skip tokens that are intentionally decorative / non-body colours
-      // whose primary background is not the default dark canvas:
-      //   textQuizCorrect / textQuizDanger — green/red status colours rendered
-      //     on a per-choice panel background, not on bg.default.
-      //   textQuizHard — warning accent used with heavy glow, not body text.
-      //   textDisabled — intentionally low-contrast (indicates inactivity).
-      //   textAccent / textTitle / textWarn / textQuizAccentHover —
-      //     decorative accent/title colours; contrast is supplemented by
-      //     weight, size, or glow effects.
-      const skip = new Set([
-        'textQuizCorrect', 'textQuizDanger', 'textQuizHard',
-        'textDisabled',
-        'textAccent', 'textTitle', 'textWarn', 'textQuizAccentHover',
-      ]);
       if (skip.has(key)) continue;
 
       const ratio = contrastRatio(value, bg);
