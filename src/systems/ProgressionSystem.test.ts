@@ -305,3 +305,51 @@ describe('ProgressionSystem — loadFromSave optional-field fallbacks', () => {
     expect(p.isOnboardingComplete()).toBe(false);
   });
 });
+
+describe('ProgressionSystem — isFirstVisit / resetVisitedFloors', () => {
+  beforeEach(() => {
+    setStorage(memoryStorage());
+    setPlayerSlot('progression-test');
+  });
+
+  it('isFirstVisit returns true for a floor that has never been visited', () => {
+    const p = new ProgressionSystem();
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+  });
+
+  it('isFirstVisit returns false after markFloorVisited is called', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(false);
+  });
+
+  it('isFirstVisit remains true for unvisited floors even when other floors are visited', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(true);
+  });
+
+  it('resetVisitedFloors makes isFirstVisit return true again for all floors', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    p.markFloorVisited(FLOORS.PLATFORM_TEAM);
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(false);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(false);
+
+    p.resetVisitedFloors();
+
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(true);
+  });
+
+  it('resetVisitedFloors persists — reloading the save has no visited floors', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    p.resetVisitedFloors();
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.getVisitedFloorCount()).toBe(0);
+    expect(q.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+  });
+});

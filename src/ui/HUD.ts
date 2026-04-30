@@ -482,6 +482,14 @@ export class HUD {
     }
   }
 
+  /**
+   * Display a notification toast. Used by LevelScene to show coaching hints
+   * and any other code that needs to surface a temporary message.
+   */
+  showToast(message: string, duration?: number): void {
+    this.toast.show(message, duration);
+  }
+
   update(): void {
     const au = this.progression.getTotalAU();
     this.auText.setText(`AU: ${au}`);

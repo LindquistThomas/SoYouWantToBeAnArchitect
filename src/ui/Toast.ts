@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
+import { isReducedMotion } from '../systems/MotionPreference';
 
-const TOAST_DURATION_MS = 5_000;
+export const TOAST_DURATION_MS = 5_000;
 const TOAST_FADE_IN_MS = 200;
 const TOAST_FADE_OUT_MS = 300;
 const TOAST_WIDTH = 400;
@@ -50,8 +51,8 @@ export class Toast {
     this.container.add([this.bg, this.label]);
   }
 
-  /** Display `message` for {@link TOAST_DURATION_MS} ms. Resets if already showing. */
-  show(message: string): void {
+  /** Display `message` for `duration` ms (default {@link TOAST_DURATION_MS}). Resets if already showing. */
+  show(message: string, duration = TOAST_DURATION_MS): void {
     this.label.setText(message);
     this.redrawBg();
 
@@ -59,16 +60,21 @@ export class Toast {
     this.activeTween?.stop();
     this.dismissTimer?.remove();
 
-    this.container.setAlpha(0).setVisible(true);
+    if (isReducedMotion()) {
+      // Skip slide-in animation; show content immediately at full opacity.
+      this.container.setAlpha(1).setVisible(true);
+    } else {
+      this.container.setAlpha(0).setVisible(true);
 
-    this.activeTween = this.scene.tweens.add({
-      targets: this.container,
-      alpha: 1,
-      duration: TOAST_FADE_IN_MS,
-      ease: 'Sine.easeOut',
-    });
+      this.activeTween = this.scene.tweens.add({
+        targets: this.container,
+        alpha: 1,
+        duration: TOAST_FADE_IN_MS,
+        ease: 'Sine.easeOut',
+      });
+    }
 
-    this.dismissTimer = this.scene.time.delayedCall(TOAST_DURATION_MS, () => {
+    this.dismissTimer = this.scene.time.delayedCall(duration, () => {
       this.activeTween = this.scene.tweens.add({
         targets: this.container,
         alpha: 0,
