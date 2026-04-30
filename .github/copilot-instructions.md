@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% on src/ui; 60% on src/entities)
+├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% (60% branches) on src/ui; 60% on src/entities)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
