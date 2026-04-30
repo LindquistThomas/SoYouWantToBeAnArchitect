@@ -25,7 +25,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
 │   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
-│   │                         # MissionItem
+│   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, floorAccents/Patterns,
 │   │   │                       sceneBackdrop), one dir per floor (lobby/, platform/, architecture/,

@@ -61,6 +61,7 @@ src/
 │   ├── EnergyDrinkFridge.ts  Energy-drink fridge — grants caffeine buff.
 │   ├── BriefcaseProjectile.ts  Briefcase projectile thrown by enemies.
 │   ├── CEOBoss.ts              CEO boss entity (boss arena).
+│   ├── Checkpoint.ts           Per-visit overlap trigger — records player respawn position.
 │   ├── CoffeeMugProjectile.ts  Mug projectile thrown by player (boss arena).
 │   ├── MissionItem.ts          Mission item pickup (e.g. pistol in executive rescue).
 │   ├── PistolProjectile.ts     Pistol projectile (executive rescue).
