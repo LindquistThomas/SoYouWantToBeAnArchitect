@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
-import { generateSprites } from '../../systems/SpriteGenerator';
-import { generateSounds } from '../../systems/SoundGenerator';
+import { SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import type { GeneratorPhase } from '../../systems/SpriteGenerator';
+import { SOUND_PHASES } from '../../systems/SoundGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
@@ -15,6 +16,14 @@ export class BootScene extends Phaser.Scene {
   // fires immediately when this.scene.start() hands off to MenuScene).
   private _muteHotkeyInstalled = false;
 
+  // Progress UI elements — created in preload(), driven in create().
+  // Optional chaining is used throughout so create() works safely even
+  // when preload() was not called (e.g. unit tests).
+  private _progressBar: Phaser.GameObjects.Graphics | null = null;
+  private _progressBox: Phaser.GameObjects.Graphics | null = null;
+  private _loadingText: Phaser.GameObjects.Text | null = null;
+  private _percentText: Phaser.GameObjects.Text | null = null;
+
   constructor() {
     super({ key: 'BootScene' });
   }
@@ -24,41 +33,28 @@ export class BootScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    const progressBox = this.add.graphics();
-    progressBox.fillStyle(0x222222, 0.8);
-    progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
+    this._progressBox = this.add.graphics();
+    this._progressBox.fillStyle(0x222222, 0.8);
+    this._progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
 
-    const progressBar = this.add.graphics();
+    this._progressBar = this.add.graphics();
 
-    const loadingText = this.add.text(width / 2, height / 2 - 50, 'Initializing Systems...', {
+    this._loadingText = this.add.text(width / 2, height / 2 - 50, 'Initializing Systems...', {
       fontFamily: 'monospace',
       fontSize: '18px',
       color: COLORS.hudText,
     }).setOrigin(0.5);
 
-    const percentText = this.add.text(width / 2, height / 2, '0%', {
+    this._percentText = this.add.text(width / 2, height / 2, '0%', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: COLORS.titleText,
     }).setOrigin(0.5);
 
+    // File loading counts for the first 10% of the total bar.
     this.load.on('progress', (value: number) => {
-      percentText.setText(`${Math.round(value * 100)}%`);
-      progressBar.clear();
-      progressBar.fillStyle(theme.color.ui.accent, 1);
-      progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+      this._updateProgress(value * 0.1, 'Initializing Systems...');
     });
-
-    this.load.on('complete', () => {
-      progressBar.destroy();
-      progressBox.destroy();
-      loadingText.destroy();
-      percentText.destroy();
-    });
-
-    // Generate procedural SFX and queue for Phaser's loader.
-    // This also generates the procedural lullaby music track.
-    generateSounds(this);
 
     // Load only eager music tracks at boot (everything else is lazy-loaded
     // by MusicPlugin on first play so the initial download stays small).
@@ -79,9 +75,6 @@ export class BootScene extends Phaser.Scene {
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
-
-    // Generate all sprites programmatically
-    generateSprites(this);
 
     // Initialize audio manager and wire it to the EventBus
     const audio = new AudioManager(this.sound, this.game);
@@ -120,6 +113,73 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    this.scene.start('MenuScene');
+    // Build the combined generation pipeline: sounds first, then sprites.
+    // Skip phases whose assets are already cached (e.g. on BootScene re-entry).
+    const soundCached = this.cache?.audio?.exists('jump') ?? false;
+    const spritesCached = this.textures?.exists('player') ?? false;
+    const allPhases: readonly GeneratorPhase[] = [
+      ...(soundCached ? [] : SOUND_PHASES),
+      ...(spritesCached ? [] : SPRITE_PHASES),
+    ];
+    const total = allPhases.length;
+
+    // File loading accounts for the first 10% of the progress bar;
+    // procedural generation phases fill the remaining 90%.
+    const FILE_SHARE = total > 0 ? 0.1 : 0;
+    const GEN_SHARE = 1 - FILE_SHARE;
+
+    const finish = (): void => {
+      this._destroyProgress();
+      this.scene.start('MenuScene');
+    };
+
+    if (total === 0) {
+      finish();
+      return;
+    }
+
+    let index = 0;
+    const runPhase = (): void => {
+      if (index >= total) {
+        finish();
+        return;
+      }
+      const phase = allPhases[index]!;
+      const t0 = performance.now();
+      phase.run(this);
+      const elapsed = performance.now() - t0;
+      if (import.meta.env.DEV && elapsed > 50) {
+        console.warn(`[BootScene] Phase "${phase.label}" took ${elapsed.toFixed(1)} ms (>50 ms threshold)`);
+      }
+      const progress = FILE_SHARE + GEN_SHARE * ((index + 1) / total);
+      this._updateProgress(progress, phase.label);
+      index++;
+      this.time.addEvent({ delay: 0, callback: runPhase });
+    };
+
+    this.time.addEvent({ delay: 0, callback: runPhase });
+  }
+
+  /** Update the progress bar and status text. `value` is in the range [0, 1]. */
+  private _updateProgress(value: number, label: string): void {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    this._percentText?.setText(`${Math.round(value * 100)}%`);
+    this._loadingText?.setText(label);
+    this._progressBar?.clear();
+    this._progressBar?.fillStyle(theme.color.ui.accent, 1);
+    this._progressBar?.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+  }
+
+  /** Destroy and null all progress bar UI elements. */
+  private _destroyProgress(): void {
+    this._progressBar?.destroy();
+    this._progressBox?.destroy();
+    this._loadingText?.destroy();
+    this._percentText?.destroy();
+    this._progressBar = null;
+    this._progressBox = null;
+    this._loadingText = null;
+    this._percentText = null;
   }
 }
