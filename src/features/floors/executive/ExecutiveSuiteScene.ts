@@ -522,6 +522,12 @@ export class ExecutiveSuiteScene extends LevelScene {
           zone: { shape: 'rect', width: 120, height: 220 },
         },
       ],
+
+      checkpoints: [
+        // Mid-suite: just right of centre — gives a respawn after the player
+        // has crossed past the early combat zone near the entrance.
+        { id: 'exec-cp-1', x: 720, y: G - 10 },
+      ],
     };
   }
 

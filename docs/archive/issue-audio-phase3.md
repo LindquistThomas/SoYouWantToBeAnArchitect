@@ -29,7 +29,7 @@ Add background music and sound effects to enhance game feel.
 - SFX should be short, retro-style (8-bit or chiptune)
 - Consider using free assets from [opengameart.org](https://opengameart.org) or [freesound.org](https://freesound.org)
 - Audio files go in `public/music/` (loaded by `BootScene.preload()` via `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts`). No `public/assets/audio/` directory exists.
-- Add mute toggle to HUD (volume slider is not implemented — only mute).
+- Mute toggle plus master / music / SFX volume sliders are implemented (`src/systems/SettingsStore.ts`, exposed via `SettingsScene`).
 
 ### Acceptance Criteria
 

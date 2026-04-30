@@ -22,6 +22,8 @@ export interface EnemySpawnerDeps {
   platformGroup: Phaser.Physics.Arcade.StaticGroup;
   droppedAUGroup: Phaser.Physics.Arcade.Group;
   camera: Phaser.Cameras.Scene2D.Camera;
+  /** Optional callback invoked after every successful player hit. */
+  onPlayerHit?: () => void;
 }
 
 /**
@@ -129,6 +131,7 @@ export class LevelEnemySpawner {
 
     const dir = this.deps.player.sprite.x < enemy.x ? -1 : 1;
     this.deps.player.takeHit(enemy.knockbackX * dir, enemy.knockbackY);
+    this.deps.onPlayerHit?.();
     if (!isReducedMotion()) this.deps.camera.shake(120, 0.006);
     eventBus.emit('sfx:hit');
   }

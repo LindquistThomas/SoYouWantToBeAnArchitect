@@ -131,6 +131,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:link_click':        'link_click',
   'sfx:hit':               'hit',
   'sfx:stomp':             'stomp',
+  'sfx:heartbeat':         'heartbeat',
   'sfx:drop_au':           'drop_au',
   'sfx:recover_au':        'recover_au',
   'sfx:coffee_sip':        'coffee_sip',
@@ -139,12 +140,14 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:boss_hit':          'boss_hit',
   'sfx:boss_defeated':     'boss_defeated',
   'sfx:mug_throw':         'mug_throw',
-  'sfx:boss_phase':        'boss_phase',
+  'sfx:boss_phase_2':      'boss_phase_2',
+  'sfx:boss_phase_3':      'boss_phase_3',
   'sfx:briefcase_throw':   'briefcase_throw',
   'sfx:item_pickup':       'item_pickup',
   'sfx:bomb_disarm':       'bomb_disarm',
   'sfx:hostage_freed':     'hostage_freed',
   'sfx:pistol_shot':       'pistol_shot',
+  'sfx:floor_unlocked':   'floor_unlocked',
 };
 
 /** Default volume for background music (0–1). */

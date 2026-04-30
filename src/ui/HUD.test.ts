@@ -277,7 +277,7 @@ describe('HUD', () => {
 
     // Capture the resize handler registered on scene.scale
     const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([event]: [string]) => event === 'resize',
+      (args: unknown[]) => args[0] === 'resize',
     ) as [string, () => void] | undefined;
     expect(resizeCall).toBeDefined();
     const onResize = resizeCall![1];
@@ -288,7 +288,7 @@ describe('HUD', () => {
 
     // auText should have been restyled with the compact font
     const auTextCall = scene.add.text.mock.calls.findIndex(
-      ([x, y, initialText]: [number, number, string]) => x === 46 && y === 6 && initialText === 'AU: 0',
+      (args: unknown[]) => args[0] === 46 && args[1] === 6 && args[2] === 'AU: 0',
     );
     const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
     expect(auText.setStyle).toHaveBeenCalledWith(expect.objectContaining({ fontSize: '28px' }));
@@ -303,7 +303,7 @@ describe('HUD', () => {
     new HUD(scene as unknown as Phaser.Scene, progression);
 
     const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([event]: [string]) => event === 'resize',
+      (args: unknown[]) => args[0] === 'resize',
     ) as [string, () => void] | undefined;
     const onResize = resizeCall![1];
 
@@ -312,7 +312,7 @@ describe('HUD', () => {
     onResize();
 
     const auTextCall = scene.add.text.mock.calls.findIndex(
-      ([x, y, initialText]: [number, number, string]) => x === 46 && y === 6 && initialText === 'AU: 0',
+      (args: unknown[]) => args[0] === 46 && args[1] === 6 && args[2] === 'AU: 0',
     );
     const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
     expect(auText.setStyle).not.toHaveBeenCalled();

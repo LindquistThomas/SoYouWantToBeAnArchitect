@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { loadWav } from './sounds/wav';
 import { generateFootstepSound } from './sounds/footsteps';
 import { generateInfoOpenSound, generateLinkClickSound } from './sounds/ui';
-import { generateHitSound, generateStompSound } from './sounds/combat';
+import { generateHitSound, generateStompSound, generateHeartbeatSound } from './sounds/combat';
 import {
   generateQuizCorrectSound,
   generateQuizWrongSound,
@@ -21,13 +21,15 @@ import {
   generateBossHitSound,
   generateBossDefeatedSound,
   generateMugThrowSound,
-  generateBossPhaseSound,
+  generateBossPhase2Sound,
+  generateBossPhase3Sound,
   generateBriefcaseThrowSound,
   generateItemPickupSound,
   generateBombDisarmSound,
   generateHostageFreedSound,
   generatePistolShotSound,
 } from './sounds/boss';
+import { generateFloorUnlockedSound } from './sounds/mission';
 
 /**
  * Composition root for runtime audio generation.
@@ -52,6 +54,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'link_click', generateLinkClickSound());
   loadWav(scene, 'hit', generateHitSound());
   loadWav(scene, 'stomp', generateStompSound());
+  loadWav(scene, 'heartbeat', generateHeartbeatSound());
   loadWav(scene, 'drop_au', generateDropAUSound());
   loadWav(scene, 'recover_au', generateRecoverAUSound());
   loadWav(scene, 'ambience_datacenter', generateDatacenterAmbience());
@@ -62,12 +65,14 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'boss_hit',        generateBossHitSound());
   loadWav(scene, 'boss_defeated',   generateBossDefeatedSound());
   loadWav(scene, 'mug_throw',       generateMugThrowSound());
-  loadWav(scene, 'boss_phase',      generateBossPhaseSound());
+  loadWav(scene, 'boss_phase_2',    generateBossPhase2Sound());
+  loadWav(scene, 'boss_phase_3',    generateBossPhase3Sound());
   loadWav(scene, 'briefcase_throw', generateBriefcaseThrowSound());
   loadWav(scene, 'item_pickup',     generateItemPickupSound());
   loadWav(scene, 'bomb_disarm',     generateBombDisarmSound());
   loadWav(scene, 'hostage_freed',   generateHostageFreedSound());
   loadWav(scene, 'pistol_shot',     generatePistolShotSound());
+  loadWav(scene, 'floor_unlocked',  generateFloorUnlockedSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { QUIZ_DATA } from '../../../config/quiz';
+import { getCooldownRemaining } from '../../../systems/QuizManager';
 import { Player } from '../../../entities/Player';
 import { InfoIcon } from '../../../ui/InfoIcon';
 import { DialogController } from '../../../ui/DialogController';
@@ -41,7 +42,13 @@ export class LevelZoneSetup {
     const lifecycle = createSceneLifecycle(this.deps.scene);
     lifecycle.add(() => this.zoneManager.clear());
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
-      this.iconsByContentId.get(zoneId)?.setVisible(true);
+      const icon = this.iconsByContentId.get(zoneId);
+      if (!icon) return;
+      icon.setVisible(true);
+      if (QUIZ_DATA[zoneId]) {
+        const remaining = getCooldownRemaining(zoneId);
+        if (remaining > 0) icon.startCooldown(remaining);
+      }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
       this.iconsByContentId.get(zoneId)?.setVisible(false);

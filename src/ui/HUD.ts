@@ -170,6 +170,12 @@ export class HUD {
     lifecycle.bindEventBus('achievement:unlocked', (_id, label) => {
       this.toast.show(`\u{1F3C6} Achievement unlocked: ${label}`);
     });
+    lifecycle.bindEventBus('progression:floor_unlocked', (floorId) => {
+      const floorData = LEVEL_DATA[floorId];
+      const name = floorData?.name ?? 'new floor';
+      this.toast.show(`\u{1F513} ${name} UNLOCKED!`);
+      eventBus.emit('sfx:floor_unlocked');
+    });
 
     // Respond to viewport resizes — update font sizes if the size class changes.
     const onResize = (): void => {

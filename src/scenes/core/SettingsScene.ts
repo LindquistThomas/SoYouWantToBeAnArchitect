@@ -2,6 +2,8 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
+import type { MusicStyle } from '../../systems/SettingsStore';
+import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
@@ -25,6 +27,7 @@ import { updateVirtualGamepadContrast } from '../../ui/VirtualGamepad';
 type SettingsItem =
   | { kind: 'slider'; label: string; get: () => number; set: (v: number) => void; step: number }
   | { kind: 'toggle'; label: string; get: () => boolean; set: (v: boolean) => void }
+  | { kind: 'cycle'; label: string; options: readonly string[]; get: () => string; set: (v: string) => void }
   | { kind: 'action'; label: string; action: () => void };
 
 export class SettingsScene extends Phaser.Scene {
@@ -63,6 +66,20 @@ export class SettingsScene extends Phaser.Scene {
   // Build settings items
 
   private buildItems(): SettingsItem[] {
+    const MUSIC_STYLE_OPTIONS = ['8-BIT', 'SYNTH', 'JAZZ'] as const;
+    const MUSIC_STYLE_VALUES: Record<string, MusicStyle> = {
+      '8-BIT': '8bit-chiptune',
+      'SYNTH': 'retro-synth',
+      'JAZZ': 'elevator-jazz',
+    };
+    const MUSIC_STYLE_LABELS: Record<MusicStyle, string> = {
+      '8bit-chiptune': '8-BIT',
+      'retro-synth': 'SYNTH',
+      'elevator-jazz': 'JAZZ',
+    };
+
+    const REDUCED_OPTIONS = ['SYSTEM', 'OFF', 'ON'] as const;
+
     return [
       {
         kind: 'slider',
@@ -101,6 +118,28 @@ export class SettingsScene extends Phaser.Scene {
         },
       },
       {
+        kind: 'cycle',
+        label: 'REDUCED MOTION',
+        options: REDUCED_OPTIONS,
+        get: () => {
+          const o = getReducedMotionOverride();
+          if (o === null) return 'SYSTEM';
+          return o ? 'ON' : 'OFF';
+        },
+        set: (v) => {
+          if (v === 'ON') setReducedMotionOverride(true);
+          else if (v === 'OFF') setReducedMotionOverride(false);
+          else setReducedMotionOverride(null);
+        },
+      },
+      {
+        kind: 'cycle',
+        label: 'MUSIC STYLE',
+        options: MUSIC_STYLE_OPTIONS,
+        get: () => MUSIC_STYLE_LABELS[settingsStore.read().musicStyle] ?? MUSIC_STYLE_OPTIONS[0],
+        set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]]),
+      },
+      {
         kind: 'action',
         label: '[ CONTROLS ]',
         action: () => this.openControls(),
@@ -128,7 +167,7 @@ export class SettingsScene extends Phaser.Scene {
 
     // Panel
     const panelW = 640;
-    const panelH = 560;
+    const panelH = 620;
     const panelX = (GAME_WIDTH - panelW) / 2;
     const panelY = (GAME_HEIGHT - panelH) / 2;
     const panel = this.add.graphics().setDepth(1);
@@ -233,6 +272,9 @@ export class SettingsScene extends Phaser.Scene {
       } else if (item.kind === 'toggle') {
         const on = item.get();
         valText.setText(on ? 'ON' : 'OFF').setColor(on ? theme.color.css.textAccent : theme.color.css.textMuted);
+      } else if (item.kind === 'cycle') {
+        const val = item.get();
+        valText.setText(val).setColor(theme.color.css.textAccent);
       } else if (item.kind === 'action') {
         valText.setText('');
         if (isSelected) {
@@ -276,6 +318,11 @@ export class SettingsScene extends Phaser.Scene {
       item.set(next);
     } else if (item.kind === 'toggle') {
       item.set(!item.get());
+    } else if (item.kind === 'cycle') {
+      const n = item.options.length;
+      const idx = item.options.indexOf(item.get());
+      const next = item.options[((idx === -1 ? 0 : idx) + delta + n) % n];
+      if (next !== undefined) item.set(next);
     }
     this.refreshAll();
   }
@@ -286,6 +333,12 @@ export class SettingsScene extends Phaser.Scene {
 
     if (item.kind === 'toggle') {
       item.set(!item.get());
+      this.refreshAll();
+    } else if (item.kind === 'cycle') {
+      const n = item.options.length;
+      const idx = item.options.indexOf(item.get());
+      const next = item.options[((idx === -1 ? 0 : idx) + 1) % n];
+      if (next !== undefined) item.set(next);
       this.refreshAll();
     } else if (item.kind === 'action') {
       item.action();

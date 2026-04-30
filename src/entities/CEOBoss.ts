@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
+import { isReducedMotion } from '../systems/MotionPreference';
 
 export type BossPhase = 1 | 2 | 3;
 
@@ -114,6 +115,10 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  private readonly TRANSITION_STAGGER_MS = 700;
+  /** Grace period before the first briefcase throw in phase 3 (rage tell window). */
+  private readonly PHASE3_BRIEFCASE_GRACE_MS = 3000;
+
   private checkPhaseTransition(): void {
     let newPhase: BossPhase = this.phase;
     if (this.hp <= 3) newPhase = 3;
@@ -123,15 +128,66 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
       this.phase = newPhase;
       this.phasePromptsAnsweredCorrectly = 0;
       this.chargeTimer = 0;
-      this.briefcaseTimer = 0;
       this.isCharging = false;
       this.briefcaseSuppressTimer = 0;
-      this.stunTimer = 0;
+      this.stunTimer = this.TRANSITION_STAGGER_MS;
       this.briefcaseRageTimer = 0;
       this.platformJumpTimer = 0;
-      if (this.phase === 3) this.setTint(0xffd700);
-      eventBus.emit('sfx:boss_phase');
+
+      // Phase 3: golden tint + rage-tell grace period before first briefcase
+      if (this.phase === 3) {
+        this.setTint(0xffd700);
+        this.briefcaseTimer = this.PHASE3_BRIEFCASE_GRACE_MS;
+      } else {
+        this.briefcaseTimer = 0;
+      }
+
+      // Stagger animation
+      this.playTransitionStagger();
+
+      // Phase-specific SFX + lifecycle event
+      eventBus.emit(this.phase === 2 ? 'sfx:boss_phase_2' : 'sfx:boss_phase_3');
+      eventBus.emit('boss:phase_changed', this.phase);
     }
+  }
+
+  private playTransitionStagger(): void {
+    if (!this.scene) return;
+    this.scene.tweens.killTweensOf(this);
+
+    if (isReducedMotion()) {
+      // Reduced-motion: static white-flash recolour instead of scale tween
+      this.setTexture('boss_ceo_hit');
+      this.scene.time.delayedCall(200, () => {
+        if (!this.scene) return;
+        if (this.phase === 3) this.setTint(0xffd700);
+        else this.clearTint();
+        this.setTexture('boss_ceo');
+      });
+      return;
+    }
+
+    // Full stagger: scale 1→1.15→1 over ~600 ms, white flash at peak
+    this.setTexture('boss_ceo_hit');
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 160,
+      ease: 'Sine.easeOut',
+      yoyo: true,
+      hold: 80,
+      onYoyo: () => {
+        if (!this.scene) return;
+        this.setTexture('boss_ceo');
+        if (this.phase === 3) this.setTint(0xffd700);
+        else this.clearTint();
+      },
+      onComplete: () => {
+        if (!this.scene) return;
+        this.setScale(1);
+      },
+    });
   }
 
   update(delta: number, playerX: number, _playerY: number): void {
