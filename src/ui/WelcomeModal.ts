@@ -7,10 +7,11 @@ import { allKeyLabels, primaryKeyLabel } from '../input/keyLabels';
 
 /** Virtual-pad label for each control row shown on touch-primary devices. */
 const TOUCH_CONTROLS = [
-  '  MOVE      Stick',
-  '  JUMP      A button',
-  '  INTERACT  B button',
-  '  PAUSE     Menu button',
+  '  MOVE       Stick',
+  '  JUMP       A button',
+  '  INFO PANEL B button',
+  '  INTERACT   B button',
+  '  PAUSE      Menu button',
 ] as const;
 
 /**
@@ -77,11 +78,12 @@ export class WelcomeModal extends ModalBase {
     const controlsRows = isTouchPrimary()
       ? [...TOUCH_CONTROLS]
       : [
-          `  MOVE      ${allKeyLabels('MoveLeft', ' ')} ${allKeyLabels('MoveRight', ' ')} / A D`,
-          `  JUMP      ${primaryKeyLabel('Jump')}`,
-          `  INTERACT  ${allKeyLabels('ToggleInfo', ' / ')}`,
-          `  PAUSE     ${allKeyLabels('Pause', ' / ')}`,
-          '  MUTE      M',
+          `  MOVE       ${allKeyLabels('MoveLeft', ' ')} / ${allKeyLabels('MoveRight', ' ')}`,
+          `  JUMP       ${primaryKeyLabel('Jump')}`,
+          `  INFO PANEL ${allKeyLabels('ToggleInfo', ' / ')}`,
+          `  INTERACT   ${allKeyLabels('Interact', ' / ')}`,
+          `  PAUSE      ${allKeyLabels('Pause', ' / ')}`,
+          '  MUTE       M',
         ];
     const bodyLines = [
       'You are an aspiring architect.',
