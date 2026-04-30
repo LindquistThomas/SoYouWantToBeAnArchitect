@@ -351,7 +351,14 @@ export class SettingsScene extends Phaser.Scene {
   private goBack(): void {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
-      this.scene.start(this.callerScene);
+      if (this.callerScene === 'PauseScene') {
+        // SettingsScene was launched as an overlay from PauseScene.
+        // Stop SettingsScene and restore the still-alive PauseScene.
+        this.scene.stop();
+        this.scene.setVisible(true, 'PauseScene');
+      } else {
+        this.scene.start(this.callerScene);
+      }
     });
   }
 }

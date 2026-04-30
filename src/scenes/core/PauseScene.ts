@@ -6,7 +6,7 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { pushContext, popContext } from '../../input';
 
 const PANEL_WIDTH = 360;
-const PANEL_HEIGHT = 280;
+const PANEL_HEIGHT = 360;
 
 /**
  * Full-screen pause overlay launched as a sibling scene alongside any
@@ -16,7 +16,8 @@ const PANEL_HEIGHT = 280;
  *   1. Parent level calls `scene.launch('PauseScene', { parentKey })`.
  *   2. `create()` pauses the parent and ducks the music.
  *   3. Resume (Esc / Enter on "Resume") restores the parent and music.
- *   4. Quit to Menu stops the parent scene and navigates to `MenuScene`.
+ *   4. Settings launches SettingsScene as an overlay; PauseScene stays alive (hidden).
+ *   5. Quit to Menu stops the parent scene and navigates to `MenuScene`.
  */
 export class PauseScene extends Phaser.Scene {
   private parentKey = '';
@@ -87,11 +88,15 @@ export class PauseScene extends Phaser.Scene {
     container.add(divider);
 
     // Resume button (index 0)
-    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 30, () => this.resumeGame());
+    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 10, () => this.resumeGame());
     container.add(resumeBtn);
 
-    // Quit to Menu button (index 1)
-    const quitBtn = this.makeButton('Quit to Menu', 0, 110, () => this.quitToMenu());
+    // Settings button (index 1)
+    const settingsBtn = this.makeButton('Settings', 0, 80, () => this.openSettings());
+    container.add(settingsBtn);
+
+    // Quit to Menu button (index 2)
+    const quitBtn = this.makeButton('Quit to Menu', 0, 150, () => this.quitToMenu());
     container.add(quitBtn);
 
     // Hint text
@@ -177,6 +182,12 @@ export class PauseScene extends Phaser.Scene {
     eventBus.emit('music:resume');
     this.scene.resume(this.parentKey);
     this.scene.stop();
+  }
+
+  private openSettings(): void {
+    this.scene.launch('SettingsScene', { from: 'PauseScene', parentKey: this.parentKey });
+    this.scene.bringToTop('SettingsScene');
+    this.scene.setVisible(false);
   }
 
   private quitToMenu(): void {
