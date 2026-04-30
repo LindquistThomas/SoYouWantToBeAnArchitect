@@ -7,8 +7,8 @@ import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
 import { eventBus } from './EventBus';
 
-/** Milestone interval for `progression:au_milestone` events. */
-const AU_MILESTONE_STEP = 50;
+/** Explicit AU totals at which a `progression:au_milestone` event fires. */
+const AU_MILESTONES = [5, 15, 30, 50, 75, 100, 150, 200, 300, 500];
 
 /** Pluggable persistence adapter; defaults to the SaveManager module. */
 export interface SaveAdapter {
@@ -76,17 +76,14 @@ export class ProgressionSystem {
     this.checkUnlocks();
     this.persist();
 
-    // We emit each crossed milestone boundary (e.g. 50, 100, 150) rather than
-    // the actual total so the announced message is round and unambiguous ("50
-    // Architecture Units collected" even if the player jumped from 45 to 60).
-    // Looping ensures every boundary is announced when a single addAU call
-    // crosses multiple steps (e.g. 0 → 120 emits both 50 and 100).
+    // Emit every milestone value the player crossed in this addAU call so the
+    // HUD can celebrate with a toast.  Iterating the explicit list keeps the
+    // first few milestones (5, 15, 30) tightly spaced for early-game feedback
+    // while still covering large totals for completionists.
     const newTotal = this.state.totalAU;
-    const prevMilestone = Math.floor(prevTotal / AU_MILESTONE_STEP);
-    const newMilestone = Math.floor(newTotal / AU_MILESTONE_STEP);
-    if (newTotal > 0 && newMilestone > prevMilestone) {
-      for (let m = prevMilestone + 1; m <= newMilestone; m += 1) {
-        eventBus.emit('progression:au_milestone', m * AU_MILESTONE_STEP);
+    for (const milestone of AU_MILESTONES) {
+      if (prevTotal < milestone && newTotal >= milestone) {
+        eventBus.emit('progression:au_milestone', milestone);
       }
     }
   }
