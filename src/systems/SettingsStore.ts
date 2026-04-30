@@ -45,6 +45,11 @@ export interface SettingsData {
    */
   controlBindings: ControlBindings;
   /**
+   * When true, first-visit coaching toasts are suppressed on all floors.
+   * Useful for replay sessions where the player already knows the controls.
+   */
+  hideTutorials: boolean;
+  /**
    * When true, the virtual D-pad buttons use a higher-contrast (more opaque)
    * background. Useful in bright outdoor / sunlight conditions.
    */
@@ -73,6 +78,7 @@ export function defaultSettings(): SettingsData {
     musicStyle: '8bit-chiptune',
     reducedMotion: defaultReducedMotion(),
     controlBindings: {},
+    hideTutorials: false,
     highContrastControls: false,
   };
 }
@@ -118,6 +124,7 @@ function parseSettings(raw: unknown): SettingsData {
       : defaults.musicStyle,
     reducedMotion: typeof r['reducedMotion'] === 'boolean' ? r['reducedMotion'] : defaults.reducedMotion,
     controlBindings: parseControlBindings(r['controlBindings']),
+    hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
     highContrastControls: typeof r['highContrastControls'] === 'boolean'
       ? r['highContrastControls']
       : defaults.highContrastControls,
@@ -223,6 +230,11 @@ export const settingsStore = {
   /** Clear all key-binding overrides, restoring DEFAULT_BINDINGS on next scene load. */
   resetControlBindings(): void {
     this.updateNonAudio((prev) => ({ ...prev, controlBindings: {} }));
+  },
+
+  /** Toggle the first-visit coaching-toast suppression. */
+  setHideTutorials(hide: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, hideTutorials: hide }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

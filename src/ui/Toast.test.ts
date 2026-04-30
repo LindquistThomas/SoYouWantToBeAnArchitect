@@ -6,7 +6,12 @@ vi.mock('phaser', () => {
   return { ...Phaser, default: Phaser };
 });
 
+vi.mock('../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => false),
+}));
+
 import { Toast } from './Toast';
+import * as MotionPreference from '../systems/MotionPreference';
 
 type DelayedCallFn = (delay: number, cb: () => void) => Phaser.Time.TimerEvent;
 type TweenAddFn = (cfg: Record<string, unknown>) => { stop: () => void };
@@ -172,5 +177,70 @@ describe('Toast', () => {
     // And a new timer scheduled
     expect(scene._timers).toHaveLength(2);
     expect(toast.getMessage()).toBe('Second message');
+  });
+
+  it('honours a custom duration when show(message, duration) is called', () => {
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('Coach hint', 6_000);
+
+    expect(scene._timers).toHaveLength(1);
+    expect(scene._timers[0]?.delay).toBe(6_000);
+  });
+
+  it('uses the default 5000 ms when no duration is provided', () => {
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('Default duration');
+
+    expect(scene._timers[0]?.delay).toBe(5_000);
+  });
+});
+
+describe('Toast — reduced-motion', () => {
+  let scene: ReturnType<typeof makeScene>;
+
+  beforeEach(() => {
+    scene = makeScene();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('skips the fade-in tween and shows at full opacity when reduced motion is active', () => {
+    vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(true);
+
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('No animation');
+
+    // No fade-in tween (alpha: 1) should be registered
+    const fadeIn = scene._tweens.find((t) => t.cfg.alpha === 1);
+    expect(fadeIn).toBeUndefined();
+
+    // Container should be immediately visible at full opacity
+    expect(toast.isVisible()).toBe(true);
+    const container = scene.add.container.mock.results[0]?.value as { alpha: number };
+    const setAlpha = (container as Record<string, unknown>).setAlpha as ReturnType<typeof vi.fn>;
+    expect(setAlpha).toHaveBeenCalledWith(1);
+  });
+
+  it('still shows the message and starts the dismiss timer even without animation', () => {
+    vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(true);
+
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('Still visible', 6_000);
+
+    expect(toast.getMessage()).toBe('Still visible');
+    expect(scene._timers).toHaveLength(1);
+    expect(scene._timers[0]?.delay).toBe(6_000);
+  });
+
+  it('does play the fade-in tween when reduced motion is inactive', () => {
+    vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(false);
+
+    const toast = new Toast(scene as unknown as Phaser.Scene);
+    toast.show('With animation');
+
+    const fadeIn = scene._tweens.find((t) => t.cfg.alpha === 1);
+    expect(fadeIn).toBeDefined();
   });
 });

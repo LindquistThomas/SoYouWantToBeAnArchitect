@@ -113,10 +113,21 @@ export class ProgressionSystem {
     return this.tokensFor(floorId).has(tokenIndex);
   }
 
+  /** Returns true when the player has NOT yet visited this floor (first-visit check). */
+  isFirstVisit(floorId: FloorId): boolean {
+    return !this.state.visitedFloors.has(floorId);
+  }
+
   /** Mark a floor as having been physically entered by the player. */
   markFloorVisited(floorId: FloorId): void {
     if (this.state.visitedFloors.has(floorId)) return;
     this.state.visitedFloors.add(floorId);
+    this.persist();
+  }
+
+  /** Reset all visited-floor flags so coaching toasts appear again on next entry. */
+  resetVisitedFloors(): void {
+    this.state.visitedFloors = new Set<FloorId>();
     this.persist();
   }
 
