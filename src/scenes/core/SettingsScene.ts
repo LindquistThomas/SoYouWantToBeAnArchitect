@@ -130,6 +130,12 @@ export class SettingsScene extends Phaser.Scene {
         set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]]),
       },
       {
+        kind: 'toggle',
+        label: 'HIDE TUTORIALS',
+        get: () => settingsStore.read().hideTutorials,
+        set: (v) => settingsStore.setHideTutorials(v),
+      },
+      {
         kind: 'action',
         label: '[ CONTROLS ]',
         action: () => this.openControls(),
@@ -344,6 +350,7 @@ export class SettingsScene extends Phaser.Scene {
 
   private replayTutorial(): void {
     this.gameState?.resetOnboarding();
+    this.gameState?.resetVisitedFloors();
     this.goBack();
   }
 

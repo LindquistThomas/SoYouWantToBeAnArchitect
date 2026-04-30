@@ -62,6 +62,7 @@ export class GameStateManager {
   isOnboardingComplete(): boolean { return this.progression.isOnboardingComplete(); }
   completeOnboarding(): void { this.progression.completeOnboarding(); }
   resetOnboarding(): void { this.progression.resetOnboarding(); }
+  resetVisitedFloors(): void { this.progression.resetVisitedFloors(); }
 
   isAchievementUnlocked(id: string): boolean {
     return AchievementManager.isUnlocked(id as Parameters<typeof AchievementManager.isUnlocked>[0]);
