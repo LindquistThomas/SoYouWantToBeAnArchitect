@@ -100,6 +100,13 @@ describe('initAriaLive', () => {
     expect(el.textContent).toMatch(/architecture units/i);
   });
 
+  it('(c) announces quiz cooldown expiry on quiz:cooldown_expired', async () => {
+    eventBus.emit('quiz:cooldown_expired', 'some-quiz');
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toMatch(/quiz unlocked/i);
+    expect(el.textContent).toMatch(/retry/i);
+  });
+
   it('calling initAriaLive() twice does not double-fire handlers', async () => {
     // Second init — handlers from the first call should be replaced, not stacked.
     initAriaLive();
