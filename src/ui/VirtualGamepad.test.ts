@@ -211,6 +211,9 @@ describe('initVirtualGamepad', () => {
 
   afterEach(() => {
     document.getElementById('virtual-pad')?.remove();
+    // Drain the once-listener installed by initVirtualGamepad/registerReactiveDetection
+    // so it doesn't bleed into subsequent test files.
+    window.dispatchEvent(new Event('touchstart'));
     vi.restoreAllMocks();
   });
 

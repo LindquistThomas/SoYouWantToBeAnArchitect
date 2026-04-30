@@ -10,7 +10,7 @@ vi.mock('./touchPrimary', () => ({
   isTouchPrimary: vi.fn(() => true),
 }));
 
-import { showTouchHintIfNeeded } from './TouchHintOverlay';
+import { showTouchHintIfNeeded, showTouchHintForced } from './TouchHintOverlay';
 import * as TouchHintStore from '../systems/TouchHintStore';
 import * as touchPrimary from './touchPrimary';
 
@@ -130,8 +130,6 @@ describe('showTouchHintIfNeeded', () => {
 });
 
 // ---------------------------------------------------------------------------
-import { showTouchHintForced } from './TouchHintOverlay';
-
 describe('showTouchHintForced', () => {
   let storage: ReturnType<typeof memStorage>;
   let pad: HTMLDivElement;
