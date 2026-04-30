@@ -111,7 +111,7 @@ src/
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
-│   ├── GameStateManager.ts   Composition root — wraps the four persistent stores.
+│   ├── GameStateManager.ts   Composition root — wraps the five persistent stores.
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
