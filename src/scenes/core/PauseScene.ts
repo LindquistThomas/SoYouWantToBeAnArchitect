@@ -200,9 +200,9 @@ export class PauseScene extends Phaser.Scene {
       this.setupKeyboard();
     });
 
-    this.scene.setVisible(false);
     this.scene.launch('SettingsScene', { from: 'PauseScene' });
     this.scene.bringToTop('SettingsScene');
+    this.scene.setVisible(false);
   }
 
   private quitToMenu(): void {

@@ -175,15 +175,14 @@ describe('SettingsScene.goBack()', () => {
     const scene = makeSettings('PauseScene');
     (scene as unknown as { goBack: () => void }).goBack();
     flushDelayed(scene);
-    expect(eventBus.emit).toHaveBeenCalledWith('pause:settings-closed');
+    const emitCalls = vi.mocked(eventBus.emit).mock.calls;
+    const emitIdx = emitCalls.findIndex((c) => c[0] === 'pause:settings-closed');
+    expect(emitIdx).toBeGreaterThanOrEqual(0);
     // emit must happen before stop so PauseScene re-activates while
     // SettingsScene's 'modal' context is still on the stack.
-    const emitOrder = vi.mocked(eventBus.emit).mock.invocationCallOrder;
-    const stopOrder = vi.mocked(scene.scene.stop).mock.invocationCallOrder;
-    const emitPauseIdx = emitOrder[
-      vi.mocked(eventBus.emit).mock.calls.findIndex((c) => c[0] === 'pause:settings-closed')
-    ];
-    expect(emitPauseIdx).toBeLessThan(stopOrder[0]!);
+    const emitOrder = vi.mocked(eventBus.emit).mock.invocationCallOrder[emitIdx];
+    const stopOrder = vi.mocked(scene.scene.stop).mock.invocationCallOrder[0];
+    expect(emitOrder).toBeLessThan(stopOrder!);
   });
 
   it('defaults callerScene to MenuScene when no from is provided', () => {
