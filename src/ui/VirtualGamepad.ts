@@ -3,6 +3,7 @@ import type { GameAction } from '../input';
 import { showTouchHintIfNeeded } from './TouchHintOverlay';
 export { isTouchPrimary } from './touchPrimary';
 import { isTouchPrimary } from './touchPrimary';
+import { settingsStore } from '../systems/SettingsStore';
 
 /**
  * Space-separated list of `GameAction` names stored on a button element.
@@ -48,8 +49,11 @@ export function initVirtualGamepad(): void {
 
   const existingPad = document.getElementById('virtual-pad');
   if (existingPad) {
-    // Already mounted (e.g. HMR or repeated init); just ensure it is visible.
+    // Already mounted (e.g. HMR or repeated init); ensure it is visible and
+    // that the high-contrast class reflects the current setting (it may have
+    // been toggled while the pad was mounted).
     existingPad.classList.add('active');
+    existingPad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrastControls);
     showTouchHintIfNeeded(existingPad as HTMLElement);
     return;
   }
@@ -87,6 +91,9 @@ export function initVirtualGamepad(): void {
   // Make the pad visible (CSS default is display:none until .active is added).
   pad.classList.add('active');
 
+  // Apply high-contrast controls CSS class if the player has enabled it.
+  pad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrastControls);
+
   // Wire every button to the virtual button API.
   pad.querySelectorAll('.vpad-btn').forEach((btn) => {
     btn.addEventListener('touchstart', onTouchStart as EventListener, { passive: false });
@@ -96,4 +103,16 @@ export function initVirtualGamepad(): void {
 
   // Show the first-run hint overlay on the initial touch-primary session.
   showTouchHintIfNeeded(pad);
+}
+
+/**
+ * Update the high-contrast CSS class on the mounted virtual pad immediately.
+ * Call this whenever the "HIGH CONTRAST CONTROLS" setting changes so the pad
+ * reflects the new value without requiring a page reload or re-init.
+ * No-op when the pad is not mounted (e.g. on desktop).
+ */
+export function updateVirtualGamepadContrast(enabled: boolean): void {
+  const pad = document.getElementById('virtual-pad');
+  if (!pad) return;
+  pad.classList.toggle('vpad-high-contrast', enabled);
 }
