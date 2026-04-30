@@ -156,6 +156,20 @@ export interface GameEvents {
    * Emitted by `GameStateManager.checkAchievements()`.
    */
   'achievement:unlocked': [id: string, label: string];
+
+  /**
+   * Fired the first time a `touchstart` event is observed on `window` during a
+   * session. Emitted by `VirtualGamepad` reactive-detection logic. Other systems
+   * can listen to activate touch-specific UI without polling.
+   */
+  'input:touch_detected': [];
+
+  /**
+   * Emitted by `SettingsStore.updateNonAudio()` whenever a non-audio setting
+   * changes (e.g. onScreenControls, musicStyle, reducedMotion). `VirtualGamepad`
+   * listens to re-apply gamepad visibility when `onScreenControls` changes.
+   */
+  'settings:changed': [];
 }
 
 export type GameEventName = keyof GameEvents;

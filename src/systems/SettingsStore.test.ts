@@ -71,6 +71,7 @@ describe('SettingsStore', () => {
         musicStyle: 'retro-synth',
         reducedMotion: true,
         controlBindings: {},
+        onScreenControls: 'always',
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -97,6 +98,18 @@ describe('SettingsStore', () => {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ musicStyle: 'unknown-genre' }));
       settingsStore._store.setStorage(globalThis.localStorage);
       expect(settingsStore.read().musicStyle).toBe('8bit-chiptune');
+    });
+
+    it('round-trips onScreenControls', () => {
+      settingsStore.setOnScreenControls('never');
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().onScreenControls).toBe('never');
+    });
+
+    it('falls back to auto for invalid onScreenControls values', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ onScreenControls: 'banana' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().onScreenControls).toBe('auto');
     });
 
     it('works with an isolated in-memory storage', () => {
