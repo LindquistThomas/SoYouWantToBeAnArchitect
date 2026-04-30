@@ -56,8 +56,11 @@ export interface LayoutTokens {
   /** Dialog title font size. */
   dialogFontTitle: string;
   /**
-   * Minimum interactive tap-target size in game-units.
-   * At compact viewports this must translate to ≥ 44 CSS px on screen.
+   * Interactive tap-target size in game-units used for buttons and link rows.
+   * Compact layouts use a larger token to improve usability after FIT scaling,
+   * but the final on-screen CSS size still depends on the current viewport width
+   * and canvas scale factor; this value alone does not guarantee a fixed 44 px
+   * physical target on very small displays.
    */
   dialogTapTarget: number;
   /**

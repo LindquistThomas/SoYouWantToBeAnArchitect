@@ -81,8 +81,6 @@ export class InfoDialog extends ModalBase {
     const PADDING = 32;
     const LINK_LINE_H = tokens.dialogTapTarget;
     const CLOSE_BAR_H = tokens.dialogTapTarget;
-    const TITLE_H = 28;
-    const TITLE_GAP = 18;
 
     // Fixed, tall panel. Content scrolls inside a viewport between the
     // sticky title (top) and sticky quiz/close footer (bottom).
@@ -108,7 +106,10 @@ export class InfoDialog extends ModalBase {
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
-    const titleSepY = titleY + TITLE_H + TITLE_GAP - 10;
+    // Use the actual rendered height so the separator adapts to the responsive
+    // font size rather than being positioned relative to a hardcoded constant.
+    const TITLE_GAP = 18;
+    const titleSepY = titleY + title.height + TITLE_GAP - 10;
     const sep = this.scene.add.graphics();
     sep.lineStyle(1, theme.color.ui.border, 0.3);
     sep.lineBetween(panelX + 20, titleSepY, panelX + panelW - 20, titleSepY);

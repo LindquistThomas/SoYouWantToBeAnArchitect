@@ -269,4 +269,63 @@ describe('HUD', () => {
     eventBus.emit('audio:mute-changed', false);
     expect(muteGraphics.clear.mock.calls.length).toBe(clearCountAfterBind);
   });
+
+  it('relayouts with compact tokens when resize crosses into compact size class', () => {
+    scene = makeScene(false);
+    // Start at wide (GAME_WIDTH = 1280)
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    // Capture the resize handler registered on scene.scale
+    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([event]: [string]) => event === 'resize',
+    ) as [string, () => void] | undefined;
+    expect(resizeCall).toBeDefined();
+    const onResize = resizeCall![1];
+
+    // Simulate crossing into the compact size class (< 700 px)
+    scene.scale.displaySize.width = 375;
+    onResize();
+
+    // auText should have been restyled with the compact font
+    const auTextCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]: [number, number, string]) => x === 46 && y === 6 && initialText === 'AU: 0',
+    );
+    const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
+    expect(auText.setStyle).toHaveBeenCalledWith(expect.objectContaining({ fontSize: '28px' }));
+
+    // Centre title should be hidden on compact
+    const titleText = scene.texts.find((t) => t.text === 'SO YOU WANT TO BE AN ARCHITECT');
+    expect(titleText?.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it('does not relayout when resize stays within the same size class', () => {
+    scene = makeScene(false);
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([event]: [string]) => event === 'resize',
+    ) as [string, () => void] | undefined;
+    const onResize = resizeCall![1];
+
+    // Resize stays within 'wide' class — no relayout expected
+    scene.scale.displaySize.width = 1100;
+    onResize();
+
+    const auTextCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]: [number, number, string]) => x === 46 && y === 6 && initialText === 'AU: 0',
+    );
+    const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
+    expect(auText.setStyle).not.toHaveBeenCalled();
+  });
+
+  it('unsubscribes resize handler from scene.scale on shutdown', () => {
+    scene = makeScene(false);
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    expect((scene.scale.off as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+
+    scene.events.emit('shutdown');
+
+    expect(scene.scale.off).toHaveBeenCalledWith('resize', expect.any(Function), expect.anything());
+  });
 });

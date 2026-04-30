@@ -6,6 +6,7 @@ import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { clampSlider } from '../../systems/sliderUtils';
+import { updateVirtualGamepadContrast } from '../../ui/VirtualGamepad';
 
 /**
  * Settings scene — keyboard-navigable UI for audio and accessibility settings.
@@ -94,7 +95,10 @@ export class SettingsScene extends Phaser.Scene {
         kind: 'toggle',
         label: 'HIGH CONTRAST CONTROLS',
         get: () => settingsStore.read().highContrastControls,
-        set: (v) => settingsStore.setHighContrastControls(v),
+        set: (v) => {
+          settingsStore.setHighContrastControls(v);
+          updateVirtualGamepadContrast(v);
+        },
       },
       {
         kind: 'action',
