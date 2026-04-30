@@ -156,6 +156,14 @@ export interface GameEvents {
    * Emitted by `GameStateManager.checkAchievements()`.
    */
   'achievement:unlocked': [id: string, label: string];
+
+  /**
+   * Emitted by `QuizDialog` the moment a cooldown timer reaches zero and the
+   * quiz becomes retryable. Screen readers listen via `ariaLive` to announce
+   * the unlock (WCAG 2.1 SC 4.1.3 Status Messages).
+   * Payload: the `infoId` of the quiz that was unlocked.
+   */
+  'quiz:cooldown_expired': [infoId: string];
 }
 
 export type GameEventName = keyof GameEvents;
