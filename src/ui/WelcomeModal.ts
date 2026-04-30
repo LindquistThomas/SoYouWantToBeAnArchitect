@@ -5,6 +5,14 @@ import { ModalBase } from './ModalBase';
 import { isTouchPrimary } from './touchPrimary';
 import { allKeyLabels, primaryKeyLabel } from '../input/keyLabels';
 
+/** Virtual-pad label for each control row shown on touch-primary devices. */
+const TOUCH_CONTROLS = [
+  '  MOVE      Stick',
+  '  JUMP      A button',
+  '  INTERACT  B button',
+  '  PAUSE     Menu button',
+] as const;
+
 /**
  * First-time welcome card shown when a brand-new save reaches the elevator
  * lobby for the first time.
@@ -64,15 +72,10 @@ export class WelcomeModal extends ModalBase {
     ).setOrigin(0.5, 0).setScrollFactor(0);
     this.container.add(title);
 
-    // Body text
-    const touch = isTouchPrimary();
-    const controlsRows = touch
-      ? [
-          '  MOVE      Stick',
-          '  JUMP      A button',
-          '  INTERACT  B button',
-          '  PAUSE     Menu button',
-        ]
+    // Body text — controls block uses keyboard labels from DEFAULT_BINDINGS
+    // (auto-updated if defaults change) or virtual-pad labels on touch devices.
+    const controlsRows = isTouchPrimary()
+      ? [...TOUCH_CONTROLS]
       : [
           `  MOVE      ${allKeyLabels('MoveLeft', ' ')} ${allKeyLabels('MoveRight', ' ')} / A D`,
           `  JUMP      ${primaryKeyLabel('Jump')}`,
