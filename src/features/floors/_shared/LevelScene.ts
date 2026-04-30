@@ -27,6 +27,13 @@ import { isReducedMotion } from '../../../systems/MotionPreference';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 import { CallElevatorButton } from '../../../ui/CallElevatorButton';
 import { eventBus } from '../../../systems/EventBus';
+import { settingsStore } from '../../../systems/SettingsStore';
+import { getCoachHint } from './coachHints';
+
+/** Delay (ms) after floor entry before the first-visit coaching toast appears. */
+const COACH_HINT_DELAY_MS = 3_000;
+/** How long (ms) the first-visit coaching toast stays visible. */
+const COACH_HINT_DURATION_MS = 6_000;
 
 /**
  * Decorative background pattern assignment per floor. Each motif echoes
@@ -306,12 +313,23 @@ export class LevelScene extends Phaser.Scene {
 
     this.cameras.main.setScroll(0, 0);
 
+    // Snapshot first-visit status before marking the floor as visited.
+    const firstVisit = this.progression.isFirstVisit(this.floorId);
+
     // Record the floor visit and check for floor-exploration achievements.
     this.progression.markFloorVisited(this.floorId);
     this.gameState.checkAchievements();
 
     this.showFloorBanner();
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    // Show a coaching toast on first visit, after the floor banner fades out.
+    const hint = getCoachHint(this.floorId, firstVisit, settingsStore.read().hideTutorials);
+    if (hint) {
+      this.time.delayedCall(COACH_HINT_DELAY_MS, () => {
+        this.hud.showToast(hint, COACH_HINT_DURATION_MS);
+      });
+    }
 
     this.createAtmosphericFx();
     this.setupPause();

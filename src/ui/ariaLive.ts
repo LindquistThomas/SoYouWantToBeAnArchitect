@@ -75,6 +75,10 @@ export function initAriaLive(): void {
     announce('Quiz failed. Read the info text and try again.');
   });
 
+  sub('quiz:cooldown_expired', () => {
+    announce('Quiz unlocked. You can retry now.');
+  });
+
   sub('progression:floor_unlocked', (floorId) => {
     // Direct index — LEVEL_DATA is keyed by FloorId so this is O(1).
     // The fallback is a belt-and-suspenders guard against future misconfig.

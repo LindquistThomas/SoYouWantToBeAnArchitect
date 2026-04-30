@@ -14,12 +14,13 @@ import { FLOORS } from '../config/gameConfig';
 
 /**
  * Single composition root for all persistent game state. Owns the
- * `ProgressionSystem` instance and exposes thin facades over the three
- * module-level stores (`SaveManager`, `QuizManager`, `InfoDialogManager`).
+ * `ProgressionSystem` instance and exposes thin facades over the five
+ * module-level stores (`SaveManager`, `QuizManager`, `InfoDialogManager`,
+ * `AchievementManager`, `TouchHintStore`).
  *
  * Constructed once per game run in `BootScene.create()` and stashed in
  * `scene.registry` under the key `gameState`. Tests inject a fake
- * `KVStorage` to replace localStorage across all four managers atomically.
+ * `KVStorage` to replace localStorage across all five managers atomically.
  */
 export class GameStateManager {
   readonly progression: ProgressionSystem;
@@ -62,6 +63,7 @@ export class GameStateManager {
   isOnboardingComplete(): boolean { return this.progression.isOnboardingComplete(); }
   completeOnboarding(): void { this.progression.completeOnboarding(); }
   resetOnboarding(): void { this.progression.resetOnboarding(); }
+  resetVisitedFloors(): void { this.progression.resetVisitedFloors(); }
 
   isAchievementUnlocked(id: string): boolean {
     return AchievementManager.isUnlocked(id as Parameters<typeof AchievementManager.isUnlocked>[0]);

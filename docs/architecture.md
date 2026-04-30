@@ -61,6 +61,7 @@ src/
 │   ├── EnergyDrinkFridge.ts  Energy-drink fridge — grants caffeine buff.
 │   ├── BriefcaseProjectile.ts  Briefcase projectile thrown by enemies.
 │   ├── CEOBoss.ts              CEO boss entity (boss arena).
+│   ├── Checkpoint.ts           Per-visit overlap trigger — records player respawn position.
 │   ├── CoffeeMugProjectile.ts  Mug projectile thrown by player (boss arena).
 │   ├── MissionItem.ts          Mission item pickup (e.g. pistol in executive rescue).
 │   ├── PistolProjectile.ts     Pistol projectile (executive rescue).
@@ -111,7 +112,7 @@ src/
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
-│   ├── GameStateManager.ts   Composition root — wraps the four persistent stores.
+│   ├── GameStateManager.ts   Composition root — wraps the five persistent stores.
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
@@ -195,7 +196,7 @@ Use this to find the right file to edit for a given feature.
 | Enemies                             | `entities/Enemy.ts`, `entities/enemies/*.ts`                                           |
 | AU / tokens / progression           | `entities/Token.ts`, `entities/DroppedAU.ts`, `systems/ProgressionSystem.ts`           |
 | Achievements                        | `systems/AchievementManager.ts`, `ui/AchievementsDialog.ts`                            |
-| Save slots                          | `systems/SaveManager.ts`, `scenes/core/MenuScene.ts`                                   |
+| Save slots                          | `systems/SaveManager.ts`, `scenes/core/SaveSlotScene.ts`, `scenes/core/MenuScene.ts`   |
 | Quiz runtime                        | `systems/QuizManager.ts`, `ui/QuizDialog.ts`, `ui/QuizResultsScreen.ts`                |
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
@@ -240,8 +241,8 @@ gone.
 `GameStateManager` (in `systems/GameStateManager.ts`) is constructed
 once in `BootScene.create()` and stashed in `scene.registry` under
 the key `gameState`. It owns the `ProgressionSystem` instance and
-exposes facades over the three module-level stores (`SaveManager`,
-`QuizManager`, `InfoDialogManager`). Tests inject a fake `KVStorage`
+exposes facades over the five module-level stores (`SaveManager`,
+`QuizManager`, `InfoDialogManager`, `AchievementManager`, `TouchHintStore`). Tests inject a fake `KVStorage`
 into the constructor to swap localStorage atomically.
 
 ### Runtime wiring
@@ -318,7 +319,7 @@ adding an event there type-checks every call site automatically.
 - **Type safety** (`npm run build`) runs `tsc` strict before Vite
   bundles.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
-  `src/input/**` at 80%; `src/ui/**` and `src/entities/**` at 60%.
+  `src/input/**` at 80%; `src/ui/**` at 65% (60% branches); `src/entities/**` at 60%.
   `src/scenes/**`, `src/features/floors/**`, `src/plugins/**`, and the
   procedural-generator modules remain excluded.
 
@@ -332,9 +333,9 @@ adding an event there type-checks every call site automatically.
 - **Pluggable storage.** `SaveManager` exposes a `KVStorage`
   interface so tests can swap in an in-memory store without
   monkey-patching `localStorage`. `GameStateManager` forwards that
-  interface to the other three stores in its constructor.
+  interface to the other four stores in its constructor.
 - **Single composition root for game state.** `GameStateManager` is
-  the only thing that knows how the four persistent stores fit
+  the only thing that knows how the five persistent stores fit
   together. Scenes and UI read from it; tests replace it.
 - **Typed scene hand-off.** `NavigationContext` collects every
   cross-scene field in one optional-everything interface. No registry

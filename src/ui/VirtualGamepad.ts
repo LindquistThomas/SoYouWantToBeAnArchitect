@@ -79,6 +79,9 @@ function buildPad(): HTMLElement {
 
   document.body.appendChild(pad);
 
+  // Apply high-contrast controls CSS class if the player has enabled it.
+  pad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrastControls);
+
   pad.querySelectorAll('.vpad-btn').forEach((btn) => {
     btn.addEventListener('touchstart', onTouchStart as EventListener, { passive: false });
     btn.addEventListener('touchend', onTouchEnd as EventListener, { passive: false });
@@ -150,6 +153,8 @@ export function applyVirtualGamepadVisibility(): void {
     }
     const wasHidden = !pad.classList.contains('active');
     pad.classList.add('active');
+    // Keep high-contrast class in sync even if the pad was already mounted.
+    pad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrastControls);
 
     if (wasHidden) {
       if (reactiveDetected && isInLevelScene()) {
@@ -212,4 +217,16 @@ export function initVirtualGamepad(): void {
   eventBus.on('settings:changed', applyVirtualGamepadVisibility);
 
   applyVirtualGamepadVisibility();
+}
+
+/**
+ * Update the high-contrast CSS class on the mounted virtual pad immediately.
+ * Call this whenever the "HIGH CONTRAST CONTROLS" setting changes so the pad
+ * reflects the new value without requiring a page reload or re-init.
+ * No-op when the pad is not mounted (e.g. on desktop).
+ */
+export function updateVirtualGamepadContrast(enabled: boolean): void {
+  const pad = document.getElementById('virtual-pad');
+  if (!pad) return;
+  pad.classList.toggle('vpad-high-contrast', enabled);
 }

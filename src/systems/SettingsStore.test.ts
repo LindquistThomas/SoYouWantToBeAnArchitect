@@ -72,6 +72,8 @@ describe('SettingsStore', () => {
         reducedMotion: true,
         controlBindings: {},
         onScreenControls: 'always',
+        hideTutorials: true,
+        highContrastControls: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -82,6 +84,9 @@ describe('SettingsStore', () => {
       expect(s.muteAll).toBe(true);
       expect(s.musicStyle).toBe('retro-synth');
       expect(s.reducedMotion).toBe(true);
+      expect(s.onScreenControls).toBe('always');
+      expect(s.hideTutorials).toBe(true);
+      expect(s.highContrastControls).toBe(true);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
@@ -368,6 +373,42 @@ describe('SettingsStore', () => {
       const listener = vi.fn();
       eventBus.on('audio:volume-changed', listener);
       settingsStore.setControlBindings({ Jump: [74] });
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('hideTutorials', () => {
+    it('defaults to false', () => {
+      expect(settingsStore.read().hideTutorials).toBe(false);
+    });
+
+    it('setHideTutorials(true) persists the flag', () => {
+      settingsStore.setHideTutorials(true);
+      expect(settingsStore.read().hideTutorials).toBe(true);
+    });
+
+    it('setHideTutorials(false) clears the flag', () => {
+      settingsStore.setHideTutorials(true);
+      settingsStore.setHideTutorials(false);
+      expect(settingsStore.read().hideTutorials).toBe(false);
+    });
+
+    it('falls back to false when the stored value is not a boolean', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ hideTutorials: 'yes' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().hideTutorials).toBe(false);
+    });
+
+    it('round-trips through storage', () => {
+      settingsStore.setHideTutorials(true);
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().hideTutorials).toBe(true);
+    });
+
+    it('does NOT emit audio:volume-changed when updating hideTutorials', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:volume-changed', listener);
+      settingsStore.setHideTutorials(true);
       expect(listener).not.toHaveBeenCalled();
     });
   });

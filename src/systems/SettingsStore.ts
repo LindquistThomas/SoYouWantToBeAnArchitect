@@ -55,6 +55,16 @@ export interface SettingsData {
    * - `never`  — always hidden; player relies on hardware keyboard/controller.
    */
   onScreenControls: OnScreenControlsSetting;
+  /**
+   * When true, first-visit coaching toasts are suppressed on all floors.
+   * Useful for replay sessions where the player already knows the controls.
+   */
+  hideTutorials: boolean;
+  /**
+   * When true, the virtual D-pad buttons use a higher-contrast (more opaque)
+   * background. Useful in bright outdoor / sunlight conditions.
+   */
+  highContrastControls: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -80,6 +90,8 @@ export function defaultSettings(): SettingsData {
     reducedMotion: defaultReducedMotion(),
     controlBindings: {},
     onScreenControls: 'auto',
+    hideTutorials: false,
+    highContrastControls: false,
   };
 }
 
@@ -127,6 +139,10 @@ function parseSettings(raw: unknown): SettingsData {
     onScreenControls: (['auto', 'always', 'never'] as string[]).includes(r['onScreenControls'] as string)
       ? (r['onScreenControls'] as OnScreenControlsSetting)
       : defaults.onScreenControls,
+    hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
+    highContrastControls: typeof r['highContrastControls'] === 'boolean'
+      ? r['highContrastControls']
+      : defaults.highContrastControls,
   };
 }
 
@@ -219,6 +235,10 @@ export const settingsStore = {
     this.updateNonAudio((prev) => ({ ...prev, reducedMotion: reduced }));
   },
 
+  setHighContrastControls(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, highContrastControls: enabled }));
+  },
+
   /** Persist a full set of key-binding overrides. Merges with nothing — replaces entirely. */
   setControlBindings(bindings: ControlBindings): void {
     this.updateNonAudio((prev) => ({ ...prev, controlBindings: bindings }));
@@ -231,6 +251,11 @@ export const settingsStore = {
 
   setOnScreenControls(v: OnScreenControlsSetting): void {
     this.updateNonAudio((prev) => ({ ...prev, onScreenControls: v }));
+  },
+
+  /** Toggle the first-visit coaching-toast suppression. */
+  setHideTutorials(hide: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, hideTutorials: hide }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

@@ -2,6 +2,17 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
+import { isTouchPrimary } from './touchPrimary';
+import { allKeyLabels, primaryKeyLabel } from '../input/keyLabels';
+
+/** Virtual-pad label for each control row shown on touch-primary devices. */
+const TOUCH_CONTROLS = [
+  '  MOVE       Stick',
+  '  JUMP       A button',
+  '  INFO PANEL B button',
+  '  INTERACT   B button',
+  '  PAUSE      Menu button',
+] as const;
 
 /**
  * First-time welcome card shown when a brand-new save reaches the elevator
@@ -62,7 +73,18 @@ export class WelcomeModal extends ModalBase {
     ).setOrigin(0.5, 0).setScrollFactor(0);
     this.container.add(title);
 
-    // Body text
+    // Body text — controls block uses keyboard labels from DEFAULT_BINDINGS
+    // (auto-updated if defaults change) or virtual-pad labels on touch devices.
+    const controlsRows = isTouchPrimary()
+      ? [...TOUCH_CONTROLS]
+      : [
+          `  MOVE       ${allKeyLabels('MoveLeft', ' ')} / ${allKeyLabels('MoveRight', ' ')}`,
+          `  JUMP       ${primaryKeyLabel('Jump')}`,
+          `  INFO PANEL ${allKeyLabels('ToggleInfo', ' / ')}`,
+          `  INTERACT   ${allKeyLabels('Interact', ' / ')}`,
+          `  PAUSE      ${allKeyLabels('Pause', ' / ')}`,
+          '  MUTE       M',
+        ];
     const bodyLines = [
       'You are an aspiring architect.',
       '',
@@ -73,11 +95,7 @@ export class WelcomeModal extends ModalBase {
       'Reach 100 AU to graduate as a full architect!',
       '',
       'CONTROLS',
-      '  ←  →     Walk',
-      '  Space    Jump / Front-flip',
-      '  ↑  /  I  Open info panels',
-      '  Enter    Interact',
-      '  Esc      Close dialogs',
+      ...controlsRows,
     ];
     const bodyText = this.scene.add.text(
       panelX + PADDING, panelY + PADDING + 50,
@@ -118,7 +136,7 @@ export class WelcomeModal extends ModalBase {
     const skip = this.scene.add.text(
       GAME_WIDTH / 2, btnY + 38,
       'Esc to skip',
-      { fontFamily: 'monospace', fontSize: '12px', color: '#556677' },
+      { fontFamily: 'monospace', fontSize: '12px', color: theme.color.css.textHint },
     ).setOrigin(0.5).setScrollFactor(0);
     this.container.add(skip);
   }

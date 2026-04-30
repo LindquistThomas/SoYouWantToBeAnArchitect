@@ -20,6 +20,8 @@ const KEY_LABELS: Record<number, string> = {
   [K.S]: 'S',
   [K.D]: 'D',
   [K.I]: 'I',
+  [K.P]: 'P',
+  [K.X]: 'X',
   [K.ONE]: '1',
   [K.TWO]: '2',
   [K.THREE]: '3',

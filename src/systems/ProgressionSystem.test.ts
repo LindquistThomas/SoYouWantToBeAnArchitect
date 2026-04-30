@@ -52,15 +52,15 @@ describe('ProgressionSystem', () => {
   it('unlocks BUSINESS when totalAU reaches its threshold', () => {
     const p = new ProgressionSystem();
     expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
-    p.addAU(FLOORS.PLATFORM_TEAM, 10);
+    p.addAU(FLOORS.PLATFORM_TEAM, 8);
     expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
   });
 
   it('reports remaining AU needed for a locked floor', () => {
     const p = new ProgressionSystem();
-    expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(10);
-    p.addAU(FLOORS.PLATFORM_TEAM, 2);
     expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(8);
+    p.addAU(FLOORS.PLATFORM_TEAM, 2);
+    expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(6);
     p.addAU(FLOORS.PLATFORM_TEAM, 15);
     expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(0);
   });
@@ -80,7 +80,7 @@ describe('ProgressionSystem', () => {
   });
 
   it('locked floor remains locked after save-reload (no merge with defaults)', () => {
-    // Player collects only 5 AU — not enough for BUSINESS (needs 10).
+    // Player collects only 5 AU — not enough for BUSINESS (needs 8).
     const p = new ProgressionSystem();
     p.addAU(FLOORS.PLATFORM_TEAM, 5);
     expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
@@ -98,7 +98,7 @@ describe('ProgressionSystem', () => {
     eventBus.on('progression:floor_unlocked', handler);
     try {
       const p = new ProgressionSystem();
-      p.addAU(FLOORS.PLATFORM_TEAM, 10); // crosses BUSINESS threshold (10)
+      p.addAU(FLOORS.PLATFORM_TEAM, 10); // crosses BUSINESS threshold (8)
       expect(unlocked).toContain(FLOORS.BUSINESS);
     } finally {
       eventBus.off('progression:floor_unlocked', handler);
@@ -121,7 +121,7 @@ describe('ProgressionSystem', () => {
     // Inject a hand-crafted save via a custom SaveAdapter.
     const legacySave = {
       version: 1,
-      totalAU: 5, // only 5 AU — not enough for BUSINESS (10), EXECUTIVE (15), or PRODUCTS (8)
+      totalAU: 5, // only 5 AU — not enough for BUSINESS (8), EXECUTIVE (22), or PRODUCTS (8)
       floorAU: {
         [FLOORS.LOBBY]: 2,
         [FLOORS.PLATFORM_TEAM]: 3,
@@ -154,6 +154,15 @@ describe('ProgressionSystem', () => {
     expect(q.isFloorUnlocked(FLOORS.PRODUCTS)).toBe(true);
     // AU total must also be correct.
     expect(q.getTotalAU()).toBe(5);
+  });
+
+  it('hasVisitedFloor returns false before visit and true after markFloorVisited', () => {
+    const p = new ProgressionSystem();
+    expect(p.hasVisitedFloor(FLOORS.LOBBY)).toBe(false);
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.hasVisitedFloor(FLOORS.LOBBY)).toBe(true);
+    // Other floors remain unvisited.
+    expect(p.hasVisitedFloor(FLOORS.PLATFORM_TEAM)).toBe(false);
   });
 
   it('reset() clears all state and the persisted save', () => {
@@ -225,31 +234,35 @@ describe('ProgressionSystem', () => {
       eventBus.removeAllListeners();
     });
 
-    it('emits progression:au_milestone at each 50-AU boundary crossed', () => {
+    it('emits progression:au_milestone at each explicit milestone value crossed', () => {
       const p = new ProgressionSystem();
       const milestones: number[] = [];
       eventBus.on('progression:au_milestone', (total) => milestones.push(total));
-      p.addAU(FLOORS.PLATFORM_TEAM, 49);
+      p.addAU(FLOORS.PLATFORM_TEAM, 4);
       expect(milestones).toEqual([]);
-      p.addAU(FLOORS.PLATFORM_TEAM, 1); // crosses 50
-      expect(milestones).toEqual([50]);
-      p.addAU(FLOORS.PLATFORM_TEAM, 50); // crosses 100
-      expect(milestones).toEqual([50, 100]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 1); // crosses 5
+      expect(milestones).toEqual([5]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 10); // crosses 15
+      expect(milestones).toEqual([5, 15]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 15); // crosses 30
+      expect(milestones).toEqual([5, 15, 30]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 20); // crosses 50
+      expect(milestones).toEqual([5, 15, 30, 50]);
     });
 
-    it('emits every boundary when a single addAU call crosses multiple milestones', () => {
+    it('emits every milestone when a single addAU call crosses multiple boundaries', () => {
       const p = new ProgressionSystem();
       const milestones: number[] = [];
       eventBus.on('progression:au_milestone', (total) => milestones.push(total));
-      p.addAU(FLOORS.PLATFORM_TEAM, 120); // crosses 50 and 100
-      expect(milestones).toEqual([50, 100]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 50); // crosses 5, 15, 30, 50
+      expect(milestones).toEqual([5, 15, 30, 50]);
     });
 
-    it('does not emit progression:au_milestone when total stays below first boundary', () => {
+    it('does not emit progression:au_milestone when total stays below first milestone', () => {
       const p = new ProgressionSystem();
       const fn = vi.fn();
       eventBus.on('progression:au_milestone', fn);
-      p.addAU(FLOORS.PLATFORM_TEAM, 49);
+      p.addAU(FLOORS.PLATFORM_TEAM, 4); // stays below 5 (first milestone)
       expect(fn).not.toHaveBeenCalled();
     });
   });
@@ -303,5 +316,53 @@ describe('ProgressionSystem — loadFromSave optional-field fallbacks', () => {
     const p = new ProgressionSystem();
     expect(p.loadFromSave()).toBe(true);
     expect(p.isOnboardingComplete()).toBe(false);
+  });
+});
+
+describe('ProgressionSystem — isFirstVisit / resetVisitedFloors', () => {
+  beforeEach(() => {
+    setStorage(memoryStorage());
+    setPlayerSlot('progression-test');
+  });
+
+  it('isFirstVisit returns true for a floor that has never been visited', () => {
+    const p = new ProgressionSystem();
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+  });
+
+  it('isFirstVisit returns false after markFloorVisited is called', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(false);
+  });
+
+  it('isFirstVisit remains true for unvisited floors even when other floors are visited', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(true);
+  });
+
+  it('resetVisitedFloors makes isFirstVisit return true again for all floors', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    p.markFloorVisited(FLOORS.PLATFORM_TEAM);
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(false);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(false);
+
+    p.resetVisitedFloors();
+
+    expect(p.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+    expect(p.isFirstVisit(FLOORS.PLATFORM_TEAM)).toBe(true);
+  });
+
+  it('resetVisitedFloors persists — reloading the save has no visited floors', () => {
+    const p = new ProgressionSystem();
+    p.markFloorVisited(FLOORS.LOBBY);
+    p.resetVisitedFloors();
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.getVisitedFloorCount()).toBe(0);
+    expect(q.isFirstVisit(FLOORS.LOBBY)).toBe(true);
   });
 });
