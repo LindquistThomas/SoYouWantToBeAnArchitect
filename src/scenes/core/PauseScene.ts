@@ -185,7 +185,7 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private openSettings(): void {
-    this.scene.launch('SettingsScene', { from: 'PauseScene', parentKey: this.parentKey });
+    this.scene.launch('SettingsScene', { from: 'PauseScene' });
     this.scene.bringToTop('SettingsScene');
     this.scene.setVisible(false);
   }

@@ -122,13 +122,13 @@ import { SettingsScene } from './SettingsScene';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Cast to a plain object so private fields are accessible without intersection conflicts.
-type AnyScene = Record<string, unknown> & {
+type MockSettingsScene = Record<string, unknown> & {
   scene: { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; setVisible: ReturnType<typeof vi.fn> };
   _delayedCallbacks: Array<() => void>;
 };
 
-function makeSettings(from?: string): AnyScene {
-  const scene = new SettingsScene() as unknown as AnyScene & {
+function makeSettings(from?: string): MockSettingsScene {
+  const scene = new SettingsScene() as unknown as MockSettingsScene & {
     init: (d: { from?: string }) => void;
     create: () => void;
   };
@@ -137,7 +137,7 @@ function makeSettings(from?: string): AnyScene {
   return scene;
 }
 
-function flushDelayed(scene: AnyScene): void {
+function flushDelayed(scene: MockSettingsScene): void {
   const cbs = scene._delayedCallbacks.splice(0);
   for (const cb of cbs) cb();
 }

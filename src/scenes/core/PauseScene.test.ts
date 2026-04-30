@@ -99,6 +99,9 @@ function makeScene(): PauseScene {
   return scene;
 }
 
+// add.text call order in buildPanel: [0]=title, [1]=Resume btn, [2]=Settings btn, [3]=Quit btn, [4]=hint
+type AddTextCall = [number, number, string, unknown];
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('PauseScene', () => {
@@ -115,37 +118,31 @@ describe('PauseScene', () => {
 
     it('first item is Resume', () => {
       const scene = makeScene();
-      // The label passed to add.text for the resume button contains 'Resume'.
-      // add.text call order: [0]=title, [1]=Resume btn, [2]=Settings btn, [3]=Quit btn, [4]=hint
-      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as Array<[number, number, string, unknown]>;
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as AddTextCall[];
       const labels = addTextCalls.map(([, , label]) => label);
       expect(labels[1]).toMatch(/Resume/i);
     });
 
     it('second item is Settings', () => {
       const scene = makeScene();
-      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as Array<[number, number, string, unknown]>;
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as AddTextCall[];
       const labels = addTextCalls.map(([, , label]) => label);
       expect(labels[2]).toMatch(/Settings/i);
     });
 
     it('third item is Quit to Menu', () => {
       const scene = makeScene();
-      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as Array<[number, number, string, unknown]>;
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as AddTextCall[];
       const labels = addTextCalls.map(([, , label]) => label);
       expect(labels[3]).toMatch(/Quit/i);
     });
   });
 
   describe('openSettings()', () => {
-    it('launches SettingsScene with from=PauseScene and the parentKey', () => {
+    it('launches SettingsScene with from=PauseScene', () => {
       const scene = makeScene();
-      const openSettings = (scene as unknown as { openSettings: () => void }).openSettings.bind(scene);
-      openSettings();
-      expect(scene.scene.launch).toHaveBeenCalledWith('SettingsScene', {
-        from: 'PauseScene',
-        parentKey: 'PlatformTeamScene',
-      });
+      (scene as unknown as { openSettings: () => void }).openSettings.call(scene);
+      expect(scene.scene.launch).toHaveBeenCalledWith('SettingsScene', { from: 'PauseScene' });
     });
 
     it('brings SettingsScene to top', () => {
