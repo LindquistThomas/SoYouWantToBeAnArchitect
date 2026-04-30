@@ -72,15 +72,18 @@ export class BossIntroDialog extends ModalBase {
     this.container.add(lore);
 
     // Controls list
-    const attackLabel  = allKeyLabels('Attack');
-    const jumpLabel    = allKeyLabels('Jump', '/');
-    const interactLabel = allKeyLabels('Interact');
+    const attackLabel    = allKeyLabels('Attack');
+    const jumpLabel      = allKeyLabels('Jump', '/');
+    const moveLeftLabel  = allKeyLabels('MoveLeft', '/');
+    const moveRightLabel = allKeyLabels('MoveRight', '/');
+    const moveLabel      = `${moveLeftLabel}/${moveRightLabel}`;
+    const challengeLabel = '1/2/3 or click';
 
     const controlLines = [
-      `  \u2190/\u2192           Move`,
+      `  ${moveLabel.padEnd(12)}Move`,
       `  ${jumpLabel.padEnd(12)}Jump \u2014 dodge the CEO\u2019s briefcases`,
       `  ${attackLabel.padEnd(12)}Throw held mug`,
-      `  ${interactLabel.padEnd(12)}Answer architecture challenges`,
+      `  ${challengeLabel.padEnd(12)}Answer architecture challenges`,
     ];
 
     const controls = this.scene.add.text(
