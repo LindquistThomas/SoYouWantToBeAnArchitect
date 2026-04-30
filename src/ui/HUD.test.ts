@@ -77,6 +77,8 @@ function makeText(text: string) {
     return t;
   });
   t.setAlpha = vi.fn().mockReturnValue(t);
+  t.setVisible = vi.fn().mockReturnValue(t);
+  t.setStyle = vi.fn().mockReturnValue(t);
   t.destroy = vi.fn();
   return t as unknown as {
     text: string;
@@ -88,6 +90,8 @@ function makeText(text: string) {
     setDepth: ReturnType<typeof vi.fn>;
     setY: ReturnType<typeof vi.fn>;
     setAlpha: ReturnType<typeof vi.fn>;
+    setVisible: ReturnType<typeof vi.fn>;
+    setStyle: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
   };
 }
@@ -164,6 +168,12 @@ function makeScene(muted = false) {
         handlers.forEach((fn) => fn());
       },
     },
+    /** Mock Phaser ScaleManager — displaySize.width defaults to GAME_WIDTH so tests use 'wide' tokens. */
+    scale: {
+      displaySize: { width: GAME_WIDTH },
+      on: vi.fn(),
+      off: vi.fn(),
+    },
     zoneHandlers,
     texts,
     graphics,
@@ -235,6 +245,22 @@ describe('HUD', () => {
     expect(spy.mock.calls.length).toBe(callsAfterFirst);
   });
 
+  it('shows a toast when progression:au_milestone fires and unsubscribes on shutdown', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('progression:au_milestone', 15);
+    expect(showSpy).toHaveBeenCalledWith('\u2B50 15 AU collected!');
+
+    // After shutdown the lifecycle handler must be disconnected.
+    scene.events.emit('shutdown');
+    showSpy.mockClear();
+    eventBus.emit('progression:au_milestone', 30);
+    expect(showSpy).not.toHaveBeenCalled();
+  });
+
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
@@ -258,5 +284,64 @@ describe('HUD', () => {
     scene.events.emit('shutdown');
     eventBus.emit('audio:mute-changed', false);
     expect(muteGraphics.clear.mock.calls.length).toBe(clearCountAfterBind);
+  });
+
+  it('relayouts with compact tokens when resize crosses into compact size class', () => {
+    scene = makeScene(false);
+    // Start at wide (GAME_WIDTH = 1280)
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    // Capture the resize handler registered on scene.scale
+    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (args: unknown[]) => args[0] === 'resize',
+    ) as [string, () => void] | undefined;
+    expect(resizeCall).toBeDefined();
+    const onResize = resizeCall![1];
+
+    // Simulate crossing into the compact size class (< 700 px)
+    scene.scale.displaySize.width = 375;
+    onResize();
+
+    // auText should have been restyled with the compact font
+    const auTextCall = scene.add.text.mock.calls.findIndex(
+      (args: unknown[]) => args[0] === 46 && args[1] === 6 && args[2] === 'AU: 0',
+    );
+    const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
+    expect(auText.setStyle).toHaveBeenCalledWith(expect.objectContaining({ fontSize: '28px' }));
+
+    // Centre title should be hidden on compact
+    const titleText = scene.texts.find((t) => t.text === 'SO YOU WANT TO BE AN ARCHITECT');
+    expect(titleText?.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it('does not relayout when resize stays within the same size class', () => {
+    scene = makeScene(false);
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (args: unknown[]) => args[0] === 'resize',
+    ) as [string, () => void] | undefined;
+    const onResize = resizeCall![1];
+
+    // Resize stays within 'wide' class — no relayout expected
+    scene.scale.displaySize.width = 1100;
+    onResize();
+
+    const auTextCall = scene.add.text.mock.calls.findIndex(
+      (args: unknown[]) => args[0] === 46 && args[1] === 6 && args[2] === 'AU: 0',
+    );
+    const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
+    expect(auText.setStyle).not.toHaveBeenCalled();
+  });
+
+  it('unsubscribes resize handler from scene.scale on shutdown', () => {
+    scene = makeScene(false);
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    expect((scene.scale.off as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+
+    scene.events.emit('shutdown');
+
+    expect(scene.scale.off).toHaveBeenCalledWith('resize', expect.any(Function), expect.anything());
   });
 });

@@ -4,6 +4,7 @@ import { theme } from '../style/theme';
 import { eventBus } from '../systems/EventBus';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
+import { getSizeClass, getLayoutTokens } from '../style/responsive';
 
 export interface InfoDialogLink {
   label: string;
@@ -72,13 +73,14 @@ export class InfoDialog extends ModalBase {
   }
 
   private buildPanel(content: InfoDialogContent, options?: InfoDialogOptions): void {
-    const panelW = 620;
+    const displayW = (this.scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
+    const sc = getSizeClass(displayW);
+    const tokens = getLayoutTokens(sc);
+    const panelW = tokens.dialogPanelW;
     const panelX = (GAME_WIDTH - panelW) / 2;
     const PADDING = 32;
-    const LINK_LINE_H = 30;
-    const CLOSE_BAR_H = 44;
-    const TITLE_H = 28;
-    const TITLE_GAP = 18;
+    const LINK_LINE_H = tokens.dialogTapTarget;
+    const CLOSE_BAR_H = tokens.dialogTapTarget;
 
     // Fixed, tall panel. Content scrolls inside a viewport between the
     // sticky title (top) and sticky quiz/close footer (bottom).
@@ -86,7 +88,7 @@ export class InfoDialog extends ModalBase {
     const panelY = 20;
 
     const hasQuiz = !!options?.onQuizStart;
-    const quizBtnH = hasQuiz ? 40 : 0;
+    const quizBtnH = hasQuiz ? tokens.dialogTapTarget : 0;
     const footerH = quizBtnH + CLOSE_BAR_H + 16;
     const footerY = panelY + panelH - footerH;
 
@@ -100,11 +102,14 @@ export class InfoDialog extends ModalBase {
     // --- title (sticky) ---
     const titleY = panelY + PADDING;
     const title = this.scene.add.text(GAME_WIDTH / 2, titleY, content.title, {
-      fontFamily: 'monospace', fontSize: '24px', color: theme.color.css.textTitle, fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: theme.color.css.textTitle, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
-    const titleSepY = titleY + TITLE_H + TITLE_GAP - 10;
+    // Use the actual rendered height so the separator adapts to the responsive
+    // font size rather than being positioned relative to a hardcoded constant.
+    const TITLE_GAP = 18;
+    const titleSepY = titleY + title.height + TITLE_GAP - 10;
     const sep = this.scene.add.graphics();
     sep.lineStyle(1, theme.color.ui.border, 0.3);
     sep.lineBetween(panelX + 20, titleSepY, panelX + panelW - 20, titleSepY);
@@ -138,7 +143,7 @@ export class InfoDialog extends ModalBase {
     let cy = 0;
 
     const body = this.scene.add.text(PADDING, cy, content.body, {
-      fontFamily: 'monospace', fontSize: '15px', color: '#c0c8d4',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: '#c0c8d4',
       wordWrap: { width: panelW - PADDING * 2 }, lineSpacing: 6,
     }).setX(panelX + PADDING);
     scrollContent.add(body);
@@ -146,14 +151,14 @@ export class InfoDialog extends ModalBase {
 
     if (content.links && content.links.length > 0) {
       const linksHeader = this.scene.add.text(panelX + PADDING, cy, 'Learn more:', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#a0b8cc', fontStyle: 'bold',
+        fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: '#a0b8cc', fontStyle: 'bold',
       });
       scrollContent.add(linksHeader);
       cy += 24;
 
       for (const link of content.links) {
         const linkText = this.scene.add.text(panelX + PADDING + 10, cy, `\u25b8 ${link.label}`, {
-          fontFamily: 'monospace', fontSize: '15px', color: '#44aaff',
+          fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: '#44aaff',
         }).setInteractive({ useHandCursor: true });
 
         linkText.on('pointerover', () => linkText.setColor('#88ddff'));
@@ -241,12 +246,12 @@ export class InfoDialog extends ModalBase {
 
     // --- footer (sticky): quiz button + close/hint ---
     if (hasQuiz && options?.onQuizStart) {
-      this.createQuizButton(options, panelX, panelW, footerY + 6, panelY, panelH);
+      this.createQuizButton(options, panelX, panelW, footerY + 6, panelY, panelH, tokens.dialogFontBody);
     }
 
     const closeY = footerY + quizBtnH + 10;
     const closeText = this.scene.add.text(GAME_WIDTH / 2, closeY, '[\u2190\u2193\u2191] Navigate   [Enter] Select   [Esc] Close', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#8899aa',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: '#8899aa',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
 
     closeText.on('pointerover', () => closeText.setColor('#88aacc'));
@@ -256,7 +261,7 @@ export class InfoDialog extends ModalBase {
     this.nav.add(makeTextFocusable(closeText, '#8899aa', '#88aacc'));
 
     const xBtn = this.scene.add.text(panelX + panelW - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: '#8899aa', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
 
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
@@ -282,6 +287,7 @@ export class InfoDialog extends ModalBase {
     options: InfoDialogOptions,
     panelX: number, panelW: number,
     quizY: number, _panelY: number, _panelH: number,
+    fontSize: string,
   ): void {
     const quizStatus = options.quizStatus;
     let quizLabel: string;
@@ -301,7 +307,7 @@ export class InfoDialog extends ModalBase {
     }
 
     const quizBtn = this.scene.add.text(GAME_WIDTH / 2, quizY, quizLabel, {
-      fontFamily: 'monospace', fontSize: '15px', color: quizColor, fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize, color: quizColor, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
     this.container.add(quizBtn);
 

@@ -5,6 +5,7 @@ import { LEVEL_DATA } from '../config/levelData';
 import { eventBus } from '../systems/EventBus';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import { theme } from '../style/theme';
+import { getSizeClass, getLayoutTokens, type SizeClass, type LayoutTokens } from '../style/responsive';
 import type { AudioManager } from '../systems/AudioManager';
 import { Toast } from './Toast';
 import { AchievementsDialog } from './AchievementsDialog';
@@ -29,6 +30,8 @@ export class HUD {
   private progression: ProgressionSystem;
   private auText!: Phaser.GameObjects.Text;
   private floorText!: Phaser.GameObjects.Text;
+  /** Decorative centre title — hidden on compact viewports. */
+  private titleText!: Phaser.GameObjects.Text;
   private container!: Phaser.GameObjects.Container;
   private muteIcon!: Phaser.GameObjects.Graphics;
   private muteHit!: Phaser.GameObjects.Zone;
@@ -47,6 +50,10 @@ export class HUD {
   private progressRatio = 0;
   private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
+  /** Current layout size class — re-evaluated on viewport resize. */
+  private sizeClass: SizeClass = 'wide';
+  /** Resolved layout tokens for the current size class. */
+  private tokens: LayoutTokens = getLayoutTokens('wide');
 
   private trophyIcon!: Phaser.GameObjects.Graphics;
   private trophyHit!: Phaser.GameObjects.Zone;
@@ -69,9 +76,20 @@ export class HUD {
     this.caffeineRing.setVisible(false);
   };
 
+  /** Timestamp (scene.time.now) when the player first entered the "2 AU from unlock" zone. null = inactive. */
+  private nudgeTimerStart: number | null = null;
+  /** FloorId of the floor for which a nudge was already shown (prevents repeat spam). */
+  private nudgeShownForFloor: FloorId | null = null;
+  /** Cached result of the last findNextUnlockFloor() call; updated whenever AU or floor changes. */
+  private cachedNextFloor: typeof LEVEL_DATA[FloorId] | undefined = undefined;
+
   constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
     this.scene = scene;
     this.progression = progression;
+    // Resolve initial size class from the actual CSS display width.
+    const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
+    this.sizeClass = getSizeClass(displayW);
+    this.tokens = getLayoutTokens(this.sizeClass);
     this.create();
   }
 
@@ -111,7 +129,7 @@ export class HUD {
 
     // AU label + counter
     this.auText = this.scene.add.text(46, 6, 'AU: 0', {
-      fontFamily: 'monospace', fontSize: '20px',
+      fontFamily: 'monospace', fontSize: this.tokens.hudFontAU,
       color: COLORS.hudText, fontStyle: 'bold',
     });
     this.container.add(this.auText);
@@ -159,12 +177,28 @@ export class HUD {
     lifecycle.bindEventBus('achievement:unlocked', (_id, label) => {
       this.toast.show(`\u{1F3C6} Achievement unlocked: ${label}`);
     });
+    lifecycle.bindEventBus('progression:au_milestone', (total) => {
+      this.toast.show(`\u2B50 ${total} AU collected!`);
+    });
     lifecycle.bindEventBus('progression:floor_unlocked', (floorId) => {
       const floorData = LEVEL_DATA[floorId];
       const name = floorData?.name ?? 'new floor';
       this.toast.show(`\u{1F513} ${name} UNLOCKED!`);
       eventBus.emit('sfx:floor_unlocked');
     });
+
+    // Respond to viewport resizes — update font sizes if the size class changes.
+    const onResize = (): void => {
+      const w = (this.scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
+      const newClass = getSizeClass(w);
+      if (newClass !== this.sizeClass) {
+        this.sizeClass = newClass;
+        this.tokens = getLayoutTokens(newClass);
+        this.relayout();
+      }
+    };
+    this.scene.scale.on('resize', onResize, this);
+    lifecycle.add(() => this.scene.scale.off('resize', onResize, this));
 
     // Trophy button — opens AchievementsDialog.
     const TROPHY_X = GAME_WIDTH - 128;
@@ -180,28 +214,41 @@ export class HUD {
 
     // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
     this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {
-      fontFamily: 'monospace', fontSize: '9px',
+      fontFamily: 'monospace', fontSize: this.tokens.hudFontFloorLabel,
       color: theme.color.css.textQuizHint, fontStyle: 'bold',
     }).setOrigin(0, 0);
     this.container.add(this.floorLabel);
 
     // Floor indicator — to the left of the mute icon
     this.floorText = this.scene.add.text(GAME_WIDTH - 48, 10, '', {
-      fontFamily: 'monospace', fontSize: '16px', color: COLORS.titleText,
+      fontFamily: 'monospace', fontSize: this.tokens.hudFontFloor, color: COLORS.titleText,
     }).setOrigin(1, 0);
     this.container.add(this.floorText);
 
-    // Game title (center) — restyled as subdued chrome.
-    this.container.add(
-      this.scene.add.text(GAME_WIDTH / 2, 14, 'SO YOU WANT TO BE AN ARCHITECT', {
-        fontFamily: 'monospace', fontSize: '13px',
-        color: theme.color.css.textQuizMuted, fontStyle: 'bold',
-      }).setOrigin(0.5, 0).setAlpha(0.6),
-    );
+    // Game title (center) — restyled as subdued chrome. Hidden on compact.
+    this.titleText = this.scene.add.text(GAME_WIDTH / 2, 14, 'SO YOU WANT TO BE AN ARCHITECT', {
+      fontFamily: 'monospace', fontSize: this.tokens.hudFontTitle,
+      color: theme.color.css.textQuizMuted, fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setAlpha(0.6);
+    this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.container.add(this.titleText);
 
     this.lastAU = this.progression.getTotalAU();
     this.redrawBackground();
     this.redrawProgressStrip();
+  }
+
+  /**
+   * Update HUD text styles when the viewport size class changes.
+   * Called by the `resize` event handler when the class transitions
+   * (e.g. from `wide` to `compact` on screen rotation).
+   */
+  private relayout(): void {
+    this.auText.setStyle({ fontSize: this.tokens.hudFontAU });
+    this.floorText.setStyle({ fontSize: this.tokens.hudFontFloor });
+    this.floorLabel.setStyle({ fontSize: this.tokens.hudFontFloorLabel });
+    this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
+    this.titleText.setVisible(this.sizeClass !== 'compact');
   }
 
   /** Gradient HUD bar with theme-colored accent line. Repaints only when floor changes. */
@@ -513,6 +560,7 @@ export class HUD {
 
     if (auChanged || floorChanged) {
       const next = this.findNextUnlockFloor();
+      this.cachedNextFloor = next;
       const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
       if (sig !== this.lastProgressSig) {
         this.lastProgressSig = sig;
@@ -528,6 +576,26 @@ export class HUD {
       } else {
         this.renderCaffeineIcon(remaining / this.caffeineDuration);
       }
+    }
+
+    // Tutorial nudge: when within 2 AU of the next floor unlock for 20 s,
+    // show a hint toast once while the player remains in that near-unlock band.
+    const nextForNudge = this.cachedNextFloor;
+    if (nextForNudge && nextForNudge.auRequired - au <= 2) {
+      if (this.nudgeShownForFloor !== nextForNudge.id) {
+        if (this.nudgeTimerStart === null) {
+          this.nudgeTimerStart = this.scene.time.now;
+        } else if (this.scene.time.now - this.nudgeTimerStart >= 20_000) {
+          const needed = nextForNudge.auRequired - au;
+          this.toast.show(
+            `\u{1F4A1} Just ${needed} more AU to unlock ${nextForNudge.name}! Keep exploring for more AU.`,
+          );
+          this.nudgeShownForFloor = nextForNudge.id;
+          this.nudgeTimerStart = null;
+        }
+      }
+    } else {
+      this.nudgeTimerStart = null;
     }
   }
 }
