@@ -169,6 +169,12 @@ export class HUD {
     lifecycle.bindEventBus('progression:au_milestone', (total) => {
       this.toast.show(`\u2B50 ${total} AU collected!`);
     });
+    lifecycle.bindEventBus('progression:floor_unlocked', (floorId) => {
+      const floorData = LEVEL_DATA[floorId];
+      const name = floorData?.name ?? 'new floor';
+      this.toast.show(`\u{1F513} ${name} UNLOCKED!`);
+      eventBus.emit('sfx:floor_unlocked');
+    });
 
     // Trophy button — opens AchievementsDialog.
     const TROPHY_X = GAME_WIDTH - 128;

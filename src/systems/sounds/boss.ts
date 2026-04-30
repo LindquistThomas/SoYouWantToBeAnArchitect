@@ -57,19 +57,52 @@ export function generateMugThrowSound(): ArrayBuffer {
   return encodeWAV(samples, SAMPLE_RATE);
 }
 
-/** Tense low sting — boss phase transition. */
-export function generateBossPhaseSound(): ArrayBuffer {
-  const duration = 0.4;
+/** Mid-intensity descending stinger — phase 2 (Hostile Takeover). */
+export function generateBossPhase2Sound(): ArrayBuffer {
+  const duration = 0.55;
   const n = Math.floor(SAMPLE_RATE * duration);
   const samples = new Float32Array(n);
-  let phase = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const freq = 80 + 60 * t;
-    phase += (2 * Math.PI * freq) / SAMPLE_RATE;
-    const wave = (2 / Math.PI) * Math.asin(Math.sin(phase));
-    const env = t < 0.1 ? t / 0.1 : Math.exp(-(t - 0.1) * 3);
-    samples[i] = wave * env * 0.25;
+  // Descending two-note stab: 440 → 330 Hz
+  const notes = [440, 330];
+  const noteLen = Math.floor(n / notes.length);
+  for (let ni = 0; ni < notes.length; ni++) {
+    const freq = notes[ni] ?? 440;
+    const start = ni * noteLen;
+    const end = Math.min(start + noteLen, n);
+    let ph = 0;
+    for (let i = start; i < end; i++) {
+      const t = (i - start) / (end - start);
+      ph += (2 * Math.PI * freq) / SAMPLE_RATE;
+      const wave = (2 / Math.PI) * Math.asin(Math.sin(ph));
+      const env = t < 0.05 ? t / 0.05 : Math.exp(-(t - 0.05) * 4);
+      samples[i] = wave * env * 0.3;
+    }
+  }
+  return encodeWAV(samples, SAMPLE_RATE);
+}
+
+/** Heavy descending stinger — phase 3 (Golden Parachute). */
+export function generateBossPhase3Sound(): ArrayBuffer {
+  const duration = 0.7;
+  const n = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(n);
+  // Three descending notes with low bass sub
+  const notes = [220, 165, 110];
+  const noteLen = Math.floor(n / notes.length);
+  for (let ni = 0; ni < notes.length; ni++) {
+    const freq = notes[ni] ?? 220;
+    const start = ni * noteLen;
+    const end = Math.min(start + noteLen, n);
+    let ph = 0; let phSub = 0;
+    for (let i = start; i < end; i++) {
+      const t = (i - start) / (end - start);
+      ph += (2 * Math.PI * freq) / SAMPLE_RATE;
+      phSub += (2 * Math.PI * (freq / 2)) / SAMPLE_RATE;
+      const wave = (2 / Math.PI) * Math.asin(Math.sin(ph));
+      const sub = Math.sin(phSub) * 0.4;
+      const env = t < 0.04 ? t / 0.04 : Math.exp(-(t - 0.04) * 3.5);
+      samples[i] = (wave * 0.25 + sub * 0.15) * env;
+    }
   }
   return encodeWAV(samples, SAMPLE_RATE);
 }

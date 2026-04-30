@@ -84,6 +84,40 @@ export class BossHealthBar {
     });
   }
 
+  /** Brief glow flash on the HP bar — used on phase threshold crossings. */
+  flash(phase: number): void {
+    const scene = this.barGfx.scene;
+    // Colour: orange for phase 2, red for phase 3
+    const glowColor = phase === 3 ? 0xff2222 : 0xff8800;
+    const originalX = BossHealthBar.X;
+
+    // Pulse the container alpha
+    scene.tweens.add({
+      targets: this.container,
+      alpha: 0.3,
+      duration: 80,
+      yoyo: true,
+      repeat: 3,
+      onComplete: () => { this.container.setAlpha(1); },
+    });
+
+    // Briefly draw a glowing border on the bar
+    const glow = scene.add.graphics().setScrollFactor(0).setDepth(61);
+    const w = BossHealthBar.BAR_W;
+    const h = BossHealthBar.BAR_H;
+    const x = -w / 2;
+    glow.lineStyle(3, glowColor, 1);
+    glow.strokeRoundedRect(originalX + x - 2, BossHealthBar.Y - 2, w + 4, h + 4, 4);
+
+    scene.tweens.add({
+      targets: glow,
+      alpha: 0,
+      duration: 600,
+      delay: 200,
+      onComplete: () => glow.destroy(),
+    });
+  }
+
   destroy(): void {
     this.container.destroy();
   }

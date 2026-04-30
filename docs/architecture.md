@@ -9,9 +9,11 @@ A one-page map of the codebase. For setup and conventions see
 src/
 ├── main.ts                   Phaser game bootstrap; scene registration.
 ├── config/                   Shared constants + back-compat barrels.
+│   ├── achievements.ts       Achievement definitions catalogue — id, label, description, and secret flag per achievement.
+│   ├── audioConfig.ts        SFX key ↔ event-name map; music track list.
 │   ├── gameConfig.ts         World dimensions, physics, colours, FLOORS enum.
 │   ├── levelData.ts          Per-floor metadata: name, scene key, AU thresholds, theme.
-│   ├── audioConfig.ts        SFX key ↔ event-name map; music track list.
+│   ├── levelGeometry.ts      Shared geometry constants — mezzanine tier Y positions and catwalk thicknesses.
 │   ├── info/                 Barrel — merges per-floor info into INFO_POINTS.
 │   │   ├── index.ts          Re-export barrel + `getInfoPointsFor(floorId)`.
 │   │   └── types.ts          `InfoPointDef` shape.
@@ -80,7 +82,8 @@ src/
 │   └── phaser-augment.d.ts   Phaser typings adjustments for the service.
 ├── scenes/                   Infrastructure scenes (non-floor).
 │   ├── NavigationContext.ts  Typed hand-off for `scene.start(key, ctx)`.
-│   ├── sceneRegistry.ts      SCENE_REGISTRY — single source of truth for all scene classes.
+│   ├── sceneRegistry.ts      EAGER_REGISTRY + validateSceneRegistry(); derives SCENE_REGISTRY.
+│   ├── lazySceneLoaders.ts   LAZY_SCENE_LOADERS map — loader thunks for floor/product/boss scenes.
 │   ├── core/
 │   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
@@ -89,13 +92,21 @@ src/
 │   │   ├── ControlsScene.ts  Keyboard-rebinding submenu.
 │   │   └── SaveSlotScene.ts  Save-slot picker (new game / continue / delete).
 │   ├── elevator/             Elevator-shaft orchestrator + collaborators.
-│   │   ├── ElevatorScene.ts               Thin orchestrator — delegates layout, transitions, doors, zones to the collaborators below.
-│   │   ├── ElevatorController.ts          Owns the Elevator entity + ride loop.
-│   │   ├── ElevatorSceneLayout.ts         Shaft visuals, floor labels, unlock rendering.
-│   │   ├── ElevatorFloorTransitionManager.ts  Floor-to-floor transition state.
-│   │   ├── ElevatorShaftDoors.ts          Side-view landing doors that open on dock.
-│   │   ├── ElevatorZones.ts               Lobby zones, info icons, first-ride intro.
-│   │   └── ProductDoorManager.ts          Per-product door state on the products floor.
+│   │   ├── ElevatorScene.ts                     Thin orchestrator — delegates layout, transitions, doors, zones to the collaborators below.
+│   │   ├── ElevatorController.ts                Owns the Elevator entity + ride loop.
+│   │   ├── ElevatorSceneLayout.ts               Shaft visuals, floor labels, unlock rendering.
+│   │   ├── ElevatorFloorTransitionManager.ts    Floor-to-floor transition state.
+│   │   ├── ElevatorShaftDoors.ts                Side-view landing doors that open on dock.
+│   │   ├── ElevatorZones.ts                     Lobby zones, info icons, first-ride intro.
+│   │   ├── ProductDoorManager.ts                Per-product door state on the products floor.
+│   │   ├── buildingFacade.ts                    Outer-building façade (dark office-tower wall with animated lit windows) painted in the hallway strips flanking the shaft.
+│   │   ├── distantSkyline.ts                    City-skyline silhouette above the rooftop; parallax-scrolled, visible only near the shaft top.
+│   │   ├── elevatorCabGeometry.ts               Pure cab geometry helpers (rider clamping); no Phaser dependency, used by ElevatorController.
+│   │   ├── floorBackdrops.ts                    Per-floor themed near-layer hallway backdrops; pure spec helpers + thin Phaser renderer.
+│   │   ├── floorDecorations.ts                  Lobby and per-floor decoration sprites; single entry-point drawAllDecorations().
+│   │   ├── platformTiles.ts                     Hallway floor tiles, walkable strips, floor-signage plaques, and invisible shaft-wall segments.
+│   │   ├── shaftWalls.ts                        Shaft structural drawing: walls, caps, rooftop props, machine room, dust motes, doors, cable, and LEDs.
+│   │   └── skyBackdrop.ts                       Screen-locked night-sky backdrop: gradient sky, moon with halo, and static starfield with slow twinklers.
 ├── style/                    Design tokens.
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
@@ -119,16 +130,19 @@ src/
 │   ├── SoundGenerator.ts     Composition root → `./sounds/` per-family modules.
 │   ├── sounds/               One file per SFX family (combat, footsteps, ui, …).
 │   │   ├── ambience.ts
+│   │   ├── boss.ts           Boss-arena SFX — hit thud, defeated fanfare, phase sting, projectile and mission-event sounds.
 │   │   ├── combat.ts
 │   │   ├── footsteps.ts
 │   │   ├── items.ts
 │   │   ├── lullaby.ts
+│   │   ├── mission.ts        Mission-sequence SFX — item pickup chime, bomb-disarm beeps, hostage-freed fanfare.
 │   │   ├── movement.ts
 │   │   ├── quiz.ts
 │   │   ├── ui.ts
 │   │   └── wav.ts
 │   └── sprites/              One file per asset family (player, tiles, token, …).
 ├── ui/                       Modal + HUD widgets built on Phaser containers.
+│   ├── BombDisarmDialog.ts     Wire-cutting mini-game modal for the executive rescue (extends ModalBase).
 │   ├── BossHealthBar.ts        Boss HP bar (boss arena).
 │   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
@@ -194,18 +208,24 @@ Use this to find the right file to edit for a given feature.
 ### Scene graph
 
 ```
-BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*, incl. BossArenaScene)
-                                            ↘  product rooms (features/products/rooms/*)
+BootScene  →  MenuScene  →  SaveSlotScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*, incl. BossArenaScene)
+                                                              ↘  product rooms (features/products/rooms/*)
 ```
 
 `BootScene` generates every sprite + sound once, creates the
-`GameStateManager`, and hands off to `MenuScene`. `ElevatorScene` is
-the central shaft; rides transition into the floor scenes in
-`features/floors/<floor>/` (each a thin wrapper around the shared
-`LevelScene`). The Products floor is rendered directly by
-`ElevatorScene` / `scenes/elevator/ProductDoorManager.ts` — one door
-per ISY product, each door launching the corresponding
+`GameStateManager`, and hands off to `MenuScene`. `SaveSlotScene` is
+the slot picker — every new game and continue passes through it before
+reaching `ElevatorScene`. `ElevatorScene` is the central shaft; rides
+transition into the floor scenes in `features/floors/<floor>/` (each a
+thin wrapper around the shared `LevelScene`). The Products floor is
+rendered directly by `ElevatorScene` /
+`scenes/elevator/ProductDoorManager.ts` — one door per ISY product,
+each door launching the corresponding
 `features/products/rooms/Product*Scene.ts`.
+
+`SettingsScene`, `ControlsScene`, and `PauseScene` are eager overlay
+scenes reachable from the menu and pause menu respectively; they do not
+sit in the linear flow above.
 
 ### Scene hand-off
 
@@ -333,3 +353,8 @@ adding an event there type-checks every call site automatically.
   spacing catalogue; both numeric (`0x…`) and CSS (`#…`) forms are
   co-located so Phaser graphics and Text styles share the same
   source of truth.
+- **Eager/lazy scene split.** Core/elevator scenes are bundled in the
+  main chunk (`EAGER_REGISTRY` in `sceneRegistry.ts`); floor, product-room,
+  and boss scenes are split into separate Vite chunks and fetched on demand
+  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts`. The elevator fade acts
+  as the loading screen.

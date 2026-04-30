@@ -68,6 +68,10 @@ export interface GameEvents {
   'sfx:hit': [];
   /** Enemy defeated via stomp. */
   'sfx:stomp': [];
+  /** Low heartbeat pulse — plays while the player is in the danger zone. */
+  'sfx:heartbeat': [];
+  /** Player activated a checkpoint. */
+  'checkpoint:activate': [id: string];
   /** AU dropped by the player on hit. */
   'sfx:drop_au': [];
   /** Dropped AU recovered. */
@@ -84,8 +88,10 @@ export interface GameEvents {
   'sfx:boss_defeated': [];
   /** Ceramic whoosh when player throws a mug. */
   'sfx:mug_throw': [];
-  /** Tense low sting on CEO phase transition. */
-  'sfx:boss_phase': [];
+  /** Mid-intensity descending sting on CEO phase 2 transition. */
+  'sfx:boss_phase_2': [];
+  /** Heavy descending sting on CEO phase 3 transition. */
+  'sfx:boss_phase_3': [];
   /** Paper-shuffle impact when boss throws a briefcase. */
   'sfx:briefcase_throw': [];
 
@@ -98,10 +104,17 @@ export interface GameEvents {
   'sfx:hostage_freed': [];
   /** Short sharp crack — pistol shot. */
   'sfx:pistol_shot': [];
+  /** Bright ascending four-note fanfare — floor unlocked. */
+  'sfx:floor_unlocked': [];
 
   // ---- Boss lifecycle events ----
   /** CEO boss has been defeated — carry the victory state to the scene. */
   'boss:defeated': [];
+  /**
+   * CEO boss crossed a phase threshold.
+   * Payload: the new phase number (2 = Hostile Takeover, 3 = Golden Parachute).
+   */
+  'boss:phase_changed': [phase: number];
 
   /** Caffeine buff activated; payload is the total duration in ms. */
   'buff:caffeine_start': [durationMs: number];

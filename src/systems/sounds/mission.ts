@@ -63,6 +63,33 @@ export function generateBossDefeatedSound(): ArrayBuffer {
   return encodeWAV(samples, SAMPLE_RATE);
 }
 
+/** Bright multi-note fanfare — floor unlocked. Ascending four-note chord with harmonic shimmer. */
+export function generateFloorUnlockedSound(): ArrayBuffer {
+  const duration = 1.0;
+  const n = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(n);
+  // Four ascending notes: C5, E5, G5, C6 — each plays for a quarter of the duration.
+  const notes = [523, 659, 784, 1047];
+  const noteLen = Math.floor(n / notes.length);
+  for (let ni = 0; ni < notes.length; ni++) {
+    const freq = notes[ni]!;
+    const start = ni * noteLen;
+    const end = Math.min(start + noteLen, n);
+    let phase1 = 0;
+    let phase2 = 0;
+    for (let i = start; i < end; i++) {
+      const t = (i - start) / (end - start);
+      phase1 += (2 * Math.PI * freq) / SAMPLE_RATE;
+      phase2 += (2 * Math.PI * (freq * 1.5)) / SAMPLE_RATE;
+      const tone = Math.sin(phase1) * 0.5 + Math.sin(phase2) * 0.2;
+      // Sharp attack, smooth decay within each note.
+      const env = t < 0.08 ? t / 0.08 : Math.exp(-(t - 0.08) * 4);
+      samples[i] = tone * env * 0.32;
+    }
+  }
+  return encodeWAV(samples, SAMPLE_RATE);
+}
+
 /** Triumphant rising fanfare — hostage freed. */
 export function generateHostageFreedSound(): ArrayBuffer {
   const duration = 0.6;

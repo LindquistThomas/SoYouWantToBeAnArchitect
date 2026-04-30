@@ -21,6 +21,7 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 | Enter / Click / Tap | Interact (enter doors, show info cards) |
 | I | Show info card for nearby zone |
 | Esc / P | Pause (during gameplay) |
+| M | Toggle audio mute (any scene) |
 | 0–5 | Call elevator to floor (inside the cab) |
 | X | Attack — throw mug (boss arena) / fire pistol (executive rescue) |
 

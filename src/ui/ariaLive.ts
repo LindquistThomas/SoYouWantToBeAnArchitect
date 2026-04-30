@@ -10,13 +10,16 @@
  * at game startup.
  */
 
-import { eventBus } from '../systems/EventBus';
+import { eventBus, type GameEventName, type GameEventHandler } from '../systems/EventBus';
 import { LEVEL_DATA } from '../config/levelData';
 
 const REGION_ID = 'game-aria-live';
 
 /** Pending timer id — cancelled before each new announcement so only the latest fires. */
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Cleanup callbacks for the active set of aria-live EventBus subscriptions. */
+let ariaHandlers: Array<() => void> | null = null;
 
 /**
  * Write `message` to the ARIA live region.
@@ -48,20 +51,31 @@ export function announce(message: string): void {
 /**
  * Subscribe to game events that warrant screen-reader announcements.
  * Intended to be called once from `main.ts` after the game is created.
- *
- * Note: handlers are registered on the singleton `eventBus` and are
- * intentionally long-lived (game lifetime), so no cleanup is needed.
+ * Idempotent: calling it a second time replaces the previous subscriptions
+ * with a fresh set (no duplicate handlers).
  */
 export function initAriaLive(): void {
-  eventBus.on('sfx:quiz_success', () => {
+  // Deregister any handlers from a previous call before re-subscribing so
+  // duplicate invocations never accumulate extra listeners.
+  if (ariaHandlers) {
+    for (const off of ariaHandlers) off();
+  }
+  ariaHandlers = [];
+
+  const sub = <K extends GameEventName>(event: K, fn: GameEventHandler<K>): void => {
+    eventBus.on(event, fn);
+    ariaHandlers!.push(() => eventBus.off(event, fn));
+  };
+
+  sub('sfx:quiz_success', () => {
     announce('Quiz passed!');
   });
 
-  eventBus.on('sfx:quiz_fail', () => {
+  sub('sfx:quiz_fail', () => {
     announce('Quiz failed. Read the info text and try again.');
   });
 
-  eventBus.on('progression:floor_unlocked', (floorId) => {
+  sub('progression:floor_unlocked', (floorId) => {
     // Direct index — LEVEL_DATA is keyed by FloorId so this is O(1).
     // The fallback is a belt-and-suspenders guard against future misconfig.
     const entry = LEVEL_DATA[floorId];
@@ -69,7 +83,7 @@ export function initAriaLive(): void {
     announce(`${name} unlocked!`);
   });
 
-  eventBus.on('progression:au_milestone', (total) => {
+  sub('progression:au_milestone', (total) => {
     announce(`${total} Architecture Units collected.`);
   });
 }
