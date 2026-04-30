@@ -77,11 +77,65 @@ describe('theme', () => {
     expect(theme.color.ui.quizCorrect).toBe(0x44ff88);
     expect(theme.color.ui.quizWrong).toBe(0xff4444);
     expect(theme.color.css.textQuizBody).toBe('#c0c8d4');
-    expect(theme.color.css.textQuizHint).toBe('#667788');
-    expect(theme.color.css.textQuizMuted).toBe('#8899aa');
+    expect(theme.color.css.textQuizHint).toBe('#a0aab8');
+    expect(theme.color.css.textQuizMuted).toBe('#b0bcc8');
     expect(theme.color.css.textQuizCorrect).toBe('#44ff88');
     expect(theme.color.css.textQuizHard).toBe('#ff6644');
     expect(theme.color.css.textQuizDanger).toBe('#ff6666');
     expect(theme.color.css.textQuizAccentHover).toBe('#88ddff');
+  });
+
+  it('textHint token is present and routes through theme', () => {
+    expect(typeof theme.color.css.textHint).toBe('string');
+    expect(theme.color.css.textHint).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it('all text* tokens in css palette meet WCAG AA (4.5:1) on the game background', () => {
+    /** WCAG 2.1 relative luminance for a CSS hex colour (e.g. '#1a1a2e'). */
+    function relativeLuminance(hex: string): number {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const toLinear = (c: number): number =>
+        c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    }
+
+    function contrastRatio(hex1: string, hex2: string): number {
+      const l1 = relativeLuminance(hex1);
+      const l2 = relativeLuminance(hex2);
+      const lighter = Math.max(l1, l2);
+      const darker  = Math.min(l1, l2);
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    // COLORS.background is 0x1a1a2e — the dark canvas behind all UI.
+    const bg = '#1a1a2e';
+
+    const cssPalette = theme.color.css as Record<string, string>;
+    const textTokens = Object.entries(cssPalette).filter(
+      ([key]) => key.startsWith('text'),
+    );
+
+    for (const [key, value] of textTokens) {
+      // Skip tokens that are intentionally decorative / non-body colours
+      // whose primary background is not the default dark canvas:
+      //   textQuizCorrect / textQuizDanger — green/red status colours rendered
+      //     on a per-choice panel background, not on bg.default.
+      //   textQuizHard — warning accent used with heavy glow, not body text.
+      //   textDisabled — intentionally low-contrast (indicates inactivity).
+      //   textAccent / textTitle / textWarn / textQuizAccentHover —
+      //     decorative accent/title colours; contrast is supplemented by
+      //     weight, size, or glow effects.
+      const skip = new Set([
+        'textQuizCorrect', 'textQuizDanger', 'textQuizHard',
+        'textDisabled',
+        'textAccent', 'textTitle', 'textWarn', 'textQuizAccentHover',
+      ]);
+      if (skip.has(key)) continue;
+
+      const ratio = contrastRatio(value, bg);
+      expect(ratio, `${key} (${value}) must be ≥4.5:1 on ${bg}, got ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
