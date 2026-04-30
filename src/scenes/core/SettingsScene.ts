@@ -4,6 +4,7 @@ import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
 import type { MusicStyle } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
+import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
@@ -352,8 +353,12 @@ export class SettingsScene extends Phaser.Scene {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
       if (this.callerScene === 'PauseScene') {
-        // SettingsScene was launched as an overlay from PauseScene.
-        // Stop SettingsScene and restore the still-alive PauseScene.
+        // Signal PauseScene to re-activate its input lifecycle, then stop this
+        // scene and restore PauseScene visibility. Emit before stop() so the
+        // listener fires while SettingsScene's 'modal' context is still on the
+        // stack; PauseScene's setupKeyboard() pushes 'menu' on top, and
+        // stop() then pops 'modal', leaving the stack in the correct state.
+        eventBus.emit('pause:settings-closed');
         this.scene.stop();
         this.scene.setVisible(true, 'PauseScene');
       } else {

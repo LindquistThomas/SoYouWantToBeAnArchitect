@@ -117,7 +117,12 @@ vi.mock('../../systems/sliderUtils', () => ({
   clampSlider: vi.fn((v: number) => v),
 }));
 
+vi.mock('../../systems/EventBus', () => ({
+  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
+}));
+
 import { SettingsScene } from './SettingsScene';
+import { eventBus } from '../../systems/EventBus';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -164,6 +169,21 @@ describe('SettingsScene.goBack()', () => {
     expect(scene.scene.stop).toHaveBeenCalled();
     expect(scene.scene.setVisible).toHaveBeenCalledWith(true, 'PauseScene');
     expect(scene.scene.start).not.toHaveBeenCalled();
+  });
+
+  it('emits pause:settings-closed before stopping when callerScene is PauseScene', () => {
+    const scene = makeSettings('PauseScene');
+    (scene as unknown as { goBack: () => void }).goBack();
+    flushDelayed(scene);
+    expect(eventBus.emit).toHaveBeenCalledWith('pause:settings-closed');
+    // emit must happen before stop so PauseScene re-activates while
+    // SettingsScene's 'modal' context is still on the stack.
+    const emitOrder = vi.mocked(eventBus.emit).mock.invocationCallOrder;
+    const stopOrder = vi.mocked(scene.scene.stop).mock.invocationCallOrder;
+    const emitPauseIdx = emitOrder[
+      vi.mocked(eventBus.emit).mock.calls.findIndex((c) => c[0] === 'pause:settings-closed')
+    ];
+    expect(emitPauseIdx).toBeLessThan(stopOrder[0]!);
   });
 
   it('defaults callerScene to MenuScene when no from is provided', () => {

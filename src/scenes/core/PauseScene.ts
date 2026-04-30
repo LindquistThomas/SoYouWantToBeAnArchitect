@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { eventBus } from '../../systems/EventBus';
 import { theme } from '../../style/theme';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 import { pushContext, popContext } from '../../input';
 
 const PANEL_WIDTH = 360;
@@ -23,6 +23,8 @@ export class PauseScene extends Phaser.Scene {
   private parentKey = '';
   private selectedIndex = 0;
   private menuItems: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
+  /** Active input lifecycle — disposed when Settings overlay opens, recreated on return. */
+  private lc!: SceneLifecycle;
 
   constructor() {
     super({ key: 'PauseScene' });
@@ -146,14 +148,14 @@ export class PauseScene extends Phaser.Scene {
   private setupKeyboard(): void {
     // Push 'menu' context so NavigateUp/Down/Confirm/Cancel fire.
     const contextToken = pushContext('menu');
-    const lc = createSceneLifecycle(this);
-    lc.add(() => popContext(contextToken));
+    this.lc = createSceneLifecycle(this);
+    this.lc.add(() => popContext(contextToken));
 
     // Esc (Cancel in menu context) → always resume.
-    lc.bindInput('Cancel', () => this.resumeGame());
-    lc.bindInput('NavigateUp', () => this.moveSelection(-1));
-    lc.bindInput('NavigateDown', () => this.moveSelection(1));
-    lc.bindInput('Confirm', () => this.activateSelection());
+    this.lc.bindInput('Cancel', () => this.resumeGame());
+    this.lc.bindInput('NavigateUp', () => this.moveSelection(-1));
+    this.lc.bindInput('NavigateDown', () => this.moveSelection(1));
+    this.lc.bindInput('Confirm', () => this.activateSelection());
   }
 
   private moveSelection(delta: number): void {
@@ -185,9 +187,22 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private openSettings(): void {
+    // Dispose input handlers so PauseScene's Cancel/Confirm/Navigate bindings
+    // don't fire while SettingsScene is the active overlay — both share those
+    // actions in 'menu' / 'modal' contexts and the global context stack would
+    // otherwise allow both scenes' handlers to trigger on the same keypress.
+    this.lc.dispose();
+
+    // Re-activate input once SettingsScene signals it has closed.
+    const resumeLc = createSceneLifecycle(this);
+    resumeLc.bindEventBus('pause:settings-closed', () => {
+      resumeLc.dispose();
+      this.setupKeyboard();
+    });
+
+    this.scene.setVisible(false);
     this.scene.launch('SettingsScene', { from: 'PauseScene' });
     this.scene.bringToTop('SettingsScene');
-    this.scene.setVisible(false);
   }
 
   private quitToMenu(): void {

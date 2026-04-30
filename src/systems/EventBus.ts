@@ -129,6 +129,12 @@ export interface GameEvents {
   'persistence:error': [storageKey: string, message: string];
 
   /**
+   * Emitted by SettingsScene when it is closed back to PauseScene.
+   * PauseScene listens for this to re-activate its input lifecycle.
+   */
+  'pause:settings-closed': [];
+
+  /**
    * A new floor was unlocked via AU progression. Payload is the floor ID.
    * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
    */

@@ -77,6 +77,7 @@ vi.mock('../../systems/sceneLifecycle', () => ({
     add: vi.fn(),
     bindInput: vi.fn(),
     bindEventBus: vi.fn(),
+    dispose: vi.fn(),
   })),
 }));
 
@@ -87,6 +88,7 @@ vi.mock('../../input', () => ({
 
 import { PauseScene } from './PauseScene';
 import { eventBus } from '../../systems/EventBus';
+import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +158,24 @@ describe('PauseScene', () => {
       (scene as unknown as { openSettings: () => void }).openSettings.call(scene);
       expect(scene.scene.setVisible).toHaveBeenCalledWith(false);
       expect(scene.scene.stop).not.toHaveBeenCalled();
+    });
+
+    it('disposes the input lifecycle before launching Settings', () => {
+      const scene = makeScene();
+      // The lifecycle created by setupKeyboard() is stored in this.lc
+      const lc = (scene as unknown as { lc: { dispose: ReturnType<typeof vi.fn> } }).lc;
+      (scene as unknown as { openSettings: () => void }).openSettings.call(scene);
+      expect(lc.dispose).toHaveBeenCalled();
+    });
+
+    it('registers a pause:settings-closed listener to re-activate input', () => {
+      const scene = makeScene();
+      const callsBefore = vi.mocked(createSceneLifecycle).mock.calls.length;
+      (scene as unknown as { openSettings: () => void }).openSettings.call(scene);
+      // A new lifecycle must have been created for the settings-return listener
+      const results = vi.mocked(createSceneLifecycle).mock.results;
+      const resumeLc = results[callsBefore]?.value as { bindEventBus: ReturnType<typeof vi.fn> } | undefined;
+      expect(resumeLc?.bindEventBus).toHaveBeenCalledWith('pause:settings-closed', expect.any(Function));
     });
   });
 
