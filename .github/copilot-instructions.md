@@ -76,6 +76,10 @@ Scripts from `package.json`:
 | `npm run test:e2e` | Playwright integration specs. |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm run preview` | Serve the production build locally (`vite preview`). |
+| `npm run test:unit:watch` | Vitest in watch mode. |
+| `npm run test:report` | Open the last Playwright HTML report. |
+| `npm run size` | `node scripts/check-size.cjs` — bundle-size budget gate (also runs in CI). |
 | `npm test` | `test:unit && test:e2e`. |
 | `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — the pre-PR gate. |
 
