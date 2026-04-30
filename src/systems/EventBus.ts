@@ -126,7 +126,7 @@ export interface GameEvents {
    * (5, 15, 30, 50, 75, 100, …).  Payload is the milestone value crossed.
    * Useful for screen-reader announcements and HUD celebrations.
    */
-  'progression:au_milestone': [total: number];
+  'progression:au_milestone': [milestone: number];
 
   /**
    * SaveManager failed to read or write a save slot.

@@ -235,6 +235,22 @@ describe('HUD', () => {
     expect(spy.mock.calls.length).toBe(callsAfterFirst);
   });
 
+  it('shows a toast when progression:au_milestone fires and unsubscribes on shutdown', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('progression:au_milestone', 15);
+    expect(showSpy).toHaveBeenCalledWith('\u2B50 15 AU collected!');
+
+    // After shutdown the lifecycle handler must be disconnected.
+    scene.events.emit('shutdown');
+    showSpy.mockClear();
+    eventBus.emit('progression:au_milestone', 30);
+    expect(showSpy).not.toHaveBeenCalled();
+  });
+
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);

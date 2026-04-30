@@ -69,10 +69,10 @@ export class HUD {
     this.caffeineRing.setVisible(false);
   };
 
-  /** Timestamp (scene.time.now) when the player first entered the "2 AU from unlock" zone. 0 = inactive. */
-  private nudgeTimerStart = 0;
+  /** Timestamp (scene.time.now) when the player first entered the "2 AU from unlock" zone. null = inactive. */
+  private nudgeTimerStart: number | null = null;
   /** FloorId of the floor for which a nudge was already shown (prevents repeat spam). */
-  private nudgeShownForFloor: number | null = null;
+  private nudgeShownForFloor: FloorId | null = null;
   /** Cached result of the last findNextUnlockFloor() call; updated whenever AU or floor changes. */
   private cachedNextFloor: typeof LEVEL_DATA[FloorId] | undefined = undefined;
 
@@ -535,24 +535,24 @@ export class HUD {
       }
     }
 
-    // Tutorial nudge: when within 2 AU of the next floor unlock and the
-    // player has been idle in that state for 20 s, show a hint toast once.
+    // Tutorial nudge: when within 2 AU of the next floor unlock for 20 s,
+    // show a hint toast once while the player remains in that near-unlock band.
     const nextForNudge = this.cachedNextFloor;
     if (nextForNudge && nextForNudge.auRequired - au <= 2) {
       if (this.nudgeShownForFloor !== nextForNudge.id) {
-        if (this.nudgeTimerStart === 0) {
+        if (this.nudgeTimerStart === null) {
           this.nudgeTimerStart = this.scene.time.now;
         } else if (this.scene.time.now - this.nudgeTimerStart >= 20_000) {
           const needed = nextForNudge.auRequired - au;
           this.toast.show(
-            `\u{1F4A1} Just ${needed} more AU to unlock ${nextForNudge.name}! Check the elevator panel.`,
+            `\u{1F4A1} Just ${needed} more AU to unlock ${nextForNudge.name}! Keep exploring for more AU.`,
           );
           this.nudgeShownForFloor = nextForNudge.id;
-          this.nudgeTimerStart = 0;
+          this.nudgeTimerStart = null;
         }
       }
     } else {
-      this.nudgeTimerStart = 0;
+      this.nudgeTimerStart = null;
     }
   }
 }
