@@ -103,7 +103,7 @@ export class BossArenaScene extends Phaser.Scene {
   private isTransitioning = false;
   private playerHitCount = 0;
 
-  /** Mechanic-hint toast shown at fight start and on phase transitions. */
+  /** Mechanic-hint toast shown at fight start and on phase transitions. Assigned in buildUI(). */
   private mechHintToast!: Toast;
 
   /** Per-visit hit / checkpoint tracking. */
