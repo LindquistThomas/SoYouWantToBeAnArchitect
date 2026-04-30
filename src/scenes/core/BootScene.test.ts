@@ -29,6 +29,15 @@ vi.mock('phaser', () => {
       svg: vi.fn(),
     };
     sound = {};
+    game = {};
+    cache = { audio: { exists: vi.fn().mockReturnValue(false) } };
+    textures = { exists: vi.fn().mockReturnValue(false) };
+    // Drive addEvent callbacks synchronously so create() fully resolves in tests.
+    time = {
+      addEvent: vi.fn((config: { delay: number; callback: () => void }) => {
+        config.callback();
+      }),
+    };
     constructor(_config: unknown) {}
   }
   const phaser = { Scene };
@@ -36,8 +45,14 @@ vi.mock('phaser', () => {
 });
 
 // Stub heavy systems so only the window listener logic is exercised.
-vi.mock('../../systems/SpriteGenerator', () => ({ generateSprites: vi.fn() }));
-vi.mock('../../systems/SoundGenerator', () => ({ generateSounds: vi.fn() }));
+vi.mock('../../systems/SpriteGenerator', () => ({
+  generateSprites: vi.fn(),
+  SPRITE_PHASES: [],
+}));
+vi.mock('../../systems/SoundGenerator', () => ({
+  generateSounds: vi.fn(),
+  SOUND_PHASES: [],
+}));
 vi.mock('../../systems/AudioManager', () => ({
   AudioManager: class {
     registerEventListeners = vi.fn();
