@@ -2,11 +2,11 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { eventBus } from '../../systems/EventBus';
 import { theme } from '../../style/theme';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 import { pushContext, popContext } from '../../input';
 
 const PANEL_WIDTH = 360;
-const PANEL_HEIGHT = 280;
+const PANEL_HEIGHT = 360;
 
 /**
  * Full-screen pause overlay launched as a sibling scene alongside any
@@ -16,12 +16,15 @@ const PANEL_HEIGHT = 280;
  *   1. Parent level calls `scene.launch('PauseScene', { parentKey })`.
  *   2. `create()` pauses the parent and ducks the music.
  *   3. Resume (Esc / Enter on "Resume") restores the parent and music.
- *   4. Quit to Menu stops the parent scene and navigates to `MenuScene`.
+ *   4. Settings launches SettingsScene as an overlay; PauseScene stays alive (hidden).
+ *   5. Quit to Menu stops the parent scene and navigates to `MenuScene`.
  */
 export class PauseScene extends Phaser.Scene {
   private parentKey = '';
   private selectedIndex = 0;
   private menuItems: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
+  /** Active input lifecycle — disposed when Settings overlay opens, recreated on return. */
+  private lc!: SceneLifecycle;
 
   constructor() {
     super({ key: 'PauseScene' });
@@ -87,11 +90,15 @@ export class PauseScene extends Phaser.Scene {
     container.add(divider);
 
     // Resume button (index 0)
-    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 30, () => this.resumeGame());
+    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 10, () => this.resumeGame());
     container.add(resumeBtn);
 
-    // Quit to Menu button (index 1)
-    const quitBtn = this.makeButton('Quit to Menu', 0, 110, () => this.quitToMenu());
+    // Settings button (index 1)
+    const settingsBtn = this.makeButton('Settings', 0, 80, () => this.openSettings());
+    container.add(settingsBtn);
+
+    // Quit to Menu button (index 2)
+    const quitBtn = this.makeButton('Quit to Menu', 0, 150, () => this.quitToMenu());
     container.add(quitBtn);
 
     // Hint text
@@ -141,14 +148,14 @@ export class PauseScene extends Phaser.Scene {
   private setupKeyboard(): void {
     // Push 'menu' context so NavigateUp/Down/Confirm/Cancel fire.
     const contextToken = pushContext('menu');
-    const lc = createSceneLifecycle(this);
-    lc.add(() => popContext(contextToken));
+    this.lc = createSceneLifecycle(this);
+    this.lc.add(() => popContext(contextToken));
 
     // Esc (Cancel in menu context) → always resume.
-    lc.bindInput('Cancel', () => this.resumeGame());
-    lc.bindInput('NavigateUp', () => this.moveSelection(-1));
-    lc.bindInput('NavigateDown', () => this.moveSelection(1));
-    lc.bindInput('Confirm', () => this.activateSelection());
+    this.lc.bindInput('Cancel', () => this.resumeGame());
+    this.lc.bindInput('NavigateUp', () => this.moveSelection(-1));
+    this.lc.bindInput('NavigateDown', () => this.moveSelection(1));
+    this.lc.bindInput('Confirm', () => this.activateSelection());
   }
 
   private moveSelection(delta: number): void {
@@ -177,6 +184,25 @@ export class PauseScene extends Phaser.Scene {
     eventBus.emit('music:resume');
     this.scene.resume(this.parentKey);
     this.scene.stop();
+  }
+
+  private openSettings(): void {
+    // Dispose input handlers so PauseScene's Cancel/Confirm/Navigate bindings
+    // don't fire while SettingsScene is the active overlay — both share those
+    // actions in 'menu' / 'modal' contexts and the global context stack would
+    // otherwise allow both scenes' handlers to trigger on the same keypress.
+    this.lc.dispose();
+
+    // Re-activate input once SettingsScene signals it has closed.
+    const resumeLc = createSceneLifecycle(this);
+    resumeLc.bindEventBus('pause:settings-closed', () => {
+      resumeLc.dispose();
+      this.setupKeyboard();
+    });
+
+    this.scene.launch('SettingsScene', { from: 'PauseScene' });
+    this.scene.bringToTop('SettingsScene');
+    this.scene.setVisible(false);
   }
 
   private quitToMenu(): void {

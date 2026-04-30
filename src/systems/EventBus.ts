@@ -129,17 +129,23 @@ export interface GameEvents {
   'persistence:error': [storageKey: string, message: string];
 
   /**
+   * Emitted by SettingsScene when it is closed back to PauseScene.
+   * PauseScene listens for this to re-activate its input lifecycle.
+   */
+  'pause:settings-closed': [];
+
+  /**
    * A new floor was unlocked via AU progression. Payload is the floor ID.
    * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
    */
   'progression:floor_unlocked': [floorId: FloorId];
 
   /**
-   * The player's total AU has crossed a multiple-of-50 milestone.
-   * Payload is the current total AU count.
+   * The player's total AU has crossed one of the explicit milestone thresholds
+   * (5, 15, 30, 50, 75, 100, …).  Payload is the milestone value crossed.
    * Useful for screen-reader announcements and HUD celebrations.
    */
-  'progression:au_milestone': [total: number];
+  'progression:au_milestone': [milestone: number];
 
   /**
    * SaveManager failed to read or write a save slot.
@@ -156,6 +162,14 @@ export interface GameEvents {
    * Emitted by `GameStateManager.checkAchievements()`.
    */
   'achievement:unlocked': [id: string, label: string];
+
+  /**
+   * Emitted by `QuizDialog` the moment a cooldown timer reaches zero and the
+   * quiz becomes retryable. Screen readers listen via `ariaLive` to announce
+   * the unlock (WCAG 2.1 SC 4.1.3 Status Messages).
+   * Payload: the `infoId` of the quiz that was unlocked.
+   */
+  'quiz:cooldown_expired': [infoId: string];
 }
 
 export type GameEventName = keyof GameEvents;

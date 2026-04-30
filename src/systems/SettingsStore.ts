@@ -49,6 +49,11 @@ export interface SettingsData {
    * Useful for replay sessions where the player already knows the controls.
    */
   hideTutorials: boolean;
+  /**
+   * When true, the virtual D-pad buttons use a higher-contrast (more opaque)
+   * background. Useful in bright outdoor / sunlight conditions.
+   */
+  highContrastControls: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -74,6 +79,7 @@ export function defaultSettings(): SettingsData {
     reducedMotion: defaultReducedMotion(),
     controlBindings: {},
     hideTutorials: false,
+    highContrastControls: false,
   };
 }
 
@@ -119,6 +125,9 @@ function parseSettings(raw: unknown): SettingsData {
     reducedMotion: typeof r['reducedMotion'] === 'boolean' ? r['reducedMotion'] : defaults.reducedMotion,
     controlBindings: parseControlBindings(r['controlBindings']),
     hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
+    highContrastControls: typeof r['highContrastControls'] === 'boolean'
+      ? r['highContrastControls']
+      : defaults.highContrastControls,
   };
 }
 
@@ -207,6 +216,10 @@ export const settingsStore = {
 
   setReducedMotion(reduced: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, reducedMotion: reduced }));
+  },
+
+  setHighContrastControls(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, highContrastControls: enabled }));
   },
 
   /** Persist a full set of key-binding overrides. Merges with nothing — replaces entirely. */

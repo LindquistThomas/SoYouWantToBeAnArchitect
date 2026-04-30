@@ -155,6 +155,7 @@ export class QuizDialog extends ModalBase {
       callback: () => {
         remainingMs = getCooldownRemaining(this.options.infoId);
         if (remainingMs <= 0) {
+          eventBus.emit('quiz:cooldown_expired', this.options.infoId);
           this.clearCooldownTimer();
           this.showQuestion();
         } else {

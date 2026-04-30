@@ -71,7 +71,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Business',
     description: 'Product Leadership on the left, Customer Success on the right.',
     sceneKey: 'ProductLeadershipScene',
-    auRequired: 10,
+    auRequired: 8,
     auLabel: 'Business AU',
     totalAU: 10,
     rooms: { left: 'Product Leadership', right: 'Customer Success' },
@@ -88,7 +88,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Executive Suite',
     description: 'The penthouse. Strategy, vision, and the C-suite.',
     sceneKey: 'ExecutiveSuiteScene',
-    auRequired: 15,
+    auRequired: 22,
     auLabel: 'Strategy AU',
     totalAU: 6,
     theme: {
@@ -123,7 +123,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Boardroom',
     description: 'The CEO awaits. Prove your architectural worth.',
     sceneKey: 'BossArenaScene',
-    auRequired: 25,
+    auRequired: 30,
     auLabel: 'Boss AU',
     totalAU: 0,
     theme: {

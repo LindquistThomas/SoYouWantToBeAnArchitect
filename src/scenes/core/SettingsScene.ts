@@ -4,10 +4,12 @@ import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
 import type { MusicStyle } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
+import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { clampSlider } from '../../systems/sliderUtils';
+import { updateVirtualGamepadContrast } from '../../ui/VirtualGamepad';
 
 /**
  * Settings scene — keyboard-navigable UI for audio and accessibility settings.
@@ -106,6 +108,15 @@ export class SettingsScene extends Phaser.Scene {
         label: 'MUTE ALL  [M]',
         get: () => settingsStore.read().muteAll,
         set: (v) => settingsStore.setMuteAll(v),
+      },
+      {
+        kind: 'toggle',
+        label: 'HIGH CONTRAST CONTROLS',
+        get: () => settingsStore.read().highContrastControls,
+        set: (v) => {
+          settingsStore.setHighContrastControls(v);
+          updateVirtualGamepadContrast(v);
+        },
       },
       {
         kind: 'cycle',
@@ -358,7 +369,18 @@ export class SettingsScene extends Phaser.Scene {
   private goBack(): void {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
-      this.scene.start(this.callerScene);
+      if (this.callerScene === 'PauseScene') {
+        // Signal PauseScene to re-activate its input lifecycle, then stop this
+        // scene and restore PauseScene visibility. Emit before stop() so the
+        // listener fires while SettingsScene's 'modal' context is still on the
+        // stack; PauseScene's setupKeyboard() pushes 'menu' on top, and
+        // stop() then pops 'modal', leaving the stack in the correct state.
+        eventBus.emit('pause:settings-closed');
+        this.scene.stop();
+        this.scene.setVisible(true, 'PauseScene');
+      } else {
+        this.scene.start(this.callerScene);
+      }
     });
   }
 }

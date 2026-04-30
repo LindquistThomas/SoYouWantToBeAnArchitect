@@ -55,7 +55,7 @@ From `package.json`:
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
 | `npm run test:unit:watch` | Vitest in watch mode. |
-| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 60% floor on `src/ui/**` and `src/entities/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`. |
 | `npm run test:e2e` | Playwright integration specs. |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:report` | Open the last Playwright HTML report. |

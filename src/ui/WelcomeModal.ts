@@ -136,7 +136,7 @@ export class WelcomeModal extends ModalBase {
     const skip = this.scene.add.text(
       GAME_WIDTH / 2, btnY + 38,
       'Esc to skip',
-      { fontFamily: 'monospace', fontSize: '12px', color: '#556677' },
+      { fontFamily: 'monospace', fontSize: '12px', color: theme.color.css.textHint },
     ).setOrigin(0.5).setScrollFactor(0);
     this.container.add(skip);
   }

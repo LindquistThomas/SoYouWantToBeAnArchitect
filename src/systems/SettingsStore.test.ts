@@ -72,6 +72,7 @@ describe('SettingsStore', () => {
         reducedMotion: true,
         controlBindings: {},
         hideTutorials: true,
+        highContrastControls: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -83,6 +84,7 @@ describe('SettingsStore', () => {
       expect(s.musicStyle).toBe('retro-synth');
       expect(s.reducedMotion).toBe(true);
       expect(s.hideTutorials).toBe(true);
+      expect(s.highContrastControls).toBe(true);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
