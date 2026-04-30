@@ -6,13 +6,14 @@ import { CoffeeMugProjectile } from '../../../entities/CoffeeMugProjectile';
 import { BriefcaseProjectile } from '../../../entities/BriefcaseProjectile';
 import { Checkpoint } from '../../../entities/Checkpoint';
 import { BossHealthBar } from '../../../ui/BossHealthBar';
+import { BossIntroDialog } from '../../../ui/BossIntroDialog';
+import { Toast } from '../../../ui/Toast';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
-import { isReducedMotion } from '../../../systems/MotionPreference';
 
 /** Architecture quiz prompts used during knowledge windows. */
 interface BossPrompt {
@@ -102,6 +103,9 @@ export class BossArenaScene extends Phaser.Scene {
   private isTransitioning = false;
   private playerHitCount = 0;
 
+  /** Mechanic-hint toast shown at fight start and on phase transitions. */
+  private mechHintToast!: Toast;
+
   /** Per-visit hit / checkpoint tracking. */
   private readonly floorHazard = new FloorHitState();
   /** Danger vignette overlay. */
@@ -145,11 +149,30 @@ export class BossArenaScene extends Phaser.Scene {
     this.buildDangerVignette();
 
     this.cameras.main.fadeIn(600, 0, 0, 0);
+
+    // Check first visit BEFORE marking it — intro modal fires exactly once.
+    const isFirstVisit = !this.progression.hasVisitedFloor(FLOORS.BOSS);
     this.progression.markFloorVisited(FLOORS.BOSS);
     this.gameState.checkAchievements();
 
     this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
+
+    if (isFirstVisit) {
+      // Freeze the arena until the player dismisses the intro card.
+      this.isTransitioning = true;
+      this.physics.pause();
+      new BossIntroDialog(this, () => {
+        this.physics.resume();
+        this.isTransitioning = false;
+        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
+      });
+    } else {
+      // Brief reminder on every replay — unobtrusive bottom-right toast.
+      this.time.delayedCall(1500, () => {
+        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug`);
+      });
+    }
   }
 
   private buildArena(): void {
@@ -259,6 +282,8 @@ export class BossArenaScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, `${attackHint} — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#888899',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+
+    this.mechHintToast = new Toast(this);
   }
 
   private wireColliders(): void {
@@ -619,15 +644,22 @@ export class BossArenaScene extends Phaser.Scene {
     // HP bar glow
     this.healthBar.flash(phase);
 
-    // Phase-specific toast
+    // Phase-specific toasts
     if (phase === 2) {
       this.showToast('⚡ HOSTILE TAKEOVER', '#ff8800', GAME_HEIGHT / 2 - 60);
+      // Mechanic hint — brief reminder about the new attack pattern
+      this.showMechanicHint('⚡ Watch the briefcase volley — jump to dodge');
     } else if (phase === 3) {
       this.showToast('💀 GOLDEN PARACHUTE', '#ff2222', GAME_HEIGHT / 2 - 60);
       // Rage tell — warn player about the faster briefcase pattern
       this.showToast('⚠ RAGE MODE — Briefcases incoming!', '#ff8844', GAME_HEIGHT / 2 - 20, 600);
     }
   };
+
+  /** Show a transient mechanic hint in the bottom-right Toast. */
+  private showMechanicHint(message: string): void {
+    this.mechHintToast.show(message);
+  }
 
   private onShutdown(): void {
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.

@@ -156,6 +156,15 @@ describe('ProgressionSystem', () => {
     expect(q.getTotalAU()).toBe(5);
   });
 
+  it('hasVisitedFloor returns false before visit and true after markFloorVisited', () => {
+    const p = new ProgressionSystem();
+    expect(p.hasVisitedFloor(FLOORS.LOBBY)).toBe(false);
+    p.markFloorVisited(FLOORS.LOBBY);
+    expect(p.hasVisitedFloor(FLOORS.LOBBY)).toBe(true);
+    // Other floors remain unvisited.
+    expect(p.hasVisitedFloor(FLOORS.PLATFORM_TEAM)).toBe(false);
+  });
+
   it('reset() clears all state and the persisted save', () => {
     const p = new ProgressionSystem();
     p.addAU(FLOORS.PLATFORM_TEAM, 10);

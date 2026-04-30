@@ -123,6 +123,11 @@ export class ProgressionSystem {
     this.persist();
   }
 
+  /** Whether the player has previously entered a floor at least once. */
+  hasVisitedFloor(floorId: FloorId): boolean {
+    return this.state.visitedFloors.has(floorId);
+  }
+
   /** Number of distinct floors the player has visited. */
   getVisitedFloorCount(): number {
     return this.state.visitedFloors.size;
