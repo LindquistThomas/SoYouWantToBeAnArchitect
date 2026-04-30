@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
-import type { MusicStyle } from '../../systems/SettingsStore';
+import type { MusicStyle, OnScreenControlsSetting } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
@@ -79,6 +79,18 @@ export class SettingsScene extends Phaser.Scene {
 
     const REDUCED_OPTIONS = ['SYSTEM', 'OFF', 'ON'] as const;
 
+    const ON_SCREEN_CONTROLS_OPTIONS = ['AUTO', 'ALWAYS', 'NEVER'] as const;
+    const ON_SCREEN_CONTROLS_VALUES: Record<string, OnScreenControlsSetting> = {
+      'AUTO': 'auto',
+      'ALWAYS': 'always',
+      'NEVER': 'never',
+    };
+    const ON_SCREEN_CONTROLS_LABELS: Record<OnScreenControlsSetting, string> = {
+      'auto': 'AUTO',
+      'always': 'ALWAYS',
+      'never': 'NEVER',
+    };
+
     return [
       {
         kind: 'slider',
@@ -127,7 +139,16 @@ export class SettingsScene extends Phaser.Scene {
         label: 'MUSIC STYLE',
         options: MUSIC_STYLE_OPTIONS,
         get: () => MUSIC_STYLE_LABELS[settingsStore.read().musicStyle] ?? MUSIC_STYLE_OPTIONS[0],
-        set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]]),
+        set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]] as MusicStyle),
+      },
+      {
+        kind: 'cycle',
+        label: 'SHOW CONTROLS',
+        options: ON_SCREEN_CONTROLS_OPTIONS,
+        get: () => ON_SCREEN_CONTROLS_LABELS[settingsStore.read().onScreenControls] ?? ON_SCREEN_CONTROLS_OPTIONS[0],
+        set: (v) => settingsStore.setOnScreenControls(
+          ON_SCREEN_CONTROLS_VALUES[v] ?? (ON_SCREEN_CONTROLS_VALUES[ON_SCREEN_CONTROLS_OPTIONS[0]] as OnScreenControlsSetting),
+        ),
       },
       {
         kind: 'action',

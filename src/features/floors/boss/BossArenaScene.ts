@@ -12,7 +12,6 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
-import { isReducedMotion } from '../../../systems/MotionPreference';
 
 /** Architecture quiz prompts used during knowledge windows. */
 interface BossPrompt {

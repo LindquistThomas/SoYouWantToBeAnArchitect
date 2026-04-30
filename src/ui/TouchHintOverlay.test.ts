@@ -128,3 +128,65 @@ describe('showTouchHintIfNeeded', () => {
     expect(overlays.length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+import { showTouchHintForced } from './TouchHintOverlay';
+
+describe('showTouchHintForced', () => {
+  let storage: ReturnType<typeof memStorage>;
+  let pad: HTMLDivElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = memStorage();
+    TouchHintStore.setStorage(storage);
+    pad = makePad();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    document.getElementById('touch-hint-overlay')?.remove();
+    pad.remove();
+  });
+
+  it('shows the hint even when isTouchPrimary = false', () => {
+    vi.spyOn(touchPrimary, 'isTouchPrimary').mockReturnValue(false);
+    showTouchHintForced(pad);
+    expect(document.getElementById('touch-hint-overlay')).not.toBeNull();
+  });
+
+  it('shows the hint even when hasSeen = true', () => {
+    TouchHintStore.markSeen();
+    showTouchHintForced(pad);
+    expect(document.getElementById('touch-hint-overlay')).not.toBeNull();
+  });
+
+  it('does NOT mark seen when auto-dismissed after timeout', async () => {
+    TouchHintStore.setStorage(storage); // fresh storage, hasSeen=false
+    showTouchHintForced(pad);
+    await vi.advanceTimersByTimeAsync(6_000);
+    // hasSeen should remain false since markOnDismiss=false
+    expect(TouchHintStore.hasSeen()).toBe(false);
+  });
+
+  it('does NOT mark seen when dismissed by button touch', async () => {
+    showTouchHintForced(pad);
+    const btn = pad.querySelector<HTMLElement>('.vpad-btn')!;
+    btn.dispatchEvent(new TouchEvent('touchstart', { bubbles: true }));
+    await vi.runAllTimersAsync();
+    expect(TouchHintStore.hasSeen()).toBe(false);
+  });
+
+  it('is idempotent — does not create a second overlay if one exists', () => {
+    showTouchHintForced(pad);
+    showTouchHintForced(pad);
+    expect(document.querySelectorAll('#touch-hint-overlay').length).toBe(1);
+  });
+
+  it('pulses the D-pad and Jump button', () => {
+    showTouchHintForced(pad);
+    expect(pad.querySelector('.vpad-dpad')?.classList.contains('vpad-hint-pulse')).toBe(true);
+    expect(pad.querySelector('[data-actions~="Jump"]')?.classList.contains('vpad-hint-pulse')).toBe(true);
+  });
+});
