@@ -25,10 +25,10 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
 │   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
-│   │                         # MissionItem
+│   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, floorAccents/Patterns,
-│   │   │                       sceneBackdrop), one dir per floor (lobby/, platform/, architecture/,
+│   │   │                       sceneBackdrop, validateLevelConfig), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
@@ -76,6 +76,10 @@ Scripts from `package.json`:
 | `npm run test:e2e` | Playwright integration specs. |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm run preview` | Serve the production build locally (`vite preview`). |
+| `npm run test:unit:watch` | Vitest in watch mode. |
+| `npm run test:report` | Open the last Playwright HTML report. |
+| `npm run size` | `node scripts/check-size.cjs` — bundle-size budget gate (also runs in CI). |
 | `npm test` | `test:unit && test:e2e`. |
 | `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — the pre-PR gate. |
 
@@ -85,8 +89,8 @@ Scripts from `package.json`:
 
 Short index of where things live. Reach for these instead of re-implementing.
 
-- **`GameStateManager`** (`src/systems/GameStateManager.ts`) — composition root for persistent state. Constructed once in `BootScene.create()` and stashed in `scene.registry` under the key `gameState`. Owns the `ProgressionSystem` instance and exposes facades over `SaveManager`, `QuizManager`, `InfoDialogManager`. **New scene/UI code reads it via `this.registry.get('gameState') as GameStateManager` rather than importing the underlying stores directly** — tests inject a fake `KVStorage` into the constructor to swap localStorage atomically. Some legacy UI modules still import the stores directly; treat them as a migration target, not a pattern.
-- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Exposed via `gameState.progression` in scenes — direct construction is reserved for tests. Persists via `SaveManager` (localStorage key `architect_<slot>_v1`; default slot `default` → `architect_default_v1`).
+- **`GameStateManager`** (`src/systems/GameStateManager.ts`) — composition root for persistent state. Constructed once in `BootScene.create()` and stashed in `scene.registry` under the key `gameState`. Owns the `ProgressionSystem` instance and exposes facades over `SaveManager`, `QuizManager`, `InfoDialogManager`, `AchievementManager`, and `TouchHintStore`. **New scene/UI code reads it via `this.registry.get('gameState') as GameStateManager` rather than importing the underlying stores directly** — tests inject a fake `KVStorage` into the constructor to swap localStorage atomically. Some legacy UI modules still import the stores directly; treat them as a migration target, not a pattern.
+- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Exposed via `gameState.progression` in scenes — direct construction is reserved for tests. Persists via `SaveManager` (localStorage key `architect_<slot>_v1`; canonical slots `slot1` / `slot2` / `slot3` selected in `SaveSlotScene`. Legacy `architect_default_v1` is migrated to `architect_slot1_v1` on first load — see `src/systems/SaveManager.ts` (`migrateDefaultSlot()`)).
 - **`SaveManager`** — infrastructure. Scenes must not import it; use `ProgressionSystem`. The one exception is `SaveManager.hasSave()` for UI checks (e.g. a "Continue" button).
 - **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
 - **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.

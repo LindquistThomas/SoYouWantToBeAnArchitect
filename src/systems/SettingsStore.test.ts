@@ -71,6 +71,7 @@ describe('SettingsStore', () => {
         musicStyle: 'retro-synth',
         reducedMotion: true,
         controlBindings: {},
+        highContrastControls: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
