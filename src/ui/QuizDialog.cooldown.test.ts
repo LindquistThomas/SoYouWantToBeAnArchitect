@@ -98,7 +98,11 @@ import { eventBus } from '../systems/EventBus';
 import { FLOORS } from '../config/gameConfig';
 
 type TimerCallback = () => void;
-interface FakeTimerEvent { destroy: ReturnType<typeof vi.fn> }
+interface FakeTimerEvent {
+  destroy: ReturnType<typeof vi.fn>;
+  /** Set to true by the destroy() stub so _tickTimer can skip destroyed timers. */
+  destroyed: boolean;
+}
 
 function makeText() {
   const t: Record<string, unknown> = {};
@@ -152,16 +156,23 @@ function makeScene() {
     tweens: { add: vi.fn() },
     time: {
       addEvent: vi.fn((cfg: { callback: TimerCallback }) => {
-        const event: FakeTimerEvent = { destroy: vi.fn() };
+        const event: FakeTimerEvent = {
+          destroyed: false,
+          destroy: vi.fn(() => { event.destroyed = true; }),
+        };
         timerCallbacks.push({ callback: cfg.callback, event });
         return event;
       }),
     },
-    /** Tick the most recently registered timer callback N times. */
+    /** Tick the most recently registered timer callback N times.
+     *  Stops immediately if the timer has been destroyed (mirrors real Phaser behaviour). */
     _tickTimer(times = 1): void {
       const entry = timerCallbacks[timerCallbacks.length - 1];
-      if (!entry) return;
-      for (let i = 0; i < times; i++) entry.callback();
+      if (!entry || entry.event.destroyed) return;
+      for (let i = 0; i < times; i++) {
+        if (entry.event.destroyed) break;
+        entry.callback();
+      }
     },
   };
 
@@ -195,16 +206,20 @@ describe('QuizDialog cooldown expiry event', () => {
     const scene = makeScene();
     new QuizDialog(scene as unknown as Phaser.Scene, makeOptions());
 
-    // First tick: cooldown still running.
+    // First tick: cooldown still running — no emission yet.
     mockCooldownRemaining.value = 3000;
     scene._tickTimer();
     expect(handler).not.toHaveBeenCalled();
 
-    // Second tick: cooldown expired.
+    // Second tick: cooldown expired — event emitted, clearCooldownTimer() destroys the timer.
     mockCooldownRemaining.value = 0;
     scene._tickTimer();
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith('test-quiz');
+
+    // Third tick: timer was destroyed; callback must not fire again (no double-emit).
+    scene._tickTimer();
+    expect(handler).toHaveBeenCalledTimes(1);
 
     eventBus.off('quiz:cooldown_expired', handler);
   });
@@ -216,10 +231,13 @@ describe('QuizDialog cooldown expiry event', () => {
     const scene = makeScene();
     const dialog = new QuizDialog(scene as unknown as Phaser.Scene, makeOptions());
 
-    // Close the dialog before the timer ever fires at zero.
+    // Close the dialog — onBeforeClose() calls clearCooldownTimer() → event.destroy().
     dialog.close();
 
-    // Even if we would have ticked to zero, no event should have been emitted.
+    // Simulate the timer reaching zero after close; because the timer was destroyed
+    // the callback must be a no-op and the event must not be emitted.
+    mockCooldownRemaining.value = 0;
+    scene._tickTimer();
     expect(handler).not.toHaveBeenCalled();
 
     eventBus.off('quiz:cooldown_expired', handler);
