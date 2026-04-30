@@ -112,7 +112,7 @@ src/
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
-│   ├── GameStateManager.ts   Composition root — wraps the four persistent stores.
+│   ├── GameStateManager.ts   Composition root — wraps the five persistent stores.
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
@@ -241,8 +241,8 @@ gone.
 `GameStateManager` (in `systems/GameStateManager.ts`) is constructed
 once in `BootScene.create()` and stashed in `scene.registry` under
 the key `gameState`. It owns the `ProgressionSystem` instance and
-exposes facades over the three module-level stores (`SaveManager`,
-`QuizManager`, `InfoDialogManager`). Tests inject a fake `KVStorage`
+exposes facades over the five module-level stores (`SaveManager`,
+`QuizManager`, `InfoDialogManager`, `AchievementManager`, `TouchHintStore`). Tests inject a fake `KVStorage`
 into the constructor to swap localStorage atomically.
 
 ### Runtime wiring
@@ -333,9 +333,9 @@ adding an event there type-checks every call site automatically.
 - **Pluggable storage.** `SaveManager` exposes a `KVStorage`
   interface so tests can swap in an in-memory store without
   monkey-patching `localStorage`. `GameStateManager` forwards that
-  interface to the other three stores in its constructor.
+  interface to the other four stores in its constructor.
 - **Single composition root for game state.** `GameStateManager` is
-  the only thing that knows how the four persistent stores fit
+  the only thing that knows how the five persistent stores fit
   together. Scenes and UI read from it; tests replace it.
 - **Typed scene hand-off.** `NavigationContext` collects every
   cross-scene field in one optional-everything interface. No registry
