@@ -196,7 +196,7 @@ Use this to find the right file to edit for a given feature.
 | Enemies                             | `entities/Enemy.ts`, `entities/enemies/*.ts`                                           |
 | AU / tokens / progression           | `entities/Token.ts`, `entities/DroppedAU.ts`, `systems/ProgressionSystem.ts`           |
 | Achievements                        | `systems/AchievementManager.ts`, `ui/AchievementsDialog.ts`                            |
-| Save slots                          | `systems/SaveManager.ts`, `scenes/core/MenuScene.ts`                                   |
+| Save slots                          | `systems/SaveManager.ts`, `scenes/core/SaveSlotScene.ts`, `scenes/core/MenuScene.ts`   |
 | Quiz runtime                        | `systems/QuizManager.ts`, `ui/QuizDialog.ts`, `ui/QuizResultsScreen.ts`                |
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
