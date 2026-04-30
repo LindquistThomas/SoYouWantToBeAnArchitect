@@ -1,5 +1,8 @@
 import { FLOORS, type FloorId } from '../../../config/gameConfig';
 
+/** Shared hint shown on floors that have quizzes — the first of which the player visits. */
+const QUIZ_HINT = 'Answer quiz questions to earn AU and unlock new floors.';
+
 /**
  * Per-floor first-visit coaching hint messages.
  *
@@ -11,12 +14,9 @@ const FLOOR_HINTS: Partial<Record<FloorId, string>> = {
     'Walk to a glowing \u25ba icon and press \u2191 or Enter to read it.',
   [FLOORS.PLATFORM_TEAM]:
     'Hold a direction and press Space to jump across gaps.',
-  [FLOORS.BUSINESS]:
-    'Answer quiz questions to earn AU and unlock new floors.',
-  [FLOORS.EXECUTIVE]:
-    'Answer quiz questions to earn AU and unlock new floors.',
-  [FLOORS.PRODUCTS]:
-    'Answer quiz questions to earn AU and unlock new floors.',
+  [FLOORS.BUSINESS]:   QUIZ_HINT,
+  [FLOORS.EXECUTIVE]:  QUIZ_HINT,
+  [FLOORS.PRODUCTS]:   QUIZ_HINT,
 };
 
 /**
